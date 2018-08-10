@@ -2,6 +2,8 @@
 
 Common [psake](https://github.com/psake/psake) tasks for building, testing, and publishing PowerShell modules.
 
+![logo](./media/psaketaskmodule-256x256.png)
+
 ## Status - Work in progress
 
 ## Tasks
