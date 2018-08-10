@@ -2,7 +2,9 @@
 
 Common [psake](https://github.com/psake/psake) tasks for building, testing, and publishing PowerShell modules.
 
-![logo](./media/psaketaskmodule-256x256.png)
+<p align="center">
+    <img src="media/psaketaskmodule-256x256.png" alt="Logo">
+</p>
 
 ## Status - Work in progress
 
