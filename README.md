@@ -14,7 +14,10 @@ This consistency ultimately helps the community in building high-quality PowerSh
 ## Status - Work in progress
 
 > This project is a **work in progress** and may change significantly before release based on feedback from the community.
-**Please do not base critical processes on this project** until it has been further refined.
+> **Please do not base critical processes on this project** until it has been further refined.
+>
+> This is in part based on [PlasterBuild](https://github.com/PowerShell/PlasterBuild) project and _MAY_ be merged into it.
+> It is being kept separate for now so experimental features can be explored.
 
 ## Tasks
 
@@ -54,4 +57,26 @@ TODO
 
 ## Examples
 
-TODO
+The example below is a psake file you might use in your PowerShell module.
+When psake executes this file, it will recognize that tasks are being referenced from a separate module and automatically load them.
+You can run these tasks just as if they were included directly in your task file.
+
+Notice that the task file contained in `MyModule` only references the `Build` task supplied from `PowerShellBuild.Common`.
+When executed, the dependent tasks `Init`, `Clear`, and `StageFiles` also contained in `PowerShellBuild.Common` are executed as well.
+
+###### psakeBuild.ps1
+
+```powershell
+properties {
+    # These settings overwrite values supplied form the PowerShellBuild.Common
+    # module and govern how those tasks are executed
+    $scriptAnalysisEnabled = $false
+    $codeCoverageEnabled = $true
+}
+
+task default -depends Build
+
+task Build -FromModule PowerShellBuild.Common -Version '0.1.0'
+```
+
+![Example](./media/example.png)
