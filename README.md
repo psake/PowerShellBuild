@@ -6,6 +6,7 @@ Using these shared tasks reduces the boilerplate scaffolding needed in most Powe
 This consistency ultimately helps the community in building high-quality PowerShell modules.
 
 > psake version `4.8.0` or greater is required to make use of shared psake tasks.
+> Currently, `v4.8.0` of psake is unreleased and must be retrieved from the [shared-module-tasks](https://github.com/psake/psake/tree/shared-module-tasks) branch.
 
 <p align="center">
     <img src="media/psaketaskmodule-256x256.png" alt="Logo">
