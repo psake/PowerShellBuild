@@ -1,11 +1,12 @@
 
-# ------------------ Basic project settings analysis properties ---------------------------
+#region Basic project settings
 
 # Use BuildHelpers module to normalize CI environment variables
 $useBuildHelpers = $true
 
 # Root directory for the project
 if ($useBuildHelpers) {
+    Set-BuildEnvironment -Force
     $projectRoot = $env:BHProjectPath
 } else {
     $projectRoot = $psake.context.originalDirectory
@@ -24,10 +25,6 @@ if ($useBuildHelpers) {
     }
 }
 
-# Output directory when building a module
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$outDir = Join-Path -Path $psake.context.originalDirectory -ChildPath Output
-
 # The name of the module. This should match the basename of the PSD1 file
 if ($useBuildHelpers) {
     $moduleName = $env:BHProjectName
@@ -44,12 +41,23 @@ if ($useBuildHelpers) {
     $moduleVersion = (Get-Item $srcRootDir/*.psd1 | Select-Object -First | Import-PowerShellDataFile).ModuleVersion
 }
 
+# Output directory when building a module
+[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+$outDir = Join-Path -Path $psake.context.originalDirectory -ChildPath Output
+
+# Module output directory
+[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+$moduleOutDir = "$outDir/$moduleName/$moduleVersion"
+
+[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+$updatableHelpOutDir = Join-Path $OutDir UpdatableHelp
+
 # Default Locale used for help generation, defaults to en-US
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $defaultLocale = 'en-US'
+#endregion
 
-
-# ------------------ Script analysis properties ---------------------------
+#region Script Analysis
 
 # Enable/disable use of PSScriptAnalyzer to perform script analysis
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
@@ -67,8 +75,9 @@ $scriptAnalysisFailBuildOnSeverityLevel = 'Error'
 # Path to the PSScriptAnalyzer settings file.
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $scriptAnalyzerSettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
+#endregion
 
-# -------------------- File catalog properties ----------------------------
+#region File catalog
 
 # Enable/disable generation of a catalog (.cat) file for the module.
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
@@ -78,8 +87,9 @@ $catalogGenerationEnabled = $true
 # Windows Server 2008 R2), 2 for SHA2 to support only newer Windows versions.
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $catalogVersion = 2
+#endregion
 
-# ---------------------- Testing properties -------------------------------
+#region Testing
 
 # Enable/disable Pester tests
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
@@ -112,3 +122,10 @@ $testOutputFile = $null
 # a path.  This parameter is passed through to Invoke-Pester's -OutputFormat parameter.
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $testOutputFormat = 'NUnitXml'
+#endregion
+
+#region Documentation
+[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+$docsRootDir = Join-Path -Path $projectRoot -ChildPath 'docs'
+
+#endregion

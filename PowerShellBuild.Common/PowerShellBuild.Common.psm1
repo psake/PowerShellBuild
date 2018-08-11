@@ -168,3 +168,108 @@ function Build-PSBuildModule {
         Copy-Item @copyParams
     }
 }
+
+function Build-PSBuildMarkdown {
+    [cmdletbinding()]
+    param(
+        [string]$ModulePath,
+
+        [string]$ModuleName,
+
+        [string]$DocsPath,
+
+        [string]$Locale
+    )
+
+    $moduleInfo = Import-Module "$ModulePath/$ModuleName.psd1" -Global -Force -PassThru
+
+    try {
+        if ($moduleInfo.ExportedCommands.Count -eq 0) {
+            Write-Warning 'No commands have been exported. Skipping markdown generation.'
+            return
+        }
+
+        if (-not (Test-Path -LiteralPath $DocsPath)) {
+            New-Item -Path $DocsPath -ItemType Directory > $null
+        }
+
+        if (Get-ChildItem -LiteralPath $DocsPath -Filter *.md -Recurse) {
+            Get-ChildItem -LiteralPath $DocsPath -Directory | ForEach-Object {
+                Update-MarkdownHelp -Path $_.FullName -Verbose:$VerbosePreference > $null
+            }
+        }
+
+        # ErrorAction set to SilentlyContinue so this command will not overwrite an existing MD file.
+        $newMDParams = @{
+            Module         = $ModuleName
+            Locale         = $Locale
+            OutputFolder   = (Join-Path $DocsPath $Locale)
+            WithModulePage = $true
+            ErrorAction    = 'SilentlyContinue'
+            Verbose        = $VerbosePreference
+        }
+        New-MarkdownHelp @newMDParams > $null
+    }
+    finally {
+        Remove-Module $moduleName
+    }
+}
+
+function Build-PSBuildMAMLHelp {
+    [cmdletbinding()]
+    param(
+        [string]$Path,
+
+        [string]$DestinationPath
+    )
+
+    $helpLocales = (Get-ChildItem -Path $Path -Directory).Name
+
+    # Generate the module's primary MAML help file
+    foreach ($locale in $helpLocales) {
+        $externalHelpParams = @{
+            Path        = Join-Path $Path $locale
+            OutputPath  = Join-Path $DestinationPath $locale
+            Force       = $true
+            ErrorAction = 'SilentlyContinue'
+            Verbose     = $VerbosePreference
+        }
+        New-ExternalHelp @externalHelpParams > $null
+    }
+}
+
+function Build-PSBuildUpdatableHelp {
+    [cmdletbinding()]
+    param(
+        [string]$DocsPath,
+
+        [string]$OutputPath
+    )
+
+    if ($null -ne $IsWindows -and -not $IsWindows) {
+        Write-Warning 'MakeCab.exe is only available on Windows. Cannot create help cab.'
+        return
+    }
+
+    $helpLocales = (Get-ChildItem -Path $DocsPath -Directory).Name
+
+    # Create updatable help output directory
+    if (-not (Test-Path -LiteralPath $OutputPath)) {
+        New-Item $OutputPath -ItemType Directory -Verbose:$VerbosePreference > $null
+    } else {
+        Write-Verbose "Directory already exists [$OutputPath]."
+        Get-ChildItem $OutputPath | Remove-Item -Recurse -Force -Verbose:$VerbosePreference
+    }
+
+    # Generate updatable help files.  Note: this will currently update the version number in the module's MD
+    # file in the metadata.
+    foreach ($locale in $helpLocales) {
+        $cabParams = @{
+            CabFilesFolder  = Join-Path $moduleOutDir $locale
+            LandingPagePath = "$DocsPath/$locale/$ModuleName.md"
+            OutputFolder    = $OutputPath
+            Verbose         = $VerbosePreference
+        }
+        New-ExternalHelpCab @cabParams > $null
+    }
+}

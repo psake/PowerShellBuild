@@ -3,9 +3,6 @@ properties {
     . (Join-Path -Path $PSScriptRoot -ChildPath psakeProperties.ps1)
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-    $moduleOutDir = "$outDir/$moduleName/$moduleVersion"
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
     $scriptAnalysisEnabled = $true
 
 }
@@ -20,23 +17,19 @@ FormatTaskName {
 # Can't have two 'default' tasks
 # Task default -depends Test
 
-Task Init {
+task Init {
     Initialize-PSBuild -UseBuildHelpers:$useBuildHelpers
 }
 
-Task Clean -depends Init -requiredVariables moduleOutDir {
+task Clean -depends Init -requiredVariables moduleOutDir {
     Clear-PSBuildOutputFolder -Path $moduleOutDir
 }
 
-Task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
+task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
     Build-PSBuildModule -Path $srcRootDir -DestinationPath $moduleOutDir -Exclude $Exclude
 }
 
-Task Build -depends Init, Clean, StageFiles {
-
-    # Copy source files to output
-
-
+task Build -depends Init, Clean, StageFiles {
 }
 
 $reqVars = @(
@@ -54,7 +47,7 @@ $analyzePreReqs = {
     }
     $result
 }
-Task Analyze -depends Build -requiredVariables $reqVars -precondition $analyzePreReqs {
+task Analyze -depends Build -requiredVariables $reqVars -precondition $analyzePreReqs {
     $analyzeParams = @{
         Path              = $moduleOutDir
         SeverityThreshold = $scriptAnalysisFailBuildOnSeverityLevel
@@ -82,7 +75,7 @@ $pesterPreReqs = {
     }
     return $result
 }
-Task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pesterPreReqs {
+task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pesterPreReqs {
     $pesterParams = @{
         Path              = $testRootDir
         ModuleName        = $moduleName
@@ -97,7 +90,50 @@ Task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pest
 task Test -depends Pester, Analyze {
 } -description 'Execute Pester and ScriptAnalyzer tests'
 
-Task ? -description 'Lists the available tasks' {
+task BuildHelp -depends Build, GenerateMarkdown, GenerateMAML {}
+
+$genMarkdownVars = @(
+    'docsRootDir', 'defaultLocale', 'moduleName', 'moduleOutDir')
+$genMarkdownPreReqs = {
+    $result = $true
+    if (-not (Get-Module platyPS -ListAvailable)) {
+        Write-Warning "platyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
+        $result = $false
+    }
+    $result
+}
+task GenerateMarkdown -depends Build -requiredVariables $genMarkdownVars -precondition $genMarkdownPreReqs {
+    Build-PSBuildMarkdown -ModulePath $moduleOutDir -ModuleName $moduleName -DocsPath $docsRootDir -Locale $defaultLocale
+}
+
+$genHelpFilesPreReqs = {
+    $result = $true
+    if (-not (Get-Module platyPS -ListAvailable)) {
+        Write-Warning "platyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
+        $result = $false
+    }
+    $result
+}
+task GenerateMAML -depends GenerateMarkdown -requiredVariables docsRootDir, moduleOutDir -precondition $genHelpFilesPreReqs {
+    Build-PSBuildMAMLHelp -Path $docsRootDir -DestinationPath $moduleOutDir
+}
+
+$genUpdatableHelpVars = @(
+    'docsRootDir', 'moduleName', 'updatableHelpOutDir'
+)
+$genUpdatableHelpPreReqs = {
+    $result = $true
+    if (-not (Get-Module platyPS -ListAvailable)) {
+        Write-Warning "platyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
+        $result = $false
+    }
+    $result
+}
+task GenerateUpdatableHelp -depends BuildHelp -requiredVariables $genUpdatableHelpVars -precondition $genUpdatableHelpPreReqs {
+    Build-PSBuildUpdatableHelp -DocsPath $docsRootDir -OutputPath $updatableHelpOutDir
+}
+
+task ? -description 'Lists the available tasks' {
     'Available tasks:'
     $psake.context.Peek().Tasks.Keys | Sort-Object
 }
