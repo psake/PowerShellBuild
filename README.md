@@ -2,7 +2,8 @@
 
 This project aims to provide common [psake](https://github.com/psake/psake) tasks for building, testing, and publishing PowerShell modules.
 
-Using these shared tasks reduces the boilerplate scaffolding needed in most PowerShell module projects and help enforce a consistent module structure. This consistency ultimately helps the community in building high-quality PowerShell modules.
+Using these shared tasks reduces the boilerplate scaffolding needed in most PowerShell module projects and help enforce a consistent module structure.
+This consistency ultimately helps the community in building high-quality PowerShell modules.
 
 > psake version `4.8.0` or greater is required to make use of shared psake tasks.
 
@@ -12,11 +13,15 @@ Using these shared tasks reduces the boilerplate scaffolding needed in most Powe
 
 ## Status - Work in progress
 
-> This project is a **work in progress** and may change significantly before release based on feedback from the community. **Please do not base critical processes on this project** until it has been further refined.
+> This project is a **work in progress** and may change significantly before release based on feedback from the community.
+**Please do not base critical processes on this project** until it has been further refined.
 
 ## Tasks
 
-**PowerShellBuild.Common** is a PowerShell module that provides helper functions to handle the common build, test, and release steps typically found in PowerShell module projects. These steps are further exposed as a set of [psake](https://github.com/psake/psake) tasks found in [psakeFile.ps1](./PowerShellBuild.Common/psakeFile.ps1) in the root of the module. In psake `v4.8.0`, a feature was added to reference shared psake tasks distributed within PowerShell modules. This allows a set of tasks to be versioned, distributed, and called by other projects.
+**PowerShellBuild.Common** is a PowerShell module that provides helper functions to handle the common build, test, and release steps typically found in PowerShell module projects.
+These steps are further exposed as a set of [psake](https://github.com/psake/psake) tasks found in [psakeFile.ps1](./PowerShellBuild.Common/psakeFile.ps1) in the root of the module.
+In psake `v4.8.0`, a feature was added to reference shared psake tasks distributed within PowerShell modules.
+This allows a set of tasks to be versioned, distributed, and called by other projects.
 
 ### Primary psake tasks
 
