@@ -103,6 +103,9 @@ $testRootDir = Join-Path -Path $projectRoot -ChildPath tests
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $codeCoverageEnabled = $false
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+$codeCoverageThreshold = .75
+
 # CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
 # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
 # like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.

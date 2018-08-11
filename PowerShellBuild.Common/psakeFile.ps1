@@ -57,7 +57,7 @@ task Analyze -depends Build -requiredVariables $reqVars -precondition $analyzePr
 } -description 'Execute PSScriptAnalyzer tests'
 
 $pesterReqVars = @(
-    'testRootDir', 'moduleName', 'testOutputFormat', 'codeCoverageEnabled', 'codeCoverageFiles'
+    'testRootDir', 'moduleName', 'testOutputFormat', 'codeCoverageEnabled', 'codeCoverageThreshold', 'codeCoverageFiles'
 )
 $pesterPreReqs = {
     $result = $true
@@ -77,12 +77,13 @@ $pesterPreReqs = {
 }
 task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pesterPreReqs {
     $pesterParams = @{
-        Path              = $testRootDir
-        ModuleName        = $moduleName
-        OutputPath        = $testOutputFile
-        OutputFormat      = $testOutputFormat
-        CodeCoverage      = $codeCoverageEnabled
-        CodeCoverageFiles = $codeCoverageFiles
+        Path                  = $testRootDir
+        ModuleName            = $moduleName
+        OutputPath            = $testOutputFile
+        OutputFormat          = $testOutputFormat
+        CodeCoverage          = $codeCoverageEnabled
+        CodeCoverageThreshold = $codeCoverageThreshold
+        CodeCoverageFiles     = $codeCoverageFiles
     }
     Test-PSBuildPester @pesterParams
 } -description 'Execute Pester tests'

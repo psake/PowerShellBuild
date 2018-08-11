@@ -97,6 +97,8 @@ function Test-PSBuildPester {
 
         [switch]$CodeCoverage,
 
+        [double]$CodeCoverageThreshold,
+
         [string[]]$CodeCoverageFiles = @()
     )
 
@@ -131,6 +133,9 @@ function Test-PSBuildPester {
         if ($CodeCoverage.IsPresent) {
             $testCoverage = [int]($testResult.CodeCoverage.NumberOfCommandsExecuted / $testResult.CodeCoverage.NumberOfCommandsAnalyzed)
             'Pester code coverage on specified files: {0:p}' -f $testCoverage
+            if ($testCoverage -lt $CodeCoverageThreshold) {
+                throw 'Code coverage is less than threshold of {0:p}' -f $CodeCoverageThreshold
+            }
         }
     } finally {
         Pop-Location
