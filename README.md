@@ -4,6 +4,8 @@ This project aims to provide common [psake](https://github.com/psake/psake) task
 
 Using these shared tasks reduces the boilerplate scaffolding needed in most PowerShell module projects and help enforce a consistent module structure. This consistency ultimately helps the community in building high-quality PowerShell modules.
 
+> psake version `4.8.0` or greater is required to make use of shared psake tasks.
+
 <p align="center">
     <img src="media/psaketaskmodule-256x256.png" alt="Logo">
 </p>
