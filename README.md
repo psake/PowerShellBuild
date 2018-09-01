@@ -1,12 +1,13 @@
 # PowerShellBuild.Common
 
-This project aims to provide common [psake](https://github.com/psake/psake) tasks for building, testing, and publishing PowerShell modules.
+This project aims to provide common [psake](https://github.com/psake/psake) and [Invoke-Build]https://github.com/nightroman/Invoke-Build) tasks for building, testing, and publishing PowerShell modules.
 
 Using these shared tasks reduces the boilerplate scaffolding needed in most PowerShell module projects and help enforce a consistent module structure.
 This consistency ultimately helps the community in building high-quality PowerShell modules.
 
-> psake version `4.8.0` or greater is required to make use of shared psake tasks.
+> If using [psake](https://github.com/psake/psake) as your task runner, version `4.8.0` or greater is required to make use of shared tasks distributed in separate modules.
 > Currently, `v4.8.0` of psake is unreleased and must be retrieved from the [shared-module-tasks](https://github.com/psake/psake/tree/shared-module-tasks) branch.
+> For [Invoke-Build](https://github.com/nightroman/Invoke-Build), see the [how to dot source tasks using PowerShell aliases](https://github.com/nightroman/Invoke-Build/blob/master/Tasks/Import/README.md#example-2-import-from-a-module-with-tasks) example.
 
 <p align="center">
     <img src="media/psaketaskmodule-256x256.png" alt="Logo">
@@ -23,11 +24,11 @@ This consistency ultimately helps the community in building high-quality PowerSh
 ## Tasks
 
 **PowerShellBuild.Common** is a PowerShell module that provides helper functions to handle the common build, test, and release steps typically found in PowerShell module projects.
-These steps are further exposed as a set of [psake](https://github.com/psake/psake) tasks found in [psakeFile.ps1](./PowerShellBuild.Common/psakeFile.ps1) in the root of the module.
+These steps are exposed as a set of [psake](https://github.com/psake/psake) tasks found in [psakeFile.ps1](./PowerShellBuild.Common/psakeFile.ps1) in the root of the module, and as PowerShell aliases which you can dot source if using [Invoke-Build](https://github.com/nightroman/Invoke-Build).
 In psake `v4.8.0`, a feature was added to reference shared psake tasks distributed within PowerShell modules.
 This allows a set of tasks to be versioned, distributed, and called by other projects.
 
-### Primary psake tasks
+### Primary Tasks
 
 These primary tasks are the main tasks you'll typically call as part of PowerShell module development.
 
@@ -41,7 +42,7 @@ These primary tasks are the main tasks you'll typically call as part of PowerShe
 | Test                  | Analyze, Pester                       | Run combined tests
 | BuildHelp             | Build, GenerateMarkdown, GenerateMAML | Build all help files
 
-### Secondary psake Tasks
+### Secondary Tasks
 
 These secondary tasks are called as dependencies from the primary tasks but may also be called directly.
 
@@ -57,6 +58,8 @@ These secondary tasks are called as dependencies from the primary tasks but may 
 TODO
 
 ## Examples
+
+### psake
 
 The example below is a psake file you might use in your PowerShell module.
 When psake executes this file, it will recognize that tasks are being referenced from a separate module and automatically load them.
@@ -80,4 +83,20 @@ task default -depends Build
 task Build -FromModule PowerShellBuild.Common -Version '0.1.0'
 ```
 
-![Example](./media/example.png)
+![Example](./media/psake_example.png)
+
+### Invoke-Build
+
+The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Build) task file that imports the PowerShellBuild.Common which contains the shared tasks and then dot sources the Invoke-Build task files that are referenced by the PowerShell alias `PowerShellBuild.Common.IB.Tasks`.
+Additionally, certain settings that control how the build tasks operate are overwritten after the tasks have been imported.
+
+```powershell
+Import-Module  $PSScriptRoot/../PowerShellBuild.Common/PowerShellBuild.Common
+. PowerShellBuild.Common.IB.Tasks
+
+# Overwrite build settings contained in PowerShellBuild.Common
+$scriptAnalysisEnabled = $true
+$codeCoverageEnabled   = $false
+```
+
+![Example](./media/ib_example.png)
