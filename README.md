@@ -66,7 +66,8 @@ You can override these in either psake or Invoke-Build to match your environment
 | $moduleName | $env:BHProjectName | The name of the module. This should match the basename of the PSD1 file
 | $moduleVersion | \<computed> | The version of the module
 | $moduleManifestPath | $env:BHPSModuleManifest | Path to the module manifest (PSD1)
-| $outDir | $outDir/$moduleName/$moduleVersion | Output directory when building the module
+| $outDir | $projectRoot/Output | Output directory when building the module
+| $moduleOutDir | $outDir/$moduleName/$moduleVersion | Module output directory
 | $compileModule | $false | Controls whether to "compile" module into single PSM1 or not
 | $updatableHelpOutDir | $OutDir/UpdatableHelp | Output directory to store update module help (CAB)
 | $defaultLocale | (Get-UICulture).Name | Default locale used for help generation
