@@ -21,7 +21,7 @@ FormatTaskName {
 # Task default -depends Test
 
 task Init {
-    Initialize-PSBuild -UseBuildHelpers:$useBuildHelpers
+    Initialize-PSBuild -UseBuildHelpers
 }
 
 task Clean -depends Init -requiredVariables moduleOutDir {
