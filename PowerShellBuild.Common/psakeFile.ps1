@@ -1,10 +1,13 @@
 properties {
     # Load in build settings
-    . (Join-Path -Path $PSScriptRoot -ChildPath psakeProperties.ps1)
+    . (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1)
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
     $scriptAnalysisEnabled = $true
 
+    $CompileModule = $true
+
+    $ConvertReadMeToAboutHelp = $true
 }
 
 FormatTaskName {
@@ -26,7 +29,24 @@ task Clean -depends Init -requiredVariables moduleOutDir {
 }
 
 task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
-    Build-PSBuildModule -Path $srcRootDir -DestinationPath $moduleOutDir -Exclude $Exclude
+    $buildParams = @{
+        Path               = $srcRootDir
+        DestinationPath    = $moduleOutDir
+        ModuleName         = $moduleName
+        ModuleManifestPath = $moduleManifestPath
+        Exclude            = $Exclude
+        Compile            = $CompileModule
+        Culture            = $defaultLocale
+    }
+
+    if ($ConvertReadMeToAboutHelp) {
+        $readMePath = Get-ChildItem -Path $projectRoot -Include 'readme.md', 'readme.markdown', 'readme.txt' -Depth 1 |
+            Select-Object -First 1
+        if ($readMePath) {
+            $buildParams.ReadMePath = $readMePath
+        }
+    }
+    Build-PSBuildModule @buildParams
 }
 
 task Build -depends Init, Clean, StageFiles {
