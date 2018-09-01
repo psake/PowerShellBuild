@@ -113,7 +113,7 @@ task Build -FromModule PowerShellBuild.Common -Version '0.1.0'
 
 ### Invoke-Build
 
-The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Build) task file that imports the PowerShellBuild.Common which contains the shared tasks and then dot sources the Invoke-Build task files that are referenced by the PowerShell alias `PowerShellBuild.Common.IB.Tasks`.
+The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Build) task file that imports the `PowerShellBuild.Common` module which contains the shared tasks and then dot sources the Invoke-Build task files that are referenced by the PowerShell alias `PowerShellBuild.Common.IB.Tasks`.
 Additionally, certain settings that control how the build tasks operate are overwritten after the tasks have been imported.
 
 ```powershell
