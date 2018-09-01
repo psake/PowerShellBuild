@@ -1,6 +1,6 @@
 # PowerShellBuild.Common
 
-This project aims to provide common [psake](https://github.com/psake/psake) and [Invoke-Build]https://github.com/nightroman/Invoke-Build) tasks for building, testing, and publishing PowerShell modules.
+This project aims to provide common [psake](https://github.com/psake/psake) and [Invoke-Build](https://github.com/nightroman/Invoke-Build) tasks for building, testing, and publishing PowerShell modules.
 
 Using these shared tasks reduces the boilerplate scaffolding needed in most PowerShell module projects and help enforce a consistent module structure.
 This consistency ultimately helps the community in building high-quality PowerShell modules.
