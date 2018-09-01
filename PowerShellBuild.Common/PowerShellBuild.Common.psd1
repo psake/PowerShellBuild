@@ -7,11 +7,11 @@
     Copyright         = '(c) Brandon Olin. All rights reserved.'
     Description       = 'A common psake task module for PowerShell projects'
     PowerShellVersion = '3.0'
-    RequiredModules   = @('BuildHelpers', 'psake')
+    RequiredModules   = @('BuildHelpers')
     FunctionsToExport = '*'
     CmdletsToExport   = @()
     VariablesToExport = @()
-    AliasesToExport   = @()
+    AliasesToExport   = @('*tasks')
     PrivateData       = @{
         PSData = @{
             Tags = @('psake', 'build')
