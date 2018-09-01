@@ -28,7 +28,7 @@ $moduleOutDir = "$outDir/$moduleName/$moduleVersion"
 
 # Controls whether to "compile" module into single PSM1 or not
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$CompileModule = $false
+$compileModule = $false
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $updatableHelpOutDir = Join-Path $OutDir UpdatableHelp
@@ -37,8 +37,9 @@ $updatableHelpOutDir = Join-Path $OutDir UpdatableHelp
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $defaultLocale = (Get-UICulture).Name
 
+# Convert project readme into the module about file
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$ConvertReadMeToAboutHelp = $false
+$convertReadMeToAboutHelp = $false
 #endregion
 
 #region Script Analysis
@@ -64,13 +65,13 @@ $scriptAnalyzerSettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerS
 #region File catalog
 
 # Enable/disable generation of a catalog (.cat) file for the module.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$catalogGenerationEnabled = $true
+# [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+# $catalogGenerationEnabled = $true
 
-# Select the hash version to use for the catalog file: 1 for SHA1 (compat with Windows 7 and
-# Windows Server 2008 R2), 2 for SHA2 to support only newer Windows versions.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$catalogVersion = 2
+# # Select the hash version to use for the catalog file: 1 for SHA1 (compat with Windows 7 and
+# # Windows Server 2008 R2), 2 for SHA2 to support only newer Windows versions.
+# [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
+# $catalogVersion = 2
 #endregion
 
 #region Testing
@@ -87,6 +88,7 @@ $testRootDir = Join-Path -Path $projectRoot -ChildPath tests
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $codeCoverageEnabled = $false
 
+# Fail Pester code coverage test if below this threshold
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $codeCoverageThreshold = .75
 
@@ -112,6 +114,7 @@ $testOutputFormat = 'NUnitXml'
 #endregion
 
 #region Documentation
+# Directory PlatyPS markdown documentation will be saved to
 [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 $docsRootDir = Join-Path -Path $projectRoot -ChildPath 'docs'
 

@@ -7,7 +7,7 @@ properties {
 
     $CompileModule = $true
 
-    $ConvertReadMeToAboutHelp = $true
+    $convertReadMeToAboutHelp = $true
 }
 
 FormatTaskName {
@@ -35,11 +35,11 @@ task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
         ModuleName         = $moduleName
         ModuleManifestPath = $moduleManifestPath
         Exclude            = $Exclude
-        Compile            = $CompileModule
+        Compile            = $compileModule
         Culture            = $defaultLocale
     }
 
-    if ($ConvertReadMeToAboutHelp) {
+    if ($convertReadMeToAboutHelp) {
         $readMePath = Get-ChildItem -Path $projectRoot -Include 'readme.md', 'readme.markdown', 'readme.txt' -Depth 1 |
             Select-Object -First 1
         if ($readMePath) {
