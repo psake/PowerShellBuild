@@ -91,7 +91,7 @@ The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Buil
 Additionally, certain settings that control how the build tasks operate are overwritten after the tasks have been imported.
 
 ```powershell
-Import-Module  $PSScriptRoot/../PowerShellBuild.Common/PowerShellBuild.Common
+Import-Module PowerShellBuild.Common
 . PowerShellBuild.Common.IB.Tasks
 
 # Overwrite build settings contained in PowerShellBuild.Common
