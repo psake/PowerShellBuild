@@ -18,7 +18,7 @@ This consistency ultimately helps the community in building high-quality PowerSh
 > This project is a **work in progress** and may change significantly before release based on feedback from the community.
 > **Please do not base critical processes on this project** until it has been further refined.
 >
-> This is in part based on [PlasterBuild](https://github.com/PowerShell/PlasterBuild) project and _MAY_ be merged into it.
+> This is in part based on the [PlasterBuild](https://github.com/PowerShell/PlasterBuild) project and _MAY_ be merged into it.
 > It is being kept separate for now so experimental features can be explored.
 
 ## Tasks
