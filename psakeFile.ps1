@@ -36,6 +36,8 @@ task Pester -depends Init {
     }
 } -description 'Run Pester tests'
 
+task Build -depends Test {}
+
 task Publish -depends Init {
     "    Publishing version [$($settings.Manifest.ModuleVersion)] to PSGallery..."
     if ($settings.PSGalleryApiKey) {
