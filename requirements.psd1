@@ -4,7 +4,12 @@
     }
 
     BuildHelpers     = 'latest'
-    Pester           = 'latest'
+    Pester           = @{
+        Version = 'latest'
+        Parameters = @{
+            SkipPublisherCheck = $true
+        }
+    }
     psake            = 'latest'
     PSScriptAnalyzer = 'latest'
 }
