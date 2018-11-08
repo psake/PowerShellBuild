@@ -1,4 +1,4 @@
-# PowerShellBuild.Common
+# PowerShellBuild
 
 This project aims to provide common [psake](https://github.com/psake/psake) and [Invoke-Build](https://github.com/nightroman/Invoke-Build) tasks for building, testing, and publishing PowerShell modules.
 
@@ -23,8 +23,8 @@ This consistency ultimately helps the community in building high-quality PowerSh
 
 ## Tasks
 
-**PowerShellBuild.Common** is a PowerShell module that provides helper functions to handle the common build, test, and release steps typically found in PowerShell module projects.
-These steps are exposed as a set of [psake](https://github.com/psake/psake) tasks found in [psakeFile.ps1](./PowerShellBuild.Common/psakeFile.ps1) in the root of the module, and as PowerShell aliases which you can dot source if using [Invoke-Build](https://github.com/nightroman/Invoke-Build).
+**PowerShellBuild** is a PowerShell module that provides helper functions to handle the common build, test, and release steps typically found in PowerShell module projects.
+These steps are exposed as a set of [psake](https://github.com/psake/psake) tasks found in [psakeFile.ps1](./PowerShellBuild/psakeFile.ps1) in the root of the module, and as PowerShell aliases which you can dot source if using [Invoke-Build](https://github.com/nightroman/Invoke-Build).
 In psake `v4.8.0`, a feature was added to reference shared psake tasks distributed within PowerShell modules.
 This allows a set of tasks to be versioned, distributed, and called by other projects.
 
@@ -92,14 +92,14 @@ The example below is a psake file you might use in your PowerShell module.
 When psake executes this file, it will recognize that tasks are being referenced from a separate module and automatically load them.
 You can run these tasks just as if they were included directly in your task file.
 
-Notice that the task file contained in `MyModule` only references the `Build` task supplied from `PowerShellBuild.Common`.
-When executed, the dependent tasks `Init`, `Clear`, and `StageFiles` also contained in `PowerShellBuild.Common` are executed as well.
+Notice that the task file contained in `MyModule` only references the `Build` task supplied from `PowerShellBuild`.
+When executed, the dependent tasks `Init`, `Clear`, and `StageFiles` also contained in `PowerShellBuild` are executed as well.
 
 ###### psakeBuild.ps1
 
 ```powershell
 properties {
-    # These settings overwrite values supplied form the PowerShellBuild.Common
+    # These settings overwrite values supplied form the PowerShellBuild
     # module and govern how those tasks are executed
     $scriptAnalysisEnabled = $false
     $codeCoverageEnabled = $true
@@ -107,21 +107,21 @@ properties {
 
 task default -depends Build
 
-task Build -FromModule PowerShellBuild.Common -Version '0.1.0'
+task Build -FromModule PowerShellBuild -Version '0.1.0'
 ```
 
 ![Example](./media/psake_example.png)
 
 ### Invoke-Build
 
-The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Build) task file that imports the `PowerShellBuild.Common` module which contains the shared tasks and then dot sources the Invoke-Build task files that are referenced by the PowerShell alias `PowerShellBuild.Common.IB.Tasks`.
+The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Build) task file that imports the `PowerShellBuild` module which contains the shared tasks and then dot sources the Invoke-Build task files that are referenced by the PowerShell alias `PowerShellBuild.IB.Tasks`.
 Additionally, certain settings that control how the build tasks operate are overwritten after the tasks have been imported.
 
 ```powershell
-Import-Module PowerShellBuild.Common
-. PowerShellBuild.Common.IB.Tasks
+Import-Module PowerShellBuild
+. PowerShellBuild.IB.Tasks
 
-# Overwrite build settings contained in PowerShellBuild.Common
+# Overwrite build settings contained in PowerShellBuild
 $scriptAnalysisEnabled = $true
 $codeCoverageEnabled   = $false
 ```

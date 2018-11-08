@@ -190,7 +190,7 @@ function Build-PSBuildModule {
             $srcFile = Resolve-Path $_.FullName -Relative
             Write-Verbose "Adding $srcFile to PSM1"
             Get-Content $srcFile
-        } | Set-Content -Path $rootModule -Encoding utf8
+        } | Add-Content -Path $rootModule -Encoding utf8
     } else{
         $copyParams = @{
             Path        = (Join-Path -Path $Path -ChildPath '*')
@@ -318,11 +318,11 @@ function Build-PSBuildUpdatableHelp {
 
 Export-ModuleMember -Function *
 
-# $psakeTaskAlias = 'PowerShellBuild.Common.psake.tasks'
+# $psakeTaskAlias = 'PowerShellBuild.psake.tasks'
 # Set-Alias -Name $psakeTaskAlias -Value $PSScriptRoot/psakeFile.ps1
 # Export-ModuleMember -Alias $psakeTaskAlias
 
 # Invoke-Build task aliases
-$ibAlias = 'PowerShellBuild.Common.IB.Tasks'
+$ibAlias = 'PowerShellBuild.IB.Tasks'
 Set-Alias -Name $ibAlias -Value $PSScriptRoot/IB.tasks.ps1
 Export-ModuleMember -Alias $ibAlias
