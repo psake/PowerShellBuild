@@ -1,5 +1,9 @@
 # PowerShellBuild
 
+| AppVeyor | PS Gallery | License
+|----------|--------|--------------------|------------|-----------|
+[![AppVeyor Build Status][appveyor-badge]][appveyor-build] | [![PowerShell Gallery][psgallery-badge]][psgallery] | [![License][license-badge]][license]
+
 This project aims to provide common [psake](https://github.com/psake/psake) and [Invoke-Build](https://github.com/nightroman/Invoke-Build) tasks for building, testing, and publishing PowerShell modules.
 
 Using these shared tasks reduces the boilerplate scaffolding needed in most PowerShell module projects and help enforce a consistent module structure.
@@ -127,3 +131,10 @@ $codeCoverageEnabled   = $false
 ```
 
 ![Example](./media/ib_example.png)
+
+[appveyor-badge]: https://ci.appveyor.com/api/projects/status/3iq5efmgmepcl8dx?svg=true
+[appveyor-build]: https://ci.appveyor.com/project/devblackops/powershellbuild
+[psgallery-badge]: https://img.shields.io/powershellgallery/dt/powershellbuild.svg
+[psgallery]: https://www.powershellgallery.com/packages/PowerShellBuild
+[license-badge]: https://img.shields.io/github/license/psake/PowerShellBuild.svg
+[license]: https://raw.githubusercontent.com/psake/PowerShellBuild/master/LICENSE
