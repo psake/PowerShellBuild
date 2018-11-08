@@ -1,5 +1,5 @@
 @{
-    RootModule        = 'PowerShellBuild'
+    RootModule        = 'PowerShellBuild.psm1'
     ModuleVersion     = '0.1.0'
     GUID              = '15431eb8-be2d-4154-b8ad-4cb68a488e3d'
     Author            = 'Brandon Olin'
@@ -8,13 +8,22 @@
     Description       = 'A common psake and Invoke-Build task module for PowerShell projects'
     PowerShellVersion = '3.0'
     RequiredModules   = @('BuildHelpers')
-    FunctionsToExport = '*'
+    FunctionsToExport = @(
+        'Build-PSBuildMAMLHelp'
+        'Build-PSBuildMarkdown'
+        'Build-PSBuildModule'
+        'Build-PSBuildUpdatableHelp'
+        'Clear-PSBuildOutputFolder'
+        'Initialize-PSBuild'
+        'Test-PSBuildPester'
+        'Test-PSBuildScriptAnalysis'
+    )
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @('*tasks')
     PrivateData       = @{
         PSData = @{
-            Tags         = @('psake', 'build')
+            Tags         = @('psake', 'build', 'InvokeBuild')
             LicenseUri   = 'https://raw.githubusercontent.com/psake/PowerShellBuild/master/LICENSE'
             ProjectUri   = 'https://github.com/psake/PowerShellBuild'
             IconUri      = 'https://raw.githubusercontent.com/psake/PowerShellBuild/master/media/psaketaskmodule-256x256.png'
