@@ -33,7 +33,6 @@ task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
         Path               = $srcRootDir
         DestinationPath    = $moduleOutDir
         ModuleName         = $moduleName
-        ModuleManifestPath = $moduleManifestPath
         Exclude            = $Exclude
         Compile            = $compileModule
         Culture            = $defaultLocale
