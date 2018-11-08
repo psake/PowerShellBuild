@@ -13,5 +13,5 @@ $moduleOutDir   = "$outDir/$moduleName/$moduleVersion"
     ManifestPath    = $env:BHPSModuleManifest
     Manifest        = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
     PSVersion       = $PSVersionTable.PSVersion.ToString()
-    PSGalleryApiKey = $env:PSGalleryApiKey
+    PSGalleryApiKey = $env:PSGALLERY_API_KEY
 }

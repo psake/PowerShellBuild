@@ -59,7 +59,7 @@ task Build -depends Init, Clean {
 task Publish -depends Test {
     "    Publishing version [$($settings.Manifest.ModuleVersion)] to PSGallery..."
     if ($settings.PSGalleryApiKey) {
-        Publish-Module -Path $settings.SUT -NuGetApiKey $settings.PSGalleryApiKey -Repository PSGallery
+        Publish-Module -Path $settings.ModuleOutDir -NuGetApiKey $settings.PSGalleryApiKey -Repository PSGallery
     } else {
         throw 'Did not find PSGallery API key!'
     }
