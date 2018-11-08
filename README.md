@@ -1,7 +1,7 @@
 # PowerShellBuild
 
 | AppVeyor | PS Gallery | License
-|----------|--------|--------------------|------------|-----------|
+|----------|--------|--------------------|
 [![AppVeyor Build Status][appveyor-badge]][appveyor-build] | [![PowerShell Gallery][psgallery-badge]][psgallery] | [![License][license-badge]][license]
 
 This project aims to provide common [psake](https://github.com/psake/psake) and [Invoke-Build](https://github.com/nightroman/Invoke-Build) tasks for building, testing, and publishing PowerShell modules.
