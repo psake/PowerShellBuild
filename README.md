@@ -10,7 +10,12 @@ Using these shared tasks reduces the boilerplate scaffolding needed in most Powe
 This consistency ultimately helps the community in building high-quality PowerShell modules.
 
 > If using [psake](https://github.com/psake/psake) as your task runner, version `4.8.0` or greater is required to make use of shared tasks distributed in separate modules.
-> Currently, `v4.8.0` of psake is unreleased and must be retrieved from the [shared-module-tasks](https://github.com/psake/psake/tree/shared-module-tasks) branch.
+> Currently, `v4.8.0` of psake is in `alpha`. You can install the pre-release version with:
+
+```powershell
+Install-Module -Name psake -RequiredVersion 4.8.0-alpha -Repository PSGallery -AllowPrerelease -Force
+```
+
 > For [Invoke-Build](https://github.com/nightroman/Invoke-Build), see the [how to dot source tasks using PowerShell aliases](https://github.com/nightroman/Invoke-Build/blob/master/Tasks/Import/README.md#example-2-import-from-a-module-with-tasks) example.
 
 <p align="center">
@@ -120,6 +125,8 @@ task Build -FromModule PowerShellBuild -Version '0.1.0'
 
 The example below is an [Invoke-Build](https://github.com/nightroman/Invoke-Build) task file that imports the `PowerShellBuild` module which contains the shared tasks and then dot sources the Invoke-Build task files that are referenced by the PowerShell alias `PowerShellBuild.IB.Tasks`.
 Additionally, certain settings that control how the build tasks operate are overwritten after the tasks have been imported.
+
+###### .build.ps1
 
 ```powershell
 Import-Module PowerShellBuild
