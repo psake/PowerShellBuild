@@ -40,7 +40,7 @@ task StageFiles Clean, {
 task Build StageFiles
 
 # Synopsis: Execute PSScriptAnalyzer tests
-task Analyze Build -if $scriptAnalysisEnabled, {
+task Analyze -if $scriptAnalysisEnabled Build, {
     $analyzeParams = @{
         Path              = $moduleOutDir
         SeverityThreshold = $scriptAnalysisFailBuildOnSeverityLevel
