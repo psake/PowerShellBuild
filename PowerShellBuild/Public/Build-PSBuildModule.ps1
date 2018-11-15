@@ -11,6 +11,8 @@ function Build-PSBuildModule {
         Destination path to write "built" module to.
     .PARAMETER ModuleName
         The name of the module.
+    .PARAMETER ModuleManifestPath
+        The path of the module manifest.
     .PARAMETER Compile
         Switch to indicate if separete function files should be concatenated into monolithic .PSM1 file.
     .PARAMETER ReadMePath
@@ -42,6 +44,8 @@ function Build-PSBuildModule {
 
         [parameter(Mandatory)]
         [string]$ModuleName,
+
+        [string]$ModuleManifestPath,
 
         [switch]$Compile,
 
@@ -93,7 +97,11 @@ function Build-PSBuildModule {
     # Export public functions in manifest if there are any public functions
     $publicFunctions = Get-ChildItem $Path/Public/*.ps1 -Recurse -ErrorAction SilentlyContinue
     if ($publicFunctions) {
-        $outputManifest = Join-Path -Path $DestinationPath -ChildPath "$ModuleName.psd1"
+        if (Test-Path -Path $ModuleManifestPath) {
+            $outputManifest = $ModuleManifestPath
+        } else {
+            $outputManifest = Join-Path -Path $DestinationPath -ChildPath "$ModuleName.psd1"
+        }
         Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $publicFunctions.BaseName
     }
 }
