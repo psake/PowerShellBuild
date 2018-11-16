@@ -1,12 +1,11 @@
 
 # Load in build settings
  . (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1)
-$useBuildHelpers       = $true
 $scriptAnalysisEnabled = $true
 
 # Synopsis: Initialize Invoke-Build
 task init {
-    Initialize-PSBuild -UseBuildHelpers:$useBuildHelpers
+    Initialize-PSBuild -UseBuildHelpers
 }
 
 # Synopsis: Clean output directory
@@ -20,7 +19,6 @@ task StageFiles Clean, {
         Path               = $srcRootDir
         DestinationPath    = $moduleOutDir
         ModuleName         = $moduleName
-        ModuleManifestPath = $moduleManifestPath
         Exclude            = $Exclude
         Compile            = $compileModule
         Culture            = $defaultLocale
@@ -37,7 +35,7 @@ task StageFiles Clean, {
 }
 
 # Synopsis: Build module
-task Build StageFiles
+task Build StageFiles, BuildHelp
 
 # Synopsis: Execute PSScriptAnalyzer tests
 task Analyze -if $scriptAnalysisEnabled Build, {
@@ -67,16 +65,38 @@ task Pester Build, {
 task Test Pester, Analyze
 
 # Synopsis: Build the module, including help
-task BuildHelp Build, GenerateMarkdown, GenerateMAML
+task BuildHelp GenerateMarkdown, GenerateMAML
 
 # Synopsis: Generate markdown help documentation using PlatyPS
-task GenerateMarkdown Build, {
+task GenerateMarkdown StageFiles, {
     Build-PSBuildMarkdown -ModulePath $moduleOutDir -ModuleName $moduleName -DocsPath $docsRootDir -Locale $defaultLocale
 }
 
 # Synopsis: Generate module MAML help from markdown source
 task GenerateMAML GenerateMarkdown, {
     Build-PSBuildMAMLHelp -Path $docsRootDir -DestinationPath $moduleOutDir
+}
+
+task GenerateUpdatableHelp -If $genUpdatableHelpPreReqs BuildHelp, {
+    Build-PSBuildUpdatableHelp -DocsPath $docsRootDir -OutputPath $updatableHelpOutDir
+}
+
+task Publish Test, {
+    Assert -Condition ($psRepositoryApiKey -or $psRepositoryCredential) -Message "API key or credential not defined to authenticate with $psRepository with."
+
+    $publishParams = @{
+        Path       = $moduleOutDir
+        Version    = $moduleVersion
+        Repository = $psRepository
+        Verbose    = $VerbosePreference
+    }
+    if ($psRepositoryApiKey) {
+        $publishParams.ApiKey = $psRepositoryApiKey
+    } else {
+        $publishParams.Credential = $psRepositoryCredential
+    }
+
+    Publish-PSBuildModule @publishParams
 }
 
 task . Build
