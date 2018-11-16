@@ -119,3 +119,16 @@ $testOutputFormat = 'NUnitXml'
 $docsRootDir = Join-Path -Path $projectRoot -ChildPath 'docs'
 
 #endregion
+
+#region Publishing
+
+# PowerShell repository name to publish modules to
+$psRepository = 'PSGallery'
+
+# API key to authenticate to PowerShell repository with
+$psRepositoryApiKey = $env:PSGALLERY_API_KEY
+
+# Credential to authenticate to PowerShell repository with
+$psRepositoryCredential = $null
+
+#endregion

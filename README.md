@@ -50,6 +50,7 @@ These primary tasks are the main tasks you'll typically call as part of PowerShe
 | Pester                | Build                                 | Run Pester tests
 | Test                  | Analyze, Pester                       | Run combined tests
 | BuildHelp             | Build, GenerateMarkdown, GenerateMAML | Build all help files
+| Publish               | Test                                  | Publish module to defined PowerShell repository
 
 ### Secondary Tasks
 
@@ -92,6 +93,9 @@ You can override these in either psake or Invoke-Build to match your environment
 | $testOutputFile | $null | Output file path Pester will save test results to
 | $testOutputFormat | NUnitXml | Test output format to use when saving Pester test results
 | $docsRootDir | $projectRoot/docs | Directory PlatyPS markdown documentation will be saved to
+| $psRepository | PSGallery | PowerShell repository name to publish
+| $psRepositoryApiKey | $env:PSGALLERY_API_KEY | API key to authenticate to PowerShell repository with
+| $psRepositoryCredential | $null | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined
 
 ## Examples
 

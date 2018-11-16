@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PowerShellBuild.psm1'
-    ModuleVersion     = '0.1.1'
+    ModuleVersion     = '0.2.0'
     GUID              = '15431eb8-be2d-4154-b8ad-4cb68a488e3d'
     Author            = 'Brandon Olin'
     CompanyName       = 'Community'
@@ -15,6 +15,7 @@
         'Build-PSBuildUpdatableHelp'
         'Clear-PSBuildOutputFolder'
         'Initialize-PSBuild'
+        'Publish-PSBuildModule'
         'Test-PSBuildPester'
         'Test-PSBuildScriptAnalysis'
     )

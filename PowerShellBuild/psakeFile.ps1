@@ -153,6 +153,23 @@ task GenerateUpdatableHelp -depends BuildHelp -requiredVariables $genUpdatableHe
     Build-PSBuildUpdatableHelp -DocsPath $docsRootDir -OutputPath $updatableHelpOutDir
 }
 
+task Publish -depends Test -requiredVariables psRepository, moduleVersion, moduleOutDir {
+    Assert -conditionToCheck ($psRepositoryApiKey -or $psRepositoryCredential) -failureMessage "API key or credential not defined to authenticate with $psRepository with."
+
+    $publishParams = @{
+        Path       = $moduleOutDir
+        Version    = $moduleVersion
+        Repository = $psRepository
+    }
+    if ($psRepositoryApiKey) {
+        $publishParams.ApiKey = $psRepositoryApiKey
+    } else {
+        $publishParams.Credential = $psRepositoryCredential
+    }
+
+    Publish-PSBuildModule @publishParams
+} -description 'Publish module to the defined PowerShell repository'
+
 task ? -description 'Lists the available tasks' {
     'Available tasks:'
     $psake.context.Peek().Tasks.Keys | Sort-Object
