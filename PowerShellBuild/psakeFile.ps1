@@ -1,13 +1,6 @@
 properties {
     # Load in build settings
     . (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1)
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-    $scriptAnalysisEnabled = $true
-
-    $CompileModule = $true
-
-    $convertReadMeToAboutHelp = $true
 }
 
 FormatTaskName {
