@@ -1,7 +1,6 @@
 
 # Load in build settings
  . (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1)
-$scriptAnalysisEnabled = $true
 
 # Synopsis: Initialize Invoke-Build
 task init {
