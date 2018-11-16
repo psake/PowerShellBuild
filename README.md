@@ -41,27 +41,27 @@ This allows a set of tasks to be versioned, distributed, and called by other pro
 
 These primary tasks are the main tasks you'll typically call as part of PowerShell module development.
 
-| Name                  | Dependencies                          | Description |
-| --------------------- | ------------------------------------- | ----------- |
-| Init                  | _none_                                | Initialize psake and task variables
-| Clean                 | init                                  | Clean output directory
-| Build                 | Init, Clean                           | Clean and build module in output directory
-| Analyze               | Build                                 | Run PSScriptAnalyzer tests
-| Pester                | Build                                 | Run Pester tests
-| Test                  | Analyze, Pester                       | Run combined tests
-| BuildHelp             | Build, GenerateMarkdown, GenerateMAML | Build all help files
-| Publish               | Test                                  | Publish module to defined PowerShell repository
+| Name                  | Dependencies          | Description |
+| --------------------- | --------------------- | ----------- |
+| Init                  | _none_                | Initialize psake and task variables
+| Clean                 | init                  | Clean output directory
+| Build                 | StageFiles, BuildHelp | Clean and build module in output directory
+| Analyze               | Build                 | Run PSScriptAnalyzer tests
+| Pester                | Build                 | Run Pester tests
+| Test                  | Analyze, Pester       | Run combined tests
+| Publish               | Test                  | Publish module to defined PowerShell repository
 
 ### Secondary Tasks
 
 These secondary tasks are called as dependencies from the primary tasks but may also be called directly.
 
-| Name                  | Dependencies     | Description |
-| --------------------- | -----------------| ----------- |
-| StageFiles            | Clean            | Build module in output directory
-| GenerateMarkdown      | Build            | Build markdown-based help
-| GenerateMAML          | GenerateMarkdown | Build MAML help
-| GenerateUpdatableHelp | BuildHelp        | Build updatable help cab
+| Name                  | Dependencies                   | Description |
+| --------------------- | -------------------------------| ----------- |
+| BuildHelp             | GenerateMarkdown, GenerateMAML | Build all help files
+| StageFiles            | Clean                          | Build module in output directory
+| GenerateMarkdown      | StageFiles                     | Build markdown-based help
+| GenerateMAML          | GenerateMarkdown               | Build MAML help
+| GenerateUpdatableHelp | BuildHelp                      | Build updatable help cab
 
 ## Task customization
 
