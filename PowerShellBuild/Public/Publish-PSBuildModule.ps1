@@ -55,7 +55,6 @@ function Publish-PSBuildModule {
     $publishParams = @{
         Path       = $Path
         Repository = $Repository
-        WhatIf     = $true
         Verbose    = $VerbosePreference
     }
     switch ($PSCmdlet.ParameterSetName) {
