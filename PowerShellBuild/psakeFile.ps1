@@ -41,8 +41,7 @@ task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
     Build-PSBuildModule @buildParams
 }
 
-task Build -depends Init, Clean, StageFiles {
-}
+task Build -depends StageFiles, BuildHelp
 
 $reqVars = @(
     'moduleOutDir', 'scriptAnalysisEnabled', 'scriptAnalysisFailBuildOnSeverityLevel', 'scriptAnalyzerSettingsPath'
@@ -103,7 +102,7 @@ task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pest
 task Test -depends Pester, Analyze {
 } -description 'Execute Pester and ScriptAnalyzer tests'
 
-task BuildHelp -depends Build, GenerateMarkdown, GenerateMAML {}
+task BuildHelp -depends GenerateMarkdown, GenerateMAML {}
 
 $genMarkdownVars = @(
     'docsRootDir', 'defaultLocale', 'moduleName', 'moduleOutDir')
@@ -115,7 +114,7 @@ $genMarkdownPreReqs = {
     }
     $result
 }
-task GenerateMarkdown -depends Build -requiredVariables $genMarkdownVars -precondition $genMarkdownPreReqs {
+task GenerateMarkdown -depends StageFiles -requiredVariables $genMarkdownVars -precondition $genMarkdownPreReqs {
     Build-PSBuildMarkdown -ModulePath $moduleOutDir -ModuleName $moduleName -DocsPath $docsRootDir -Locale $defaultLocale
 }
 
