@@ -152,6 +152,7 @@ task Publish -depends Test -requiredVariables psRepository, moduleVersion, modul
         Path       = $moduleOutDir
         Version    = $moduleVersion
         Repository = $psRepository
+        Verbose    = $VerbosePreference
     }
     if ($psRepositoryApiKey) {
         $publishParams.ApiKey = $psRepositoryApiKey

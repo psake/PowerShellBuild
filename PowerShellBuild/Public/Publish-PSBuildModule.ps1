@@ -56,6 +56,7 @@ function Publish-PSBuildModule {
         Path       = $Path
         Repository = $Repository
         WhatIf     = $true
+        Verbose    = $VerbosePreference
     }
     switch ($PSCmdlet.ParameterSetName) {
         'Credential' { $publishParams.Credential  = $Credential }
