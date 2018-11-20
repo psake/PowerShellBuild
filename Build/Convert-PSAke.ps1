@@ -92,7 +92,7 @@ function Convert-Task
 	)
 
 	if ($name -eq '?') {
-		"# CONVERTWARNING: You specified a '?' task. Invoke-Build has its own built-in function for this so it was not brought over."
+		"# CONVERTWARNING: You specified a '?' task. Invoke-Build has its own built-in function for this so it was not copied."
 		continue
 	}
 
@@ -158,7 +158,14 @@ $sourceRaw = (Get-Content -Path $Source -Raw)
 
 #Psake Variable Substitution
 #TODO: More structured method using AST
+#TODO: Variable Collision Detection
 $sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.context.currentTaskName'), '$task.name'
+$sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.context.Peek().Tasks.Keys'), '$BuildTask'
+$sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.version'), '[string](get-command invoke-build | % version)'
+$sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.build_script_file'), '$BuildFile'
+$sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.build_script_dir'), '(Split-Path $BuildFile -Parent)'
+$sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.vers'), '[string](get-command invoke-build | % version)'
+
 
 $out = New-Object System.Text.Stringbuilder
 
@@ -173,15 +180,30 @@ if ($parseErrors) {throw "Parsing Errors Found! Please fix first: $parseErrors"}
 #Parse the Powershell source into statement blocks
 $statements = $ParseResult.endblock.statements
 
-foreach ($statementItem in $statements) {
+#Workaround for some reason foreach doesn't do the statements in order
+$count = $statements.count
+
+$statements.foreach{
+	$statementItem = $PSItem
 	$statementItemText = $statementItem.extent.text
 
 	#TODO: AST-based variable substitution for $psake
-	if ($statementItemText -match [regex]::Escape('$psake.context')) {
-		$out.AppendLine('<# CONVERTWARNING: Your script references $psake.context and this is not being converted yet.') > $null
-		$out.AppendLine($statementItemText) > $null
-		$out.AppendLine('#>') > $null
-		continue
+	$unsupportedPsakeVarErrors = @{
+		'context' = '$psake.context is unsupported. Use properties instead'
+		'config_default' = '$psake.config_default is unsupported. Use Invoke-Build -Result instead'
+		'run_by_psake_build_tester' = '$psake.run_by_psake_build_tester is unsupported. Use Invoke-Build -Result instead'
+		'build_success'= '$psake.build_success is unsupported. Use Invoke-Build -Result instead'
+		'error_message' = '$psake.error_message is unsupported. Use Invoke-Build -Result instead'
+	}
+	foreach ($psakeVarErrorItem in $unsupportedPsakeVarErrors.keys) {
+		$unsupportedPsakeVarsRegex = "\`$psake.$([regex]::Escape($psakeVarErrorItem))"
+		if ($statementItemText -match $unsupportedPsakeVarsRegex) {
+			$out.AppendLine("<# CONVERTWARNING: " + $unsupportedPsakeVarErrors[$psakeVarErrorItem]) > $null
+			$out.AppendLine($statementItemText) > $null
+			$out.AppendLine('#>') > $null
+			$psakeVarFound
+			break
+		}
 	}
 
 	switch ($statementItem.gettype().name) {
