@@ -8,6 +8,8 @@ properties {
     $CompileModule = $true
 
     $convertReadMeToAboutHelp = $true
+
+
 }
 
 FormatTaskName {
