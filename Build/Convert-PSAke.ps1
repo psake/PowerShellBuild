@@ -7,7 +7,7 @@ param(
 )
 
 #region Setup
-Set-Variable -Option Constant -Name PSCommonParameters -Value ([System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters)
+$PSCommonParameters = ([System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters)
 
 #region psakeDiscovery
 $psakeModule = import-module psake -PassThru
@@ -91,65 +91,59 @@ function Convert-Task
 		[string]$alias
 	)
 
-	if ($description -or ${*Synopsis}) {
+	if ($name -eq '?') {
+		"# CONVERTWARNING: You specified a '?' task. Invoke-Build has its own built-in function for this so it was not brought over."
+		continue
+	}
+
+	if ($description) {
 		$description = $description -replace '[\r\n]+', ' '
 		"# Synopsis: $description"
 	}
 
 	if ($alias) {"# CONVERT-TODO: Alias '$alias' is not supported. Do not use it or define another task: task $alias $name"}
 	if ($continueOnError) {"# CONVERT-TODO: ContinueOnError is not supported. Instead, callers use its safe reference as '?$name'"}
-	if ($requiredVariables) {'# CONVERT-TODO: RequiredVariables is not supported. Instead, in the action use: $VarName = property VarName'}
 
-
-	### task Name
-
-	$$ = 'task '
+	$newTaskHeader = 'task '
 	if ($name -eq 'default') {
-		'# CONVERT-TODO: Default task. If it is the first then any name can be used instead.'
-		$$ += '.'
+		'# Default task converted from PSAke. If it is the first then any name can be used instead.'
+		$newTaskHeader += '.'
 	}
 	else {
-		$$ += $name
+		$newTaskHeader += $name
 	}
-
-	### If
 	if ($precondition) {
-		$$ += " -If {$precondition}"
+		$newTaskHeader += " -If {$precondition}"
 	}
 
-	$comma = $false
-
-	### Referenced tasks
+	$newTaskJobs = @()
 	if ($depends) {
-		$$ += ' ' + ($depends -join ',')
-		$comma = $true
+		$newTaskJobs += $depends
 	}
-
-	### Preaction
 	if ($preaction) {
-		if ($comma) {$$ += ','} else {$comma = $true}
-		$$ += " {$preaction}"
+		$newTaskJobs += "{$preaction}"
 	}
-
-	### Action
 	if ($action) {
-		if ($comma) {$$ += ','} else {$comma = $true}
-		$$ += " {$action}"
+		if ($requiredVariables) {
+			$outAction = New-Object Text.StringBuilder
+			$outAction.AppendLine() > $null
+			$requiredVariables.foreach{
+				$outAction.appendLine("property $PSItem") > $null
+			}
+			$outaction.appendLine($action.tostring()) > $null
+			$action = [Scriptblock]::Create($outaction.tostring())
+		}
+		$newTaskJobs += "{$action}"
 	}
-
-	### Postaction
 	if ($postaction) {
-		if ($comma) {$$ += ','} else {$comma = $true}
-		$$ += " {$postaction}"
+		$newTaskJobs += "{$postaction}"
 	}
-
-	### Postcondition
 	if ($postcondition) {
-		if ($comma) {$$ += ','}
-		$$ += " { assert `$($postcondition) }"
+		$newTaskJobs += " { assert `$($postcondition) }"
 	}
 
-	$$
+	#output the formatted header
+	$newTaskHeader + " " + ($newTaskJobs -join ', ')
 }
 #endregion StatementConversions
 
@@ -164,7 +158,6 @@ $sourceRaw = (Get-Content -Path $Source -Raw)
 
 #Psake Variable Substitution
 #TODO: More structured method using AST
-
 $sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.context.currentTaskName'), '$task.name'
 
 $out = New-Object System.Text.Stringbuilder
@@ -177,19 +170,18 @@ $parseResult = [Language.Parser]::ParseInput(
 
 if ($parseErrors) {throw "Parsing Errors Found! Please fix first: $parseErrors"}
 
-
-#Variable Replacement
-
 #Parse the Powershell source into statement blocks
 $statements = $ParseResult.endblock.statements
 
 foreach ($statementItem in $statements) {
 	$statementItemText = $statementItem.extent.text
+
 	#TODO: AST-based variable substitution for $psake
 	if ($statementItemText -match [regex]::Escape('$psake.context')) {
 		$out.AppendLine('<# CONVERTWARNING: Your script references $psake.context and this is not being converted yet.') > $null
 		$out.AppendLine($statementItemText) > $null
 		$out.AppendLine('#>') > $null
+		continue
 	}
 
 	switch ($statementItem.gettype().name) {
@@ -210,7 +202,7 @@ foreach ($statementItem in $statements) {
                     }
                 }
                 default {
-                    $out.AppendLine('#CONVERTWARNING: psake to InvokeBuild Conversion did not recognize this codeblock and passed through as-is') > $null
+                    $out.AppendLine('#CONVERTWARNING: psake to InvokeBuild Conversion did not recognize this codeblock and passed through as-is. Consider moving it to Enter-Build') > $null
                     $out.AppendLine($statementItemText) > $null
                 }
             }
