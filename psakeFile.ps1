@@ -61,7 +61,7 @@ task Build -depends Init, Clean {
     $psakeFilePath = join-path $settings.moduleOutDir $psakeFileName
     $ibFileOutputPath = join-path $settings.moduleOutDir $ibFileName
     if (Test-Path $psakeFilePath) {
-        & .\Build\Convert-PSake.ps1 $psakeFilePath > $ibFileOutputPath
+        & .\Build\Convert-PSake.ps1 $psakeFilePath | Out-File -Encoding UTF8 $ibFileOutputPath
     } else {
         throw "PSake tasks file not copied!"
     }
