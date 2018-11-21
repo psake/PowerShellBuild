@@ -9,11 +9,7 @@ properties {
 
     $convertReadMeToAboutHelp = $true
 
-    $psake.context
-    $psake.config_default
-    $psake.run_by_psake_build_tester
-    $psake.build_success
-    $psake.error_message
+
 }
 
 FormatTaskName {

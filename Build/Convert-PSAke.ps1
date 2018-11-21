@@ -1,13 +1,24 @@
 #requires -version 5 -module psake
 using namespace System.Management.Automation
 
-#Params are private in case the variables are used in the psake script
+<#
+.SYNOPSIS
+Converts a PSAke script to an invoke-build script, using best practices where possible
+.NOTES
+Some Params are private in case the variables are used in the psake script
+#>
+[CmdletBinding()]
 param(
-	[Parameter(Mandatory)][string]$PRIVATE:Source
+	#The path to the PSAke file
+	[Parameter(Mandatory)][string]$PRIVATE:Source,
+	#The default tab width, in number of spaces. TODO: Auto-Discover this
+	[int]$ConvertPSAkeTabWidth = 4
 )
 
-#region Setup
+#region Initialize
 $PSCommonParameters = ([System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters)
+$ConvertPSAkeIndent = " " * $ConvertPSAkeTabWidth
+#endregion Initalize
 
 #region psakeDiscovery
 $psakeModule = import-module psake -PassThru
@@ -47,8 +58,21 @@ function Convert-FormatTaskName([scriptblock]$formatScriptBlock) {
 }
 
 function Convert-Properties([scriptblock]$properties) {
-	'# CONVERT-TODO: Move some properties to script param() in order to use as parameters.'
-	$properties
+	#Parse into statements and separate variables from other statement types
+	$parsedStatementResult = $properties.ast.endblock.statements.where({$PSItem.gettype().Name -match 'AssignmentStatementAst'},'Split')
+	$psakeParams = $parsedStatementResult[0]
+	$otherStatements = $parsedStatementResult[1]
+	if ($psakeParams) {
+		#TODO: Fix Indent
+		'param ('
+		$psakeParams.extent.text -join (',' + [Environment]::NewLine)
+		')'
+	}
+	if ($otherStatements) {
+		'Enter-Build {'
+		$otherStatements.extent.text
+		'}'
+	}
 }
 
 function Convert-Framework([string]$framework) {
@@ -128,7 +152,7 @@ function Convert-Task
 			$outAction = New-Object Text.StringBuilder
 			$outAction.AppendLine() > $null
 			$requiredVariables.foreach{
-				$outAction.appendLine("property $PSItem") > $null
+				$outAction.appendLine("${ConvertPSAkeIndent}property $PSItem") > $null
 			}
 			$outaction.appendLine($action.tostring()) > $null
 			$action = [Scriptblock]::Create($outaction.tostring())
@@ -164,7 +188,6 @@ $sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.context.Peek().Tasks.Ke
 $sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.version'), '[string](get-command invoke-build | % version)'
 $sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.build_script_file'), '$BuildFile'
 $sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.build_script_dir'), '(Split-Path $BuildFile -Parent)'
-$sourceRaw = $sourceRaw -replace [regex]::Escape('$psake.vers'), '[string](get-command invoke-build | % version)'
 
 
 $out = New-Object System.Text.Stringbuilder
@@ -180,31 +203,31 @@ if ($parseErrors) {throw "Parsing Errors Found! Please fix first: $parseErrors"}
 #Parse the Powershell source into statement blocks
 $statements = $ParseResult.endblock.statements
 
-#Workaround for some reason foreach doesn't do the statements in order
-$count = $statements.count
-
 $statements.foreach{
 	$statementItem = $PSItem
 	$statementItemText = $statementItem.extent.text
 
 	#TODO: AST-based variable substitution for $psake
-	$unsupportedPsakeVarErrors = @{
+	$unsupportedPsakeVarErrors = [ordered]@{
 		'context' = '$psake.context is unsupported. Use properties instead'
 		'config_default' = '$psake.config_default is unsupported. Use Invoke-Build -Result instead'
 		'run_by_psake_build_tester' = '$psake.run_by_psake_build_tester is unsupported. Use Invoke-Build -Result instead'
 		'build_success'= '$psake.build_success is unsupported. Use Invoke-Build -Result instead'
 		'error_message' = '$psake.error_message is unsupported. Use Invoke-Build -Result instead'
+		'' = 'Use of the $psake variable is unsupported. Use Invoke-Build -Result to get build status'
 	}
+	$psakeVarFound = $false
 	foreach ($psakeVarErrorItem in $unsupportedPsakeVarErrors.keys) {
-		$unsupportedPsakeVarsRegex = "\`$psake.$([regex]::Escape($psakeVarErrorItem))"
+		$unsupportedPsakeVarsRegex = "\`$psake\.?$([regex]::Escape($psakeVarErrorItem))"
 		if ($statementItemText -match $unsupportedPsakeVarsRegex) {
 			$out.AppendLine("<# CONVERTWARNING: " + $unsupportedPsakeVarErrors[$psakeVarErrorItem]) > $null
 			$out.AppendLine($statementItemText) > $null
 			$out.AppendLine('#>') > $null
-			$psakeVarFound
+			$psakeVarFound = $true
 			break
 		}
 	}
+	if ($psakeVarFound) {return}
 
 	switch ($statementItem.gettype().name) {
         'PipelineAst' {
