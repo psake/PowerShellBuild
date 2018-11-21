@@ -12,7 +12,8 @@ Describe 'Invoke-Build Conversion' {
         Test-Path $ibTasksFilePath | Should Be $true
     }
     It 'Parseable by invoke-build' {
-        invoke-build -file $ibtasksFilePath -whatif -result IBTasksResult | Should BeOfType [String]
+        invoke-build -file $ibtasksFilePath -whatif -result IBTasksResult
+        $IBTasksResult | Should Not BeNullOrEmpty
     }
     It 'Contains all the tasks that were in the Psake file' {
         #Invoke-PSake Fails in Pester Scope, have to run it in a completely separate runspace
