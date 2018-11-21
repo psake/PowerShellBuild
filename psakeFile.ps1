@@ -54,7 +54,21 @@ task Clean -depends Init {
 task Build -depends Init, Clean {
     New-Item -Path $settings.ModuleOutDir -ItemType Directory -Force > $null
     Copy-Item -Path "$($settings.SUT)/*" -Destination $settings.ModuleOutDir -Recurse
+
+    #Convert PSAke file to Invoke-Build format
+    $psakeFileName = 'psakeFile.ps1'
+    $ibFileName = 'IB.tasks.ps1'
+    $psakeFilePath = join-path $settings.moduleOutDir $psakeFileName
+    $ibFileOutputPath = join-path $settings.moduleOutDir $ibFileName
+    if (Test-Path $psakeFilePath) {
+        & .\Build\Convert-PSake.ps1 $psakeFilePath > $ibFileOutputPath
+    } else {
+        throw "PSake tasks file not copied!"
+    }
 }
+
+
+
 
 task Publish -depends Test {
     "    Publishing version [$($settings.Manifest.ModuleVersion)] to PSGallery..."
