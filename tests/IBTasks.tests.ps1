@@ -12,7 +12,11 @@ Describe 'Invoke-Build Conversion' {
         Test-Path $ibTasksFilePath | Should Be $true
     }
     It 'Parseable by invoke-build' {
-        $IBWhatifResult = Invoke-Build -file $ibtasksFilePath -whatif -result IBTasksResult | Out-Null
+        #Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. this doesn't happen locally. Using a job as a workaround.
+        $IBTasksResult = Start-Job -ScriptBlock {
+            Invoke-Build -file $USING:ibtasksFilePath -whatif -result IBTasksResult | Out-Null
+            $IBTasksResult
+        } | wait-job | receive-job
         $IBTasksResult | Should Not BeNullOrEmpty
     }
     It 'Contains all the tasks that were in the Psake file' {
