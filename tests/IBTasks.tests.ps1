@@ -9,14 +9,11 @@ $psakeFilePath       = Join-Path -Path $outputModVerDir -ChildPath 'psakeFile.ps
 Describe 'Invoke-Build Conversion' {
     $IBTasksResult = $null
     It 'IB.tasks.ps1 exists' {
-        Test-Path $ibTasksFilePath | Should Be $true
+        Test-Path $IBTasksFilePath | Should Be $true
     }
     It 'Parseable by invoke-build' {
-        #Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. this doesn't happen locally. Using a job as a workaround.
-        $IBTasksResult = Start-Job -ScriptBlock {
-            Invoke-Build -file $USING:ibtasksFilePath -whatif -result IBTasksResult *>$null
-            $IBTasksResult
-        } | wait-job | receive-job
+        #Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. This doesn't happen locally. Redirecting all output to null
+        Invoke-Build -file $IBTasksFilePath -whatif -result IBTasksResult -ErrorAction Stop *>$null
         $IBTasksResult | Should Not BeNullOrEmpty
     }
     It 'Contains all the tasks that were in the Psake file' {
