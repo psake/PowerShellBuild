@@ -12,7 +12,7 @@ Describe 'Invoke-Build Conversion' {
         Test-Path $ibTasksFilePath | Should Be $true
     }
     It 'Parseable by invoke-build' {
-        invoke-build -file $ibtasksFilePath -whatif -result IBTasksResult
+        invoke-build -file $ibtasksFilePath -whatif -result IBTasksResult >$null
         $IBTasksResult | Should Not BeNullOrEmpty
     }
     It 'Contains all the tasks that were in the Psake file' {
