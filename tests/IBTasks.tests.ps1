@@ -14,7 +14,7 @@ Describe 'Invoke-Build Conversion' {
     It 'Parseable by invoke-build' {
         #Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. this doesn't happen locally. Using a job as a workaround.
         $IBTasksResult = Start-Job -ScriptBlock {
-            Invoke-Build -file $USING:ibtasksFilePath -whatif -result IBTasksResult | Out-Null
+            Invoke-Build -file $USING:ibtasksFilePath -whatif -result IBTasksResult *>$null
             $IBTasksResult
         } | wait-job | receive-job
         $IBTasksResult | Should Not BeNullOrEmpty
