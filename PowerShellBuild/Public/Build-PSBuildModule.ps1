@@ -72,7 +72,7 @@ function Build-PSBuildModule {
     # Copy source files to destination and optionally combine *.ps1 files into the PSM1
     if ($Compile.IsPresent) {
         $rootModule = Join-Path -Path $DestinationPath -ChildPath "$ModuleName.psm1"
-        $allScripts = Get-ChildItem -Path $Path -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+        $allScripts = Get-ChildItem -Path (Join-Path -Path $Path -ChildPath '*.ps1') -Recurse -ErrorAction SilentlyContinue
         $allScripts | ForEach-Object {
             $srcFile = Resolve-Path $_.FullName -Relative
             Write-Verbose "Adding $srcFile to PSM1"
