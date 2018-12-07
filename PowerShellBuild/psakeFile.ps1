@@ -47,7 +47,7 @@ task Build -depends $PSBPreference.Build.Dependencies -description 'Builds modul
 
 $analyzePreReqs = {
     $result = $true
-    if (-not $PSBPreference.Test.ScriptAnalysisEnabled) {
+    if (-not $PSBPreference.Test.ScriptAnalysis.Enabled) {
         Write-Warning 'Script analysis is not enabled.'
         $result = $false
     }
@@ -60,8 +60,8 @@ $analyzePreReqs = {
 task Analyze -depends Build -precondition $analyzePreReqs {
     $analyzeParams = @{
         Path              = $PSBPreference.Build.ModuleOutDir
-        SeverityThreshold = $PSBPreference.Test.ScriptAnalysisFailBuildOnSeverityLevel
-        SettingsPath      = $PSBPreference.Test.ScriptAnalyzerSettingsPath
+        SeverityThreshold = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
+        SettingsPath      = $PSBPreference.Test.ScriptAnalysis.SettingsPath
     }
     Test-PSBuildScriptAnalysis @analyzeParams
 } -description 'Execute PSScriptAnalyzer tests'

@@ -52,18 +52,20 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # a path.  This parameter is passed through to Invoke-Pester's -OutputFormat parameter.
         OutputFormat = 'NUnitXml'
 
-        # Enable/disable use of PSScriptAnalyzer to perform script analysis
-        ScriptAnalysisEnabled = $true
+        ScriptAnalysis = @{
+            # Enable/disable use of PSScriptAnalyzer to perform script analysis
+            Enabled = $true
 
-        # When PSScriptAnalyzer is enabled, control which severity level will generate a build failure.
-        # Valid values are Error, Warning, Information and None.  "None" will report errors but will not
-        # cause a build failure.  "Error" will fail the build only on diagnostic records that are of
-        # severity error.  "Warning" will fail the build on Warning and Error diagnostic records.
-        # "Any" will fail the build on any diagnostic record, regardless of severity.
-        ScriptAnalysisFailBuildOnSeverityLevel = 'Error'
+            # When PSScriptAnalyzer is enabled, control which severity level will generate a build failure.
+            # Valid values are Error, Warning, Information and None.  "None" will report errors but will not
+            # cause a build failure.  "Error" will fail the build only on diagnostic records that are of
+            # severity error.  "Warning" will fail the build on Warning and Error diagnostic records.
+            # "Any" will fail the build on any diagnostic record, regardless of severity.
+            FailBuildOnSeverityLevel = 'Error'
 
-        # Path to the PSScriptAnalyzer settings file.
-        ScriptAnalyzerSettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
+            # Path to the PSScriptAnalyzer settings file.
+            SettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
+        }
 
         CodeCoverage = @{
             # Enable/disable Pester code coverage reporting.
