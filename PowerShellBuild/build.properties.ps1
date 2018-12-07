@@ -1,68 +1,111 @@
+BuildHelpers\Set-BuildEnvironment -Force
 
-#region Basic project settings
-
-Set-BuildEnvironment -Force
-
-# Root directory for the project
-$projectRoot = $env:BHProjectPath
-
-# Root directory for the module
-$srcRootDir = $env:BHPSModulePath
-
-# The name of the module. This should match the basename of the PSD1 file
-$moduleName = $env:BHProjectName
-
-# Module version
+$outDir        = Join-Path -Path $env:BHProjectPath -ChildPath Output
 $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).ModuleVersion
 
-# Module manifest path
-$moduleManifestPath = $env:BHPSModuleManifest
+[ordered]@{
+    General = @{
+        # Root directory for the project
+        ProjectRoot = $env:BHProjectPath
 
-# Output directory when building a module
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$outDir = Join-Path -Path $projectRoot -ChildPath Output
+        # Root directory for the module
+        SrcRootDir = $env:BHPSModulePath
 
-# Module output directory
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$moduleOutDir = "$outDir/$moduleName/$moduleVersion"
+        # The name of the module. This should match the basename of the PSD1 file
+        ModuleName = $env:BHProjectName
 
-# Controls whether to "compile" module into single PSM1 or not
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$compileModule = $false
+        # Module version
+        ModuleVersion = $moduleVersion
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$updatableHelpOutDir = Join-Path $OutDir UpdatableHelp
+        # Module manifest path
+        ModuleManifestPath = $env:BHPSModuleManifest
+    }
+    Build = @{
 
-# Default Locale used for help generation, defaults to en-US
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$defaultLocale = (Get-UICulture).Name
+        Dependencies = @('StageFiles', 'BuildHelp')
 
-# Convert project readme into the module about file
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$convertReadMeToAboutHelp = $false
-#endregion
+        # Output directory when building a module
+        OutDir = $outDir
 
-#region Script Analysis
+        # Module output directory
+        ModuleOutDir = "$outDir/$env:BHProjectName/$moduleVersion"
 
-# Enable/disable use of PSScriptAnalyzer to perform script analysis
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$scriptAnalysisEnabled = $true
+        # Controls whether to "compile" module into single PSM1 or not
+        CompileModule = $false
 
-# When PSScriptAnalyzer is enabled, control which severity level will generate a build failure.
-# Valid values are Error, Warning, Information and None.  "None" will report errors but will not
-# cause a build failure.  "Error" will fail the build only on diagnostic records that are of
-# severity error.  "Warning" will fail the build on Warning and Error diagnostic records.
-# "Any" will fail the build on any diagnostic record, regardless of severity.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-[ValidateSet('Error', 'Warning', 'Any', 'None')]
-$scriptAnalysisFailBuildOnSeverityLevel = 'Error'
+        # List of files to exclude from output directory
+        Exclude = @()
+    }
+    Test = @{
+        # Enable/disable Pester tests
+        Enabled = $true
 
-# Path to the PSScriptAnalyzer settings file.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$scriptAnalyzerSettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
-#endregion
+        # Directory containing Pester tests
+        RootDir = Join-Path -Path $env:BHProjectPath -ChildPath tests
 
-#region File catalog
+        # Specifies an output file path to send to Invoke-Pester's -OutputFile parameter.
+        # This is typically used to write out test results so that they can be sent to a CI
+        # system like AppVeyor.
+        OutputFile = $null
+
+        # Specifies the test output format to use when the TestOutputFile property is given
+        # a path.  This parameter is passed through to Invoke-Pester's -OutputFormat parameter.
+        OutputFormat = 'NUnitXml'
+
+        # Enable/disable use of PSScriptAnalyzer to perform script analysis
+        ScriptAnalysisEnabled = $true
+
+        # When PSScriptAnalyzer is enabled, control which severity level will generate a build failure.
+        # Valid values are Error, Warning, Information and None.  "None" will report errors but will not
+        # cause a build failure.  "Error" will fail the build only on diagnostic records that are of
+        # severity error.  "Warning" will fail the build on Warning and Error diagnostic records.
+        # "Any" will fail the build on any diagnostic record, regardless of severity.
+        ScriptAnalysisFailBuildOnSeverityLevel = 'Error'
+
+        # Path to the PSScriptAnalyzer settings file.
+        ScriptAnalyzerSettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
+
+        CodeCoverage = @{
+            # Enable/disable Pester code coverage reporting.
+            Enabled = $false
+
+            # Fail Pester code coverage test if below this threshold
+            Threshold = .75
+
+            # CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
+            # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
+            # like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.
+            Files = @(
+                Join-Path -Path $env:BHPSModulePath -ChildPath '*.ps1'
+                Join-Path -Path $env:BHPSModulePath -ChildPath '*.psm1'
+            )
+        }
+    }
+    Help  = @{
+        # Path to updateable help CAB
+        UpdatableHelpOutDir = Join-Path -Path $outDir -ChildPath 'UpdatableHelp'
+
+        # Default Locale used for help generation, defaults to en-US
+        DefaultLocale = (Get-UICulture).Name
+
+        # Convert project readme into the module about file
+        ConvertReadMeToAboutHelp = $false
+    }
+    Docs = @{
+        # Directory PlatyPS markdown documentation will be saved to
+        RootDir = Join-Path -Path $env:BHProjectPath -ChildPath 'docs'
+    }
+    Publish = @{
+        # PowerShell repository name to publish modules to
+        PSRepository = 'PSGallery'
+
+        # API key to authenticate to PowerShell repository with
+        PSRepositoryApiKey = $env:PSGALLERY_API_KEY
+
+        # Credential to authenticate to PowerShell repository with
+        PSRepositoryCredential = $null
+    }
+}
 
 # Enable/disable generation of a catalog (.cat) file for the module.
 # [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
@@ -72,63 +115,3 @@ $scriptAnalyzerSettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerS
 # # Windows Server 2008 R2), 2 for SHA2 to support only newer Windows versions.
 # [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
 # $catalogVersion = 2
-#endregion
-
-#region Testing
-
-# Enable/disable Pester tests
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$testingEnabled = $true
-
-# Directory containing Pester tests
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$testRootDir = Join-Path -Path $projectRoot -ChildPath tests
-
-# Enable/disable Pester code coverage reporting.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$codeCoverageEnabled = $false
-
-# Fail Pester code coverage test if below this threshold
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$codeCoverageThreshold = .75
-
-# CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
-# acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
-# like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$codeCoverageFiles = @(
-    Join-Path -Path $srcRootDir -ChildPath '*.ps1'
-    Join-Path -Path $srcRootDir -ChildPath '*.psm1'
-)
-
-# Specifies an output file path to send to Invoke-Pester's -OutputFile parameter.
-# This is typically used to write out test results so that they can be sent to a CI
-# system like AppVeyor.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$testOutputFile = $null
-
-# Specifies the test output format to use when the TestOutputFile property is given
-# a path.  This parameter is passed through to Invoke-Pester's -OutputFormat parameter.
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$testOutputFormat = 'NUnitXml'
-#endregion
-
-#region Documentation
-# Directory PlatyPS markdown documentation will be saved to
-[System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-$docsRootDir = Join-Path -Path $projectRoot -ChildPath 'docs'
-
-#endregion
-
-#region Publishing
-
-# PowerShell repository name to publish modules to
-$psRepository = 'PSGallery'
-
-# API key to authenticate to PowerShell repository with
-$psRepositoryApiKey = $env:PSGALLERY_API_KEY
-
-# Credential to authenticate to PowerShell repository with
-$psRepositoryCredential = $null
-
-#endregion

@@ -7,7 +7,7 @@
     Copyright         = '(c) Brandon Olin. All rights reserved.'
     Description       = 'A common psake and Invoke-Build task module for PowerShell projects'
     PowerShellVersion = '3.0'
-    RequiredModules   = @('BuildHelpers')
+    RequiredModules   = @('BuildHelpers', 'platyPS')
     FunctionsToExport = @(
         'Build-PSBuildMAMLHelp'
         'Build-PSBuildMarkdown'
