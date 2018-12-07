@@ -1,7 +1,9 @@
-properties {
-    # Load in build settings
-    . (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1)
-}
+
+# Load in build settings
+Remove-Variable -Name PSBPreference -Scope Script -Force -ErrorAction Ignore
+Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1))
+
+properties {}
 
 FormatTaskName {
     param($taskName)
@@ -15,40 +17,37 @@ FormatTaskName {
 
 task Init {
     Initialize-PSBuild -UseBuildHelpers
-}
+} -description 'Initialize build environment variables'
 
-task Clean -depends Init -requiredVariables moduleOutDir {
-    Clear-PSBuildOutputFolder -Path $moduleOutDir
-}
+task Clean -depends Init {
+    Clear-PSBuildOutputFolder -Path $PSBPreference.Build.ModuleOutDir
+} -description 'Clears module output directory'
 
-task StageFiles -depends Clean -requiredVariables moduleOutDir, srcRootDir {
+task StageFiles -depends Clean {
     $buildParams = @{
-        Path               = $srcRootDir
-        DestinationPath    = $moduleOutDir
-        ModuleName         = $moduleName
-        Exclude            = $Exclude
-        Compile            = $compileModule
-        Culture            = $defaultLocale
+        Path               = $PSBPreference.General.SrcRootDir
+        ModuleName         = $PSBPreference.General.ModuleName
+        DestinationPath    = $PSBPreference.Build.ModuleOutDir
+        Exclude            = $PSBPreference.Build.Exclude
+        Compile            = $PSBPreference.Build.CompileModule
+        Culture            = $PSBPreference.Help.DefaultLocale
     }
 
-    if ($convertReadMeToAboutHelp) {
-        $readMePath = Get-ChildItem -Path $projectRoot -Include 'readme.md', 'readme.markdown', 'readme.txt' -Depth 1 |
+    if ($PSBPreference.Help.ConvertReadMeToAboutHelp) {
+        $readMePath = Get-ChildItem -Path $PSBPreference.General.ProjectRoot -Include 'readme.md', 'readme.markdown', 'readme.txt' -Depth 1 |
             Select-Object -First 1
         if ($readMePath) {
             $buildParams.ReadMePath = $readMePath
         }
     }
     Build-PSBuildModule @buildParams
-}
+} -description 'Builds module based on source directory'
 
-task Build -depends StageFiles, BuildHelp
+task Build -depends $PSBPreference.Build.Dependencies -description 'Builds module and generate help documentation'
 
-$reqVars = @(
-    'moduleOutDir', 'scriptAnalysisEnabled', 'scriptAnalysisFailBuildOnSeverityLevel', 'scriptAnalyzerSettingsPath'
-)
 $analyzePreReqs = {
     $result = $true
-    if (-not $scriptAnalysisEnabled) {
+    if (-not $PSBPreference.Test.ScriptAnalysisEnabled) {
         Write-Warning 'Script analysis is not enabled.'
         $result = $false
     }
@@ -58,21 +57,18 @@ $analyzePreReqs = {
     }
     $result
 }
-task Analyze -depends Build -requiredVariables $reqVars -precondition $analyzePreReqs {
+task Analyze -depends Build -precondition $analyzePreReqs {
     $analyzeParams = @{
-        Path              = $moduleOutDir
-        SeverityThreshold = $scriptAnalysisFailBuildOnSeverityLevel
-        SettingsPath      = $scriptAnalyzerSettingsPath
+        Path              = $PSBPreference.Build.ModuleOutDir
+        SeverityThreshold = $PSBPreference.Test.ScriptAnalysisFailBuildOnSeverityLevel
+        SettingsPath      = $PSBPreference.Test.ScriptAnalyzerSettingsPath
     }
     Test-PSBuildScriptAnalysis @analyzeParams
 } -description 'Execute PSScriptAnalyzer tests'
 
-$pesterReqVars = @(
-    'testRootDir', 'moduleName', 'testOutputFormat', 'codeCoverageEnabled', 'codeCoverageThreshold', 'codeCoverageFiles'
-)
 $pesterPreReqs = {
     $result = $true
-    if (-not $testingEnabled) {
+    if (-not $PSBPreference.Test.Enabled) {
         Write-Warning 'Pester testing is not enabled.'
         $result = $false
     }
@@ -80,21 +76,21 @@ $pesterPreReqs = {
         Write-Warning 'Pester module is not installed'
         $result = $false
     }
-    if (-not (Test-Path -Path $testRootDir)) {
-        Write-Warning "Test directory [$testRootDir] not found"
+    if (-not (Test-Path -Path $PSBPreference.Test.RootDir)) {
+        Write-Warning "Test directory [$($PSBPreference.Test.RootDir)] not found"
         $result = $false
     }
     return $result
 }
-task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pesterPreReqs {
+task Pester -depends Build -precondition $pesterPreReqs {
     $pesterParams = @{
-        Path                  = $testRootDir
-        ModuleName            = $moduleName
-        OutputPath            = $testOutputFile
-        OutputFormat          = $testOutputFormat
-        CodeCoverage          = $codeCoverageEnabled
-        CodeCoverageThreshold = $codeCoverageThreshold
-        CodeCoverageFiles     = $codeCoverageFiles
+        Path                  = $PSBPreference.Test.RootDir
+        ModuleName            = $PSBPreference.General.ModuleName
+        OutputPath            = $PSBPreference.Test.OutputFile
+        OutputFormat          = $PSBPreference.Test.OutputFormat
+        CodeCoverage          = $PSBPreference.Test.CodeCoverage.Enabled
+        CodeCoverageThreshold = $PSBPreference.Test.CodeCoverage.Threshold
+        CodeCoverageFiles     = $PSBPreference.Test.CodeCoverage.Files
     }
     Test-PSBuildPester @pesterParams
 } -description 'Execute Pester tests'
@@ -102,10 +98,8 @@ task Pester -depends Build -requiredVariables $pesterReqVars -precondition $pest
 task Test -depends Pester, Analyze {
 } -description 'Execute Pester and ScriptAnalyzer tests'
 
-task BuildHelp -depends GenerateMarkdown, GenerateMAML {}
+task BuildHelp -depends GenerateMarkdown, GenerateMAML {} -description 'Builds help documentation'
 
-$genMarkdownVars = @(
-    'docsRootDir', 'defaultLocale', 'moduleName', 'moduleOutDir')
 $genMarkdownPreReqs = {
     $result = $true
     if (-not (Get-Module platyPS -ListAvailable)) {
@@ -114,9 +108,15 @@ $genMarkdownPreReqs = {
     }
     $result
 }
-task GenerateMarkdown -depends StageFiles -requiredVariables $genMarkdownVars -precondition $genMarkdownPreReqs {
-    Build-PSBuildMarkdown -ModulePath $moduleOutDir -ModuleName $moduleName -DocsPath $docsRootDir -Locale $defaultLocale
-}
+task GenerateMarkdown -depends StageFiles -precondition $genMarkdownPreReqs {
+    $buildMDParams = @{
+        ModulePath = $PSBPreference.Build.ModuleOutDir
+        ModuleName = $PSBPreference.General.ModuleName
+        DocsPath   = $PSBPreference.Docs.RootDir
+        Locale     = $PSBPreference.Help.DefaultLocale
+    }
+    Build-PSBuildMarkdown @buildMDParams
+} -description 'Generates PlatyPS markdown files from module help'
 
 $genHelpFilesPreReqs = {
     $result = $true
@@ -126,13 +126,10 @@ $genHelpFilesPreReqs = {
     }
     $result
 }
-task GenerateMAML -depends GenerateMarkdown -requiredVariables docsRootDir, moduleOutDir -precondition $genHelpFilesPreReqs {
-    Build-PSBuildMAMLHelp -Path $docsRootDir -DestinationPath $moduleOutDir
-}
+task GenerateMAML -depends GenerateMarkdown -precondition $genHelpFilesPreReqs {
+    Build-PSBuildMAMLHelp -Path $PSBPreference.Docs.RootDir -DestinationPath $PSBPreference.Build.ModuleOutDir
+} -description 'Generates MAML-based help from PlatyPS markdown files'
 
-$genUpdatableHelpVars = @(
-    'docsRootDir', 'moduleName', 'updatableHelpOutDir'
-)
 $genUpdatableHelpPreReqs = {
     $result = $true
     if (-not (Get-Module platyPS -ListAvailable)) {
@@ -141,23 +138,23 @@ $genUpdatableHelpPreReqs = {
     }
     $result
 }
-task GenerateUpdatableHelp -depends BuildHelp -requiredVariables $genUpdatableHelpVars -precondition $genUpdatableHelpPreReqs {
-    Build-PSBuildUpdatableHelp -DocsPath $docsRootDir -OutputPath $updatableHelpOutDir
-}
+task GenerateUpdatableHelp -depends BuildHelp -precondition $genUpdatableHelpPreReqs {
+    Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
+} -description 'Create updatable help .cab file based on PlatyPS markdown help'
 
-task Publish -depends Test -requiredVariables psRepository, moduleVersion, moduleOutDir {
-    Assert -conditionToCheck ($psRepositoryApiKey -or $psRepositoryCredential) -failureMessage "API key or credential not defined to authenticate with $psRepository with."
+task Publish -depends Test {
+    Assert -conditionToCheck ($PSBPreference.Publish.PSRepositoryApiKey -or $PSBPreference.Publish.PSRepositoryCredential) -failureMessage "API key or credential not defined to authenticate with [$($PSBPreference.Publish.PSRepository)] with."
 
     $publishParams = @{
-        Path       = $moduleOutDir
-        Version    = $moduleVersion
-        Repository = $psRepository
+        Path       = $PSBPreference.Build.ModuleOutDir
+        Version    = $PSBPreference.General.ModuleVersion
+        Repository = $PSBPreference.Publish.PSRepository
         Verbose    = $VerbosePreference
     }
-    if ($psRepositoryApiKey) {
-        $publishParams.ApiKey = $psRepositoryApiKey
+    if ($PSBPreference.Publish.PSRepositoryApiKey) {
+        $publishParams.ApiKey = $PSBPreference.Publish.PSRepositoryApiKey
     } else {
-        $publishParams.Credential = $psRepositoryCredential
+        $publishParams.Credential = $PSBPreference.Publish.PSRepositoryCredential
     }
 
     Publish-PSBuildModule @publishParams
