@@ -65,37 +65,39 @@ These secondary tasks are called as dependencies from the primary tasks but may 
 
 ## Task customization
 
-The psake and Invoke-Build tasks can be customized by overriding the following settings that are defined in the module.
+The psake and Invoke-Build tasks can be customized by overriding the values contained in the `$PSBPreference` hashtable. defined in the psake file.
 These settings govern if certain tasks are executed or set default paths used to build and test the module.
 You can override these in either psake or Invoke-Build to match your environment.
 
 | Setting | Default value | Description |
 |---------|---------------|-------------|
-| $projectRoot | $env:BHProjectPath | Root directory for the project
-| $srcRootDir | $env:BHPSModulePath | Root directory for the module
-| $moduleName | $env:BHProjectName | The name of the module. This should match the basename of the PSD1 file
-| $moduleVersion | \<computed> | The version of the module
-| $moduleManifestPath | $env:BHPSModuleManifest | Path to the module manifest (PSD1)
-| $outDir | $projectRoot/Output | Output directory when building the module
-| $moduleOutDir | $outDir/$moduleName/$moduleVersion | Module output directory
-| $compileModule | $false | Controls whether to "compile" module into single PSM1 or not
-| $updatableHelpOutDir | $OutDir/UpdatableHelp | Output directory to store update module help (CAB)
-| $defaultLocale | (Get-UICulture).Name | Default locale used for help generation
-| $convertReadMeToAboutHelp | $false | Convert project readme into the module about file
-| $scriptAnalysisEnabled | $true | Enable/disable use of PSScriptAnalyzer to perform script analysis
-| $scriptAnalysisFailBuildOnSeverityLevel | Error | PSScriptAnalyzer threshold to fail the build on
-| $scriptAnalyzerSettingsPath | ./ScriptAnalyzerSettings.psd1 | Path to the PSScriptAnalyzer settings file
-| $testingEnabled | $true | Enable/disable Pester tests
-| $testRootDir | $projectRoot/tests | Directory containing Pester tests
-| $codeCoverageEnabled | $false | Enable/disable Pester code coverage reporting
-| $codeCoverageThreshold | .75 | Fail Pester code coverage test if below this threshold
-| $codeCoverageFiles | *.ps1, *.psm1 | Files to perform code coverage analysis on
-| $testOutputFile | $null | Output file path Pester will save test results to
-| $testOutputFormat | NUnitXml | Test output format to use when saving Pester test results
-| $docsRootDir | $projectRoot/docs | Directory PlatyPS markdown documentation will be saved to
-| $psRepository | PSGallery | PowerShell repository name to publish
-| $psRepositoryApiKey | $env:PSGALLERY_API_KEY | API key to authenticate to PowerShell repository with
-| $psRepositoryCredential | $null | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined
+| $PSBPreference.General.ProjectRoot | $env:BHProjectPath | Root directory for the project
+| $PSBPreference.General.SrcRootDir | $env:BHPSModulePath | Root directory for the module
+| $PSBPreference.General.ModuleName | $env:BHProjectName | The name of the module. This should match the basename of the PSD1 file
+| $PSBPreference.General.ModuleVersion | \<computed> | The version of the module
+| $PSBPreference.General.ModuleManifestPath | $env:BHPSModuleManifest | Path to the module manifest (PSD1)
+| $PSBPreference.Build.OutDir | $projectRoot/Output | Output directory when building the module
+| $PSBPreference.Build.Dependencies | 'StageFiles, 'BuildHelp' | Default task dependencies for the `Build` task
+| $PSBPreference.Build.ModuleOutDir | $outDir/$moduleName/$moduleVersion | Module output directory
+| $PSBPreference.Build.CompileModule | $false | Controls whether to "compile" module into single PSM1 or not
+| $PSBPreference.Build.Exclude | <empty> | Array of files to exclude when building module
+| $PSBPreference.Test.Enabled | $true | Enable/disable Pester tests
+| $PSBPreference.Test.RootDir | $projectRoot/tests | Directory containing Pester tests
+| $PSBPreference.Test.OutputFile | $null | Output file path Pester will save test results to
+| $PSBPreference.Test.OutputFormat | NUnitXml | Test output format to use when saving Pester test results
+| $PSBPreference.Test.ScriptAnalysis.Enabled | $true | Enable/disable use of PSScriptAnalyzer to perform script analysis
+| $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel | Error | PSScriptAnalyzer threshold to fail the build on
+| $PSBPreference.Test.ScriptAnalysis.SettingsPath | ./ScriptAnalyzerSettings.psd1 | Path to the PSScriptAnalyzer settings file
+| $PSBPreference.Test.CodeCoverage.Enabled | $false | Enable/disable Pester code coverage reporting
+| $PSBPreference.Test.CodeCoverage.Threshold | .75 | Fail Pester code coverage test if below this threshold
+| $PSBPreference.Test.CodeCoverage.Files | *.ps1, *.psm1 | Files to perform code coverage analysis on
+| $PSBPreference.Help.UpdatableHelpOutDir | $OutDir/UpdatableHelp | Output directory to store update module help (CAB)
+| $PSBPreference.Help.DefaultLocale | (Get-UICulture).Name | Default locale used for help generation
+| $PSBPreference.Help.ConvertReadMeToAboutHelp | $false | Convert project readme into the module about file
+| $PSBPreference.Docs.RootDir | $projectRoot/docs | Directory PlatyPS markdown documentation will be saved to
+| $PSBPreference.Publish.PSRepository | PSGallery | PowerShell repository name to publish
+| $PSBPreference.Publish.PSRepositoryApiKey | $env:PSGALLERY_API_KEY | API key to authenticate to PowerShell repository with
+| $PSBPreference.Publish.PSRepositoryCredential | $null | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined
 
 ## Examples
 
@@ -114,8 +116,8 @@ When executed, the dependent tasks `Init`, `Clear`, and `StageFiles` also contai
 properties {
     # These settings overwrite values supplied form the PowerShellBuild
     # module and govern how those tasks are executed
-    $scriptAnalysisEnabled = $false
-    $codeCoverageEnabled = $true
+    $PSBPreference.Test.ScriptAnalysisEnabled = $false
+    $PSBPreference.Test.CodeCoverage.Enabled  = $true
 }
 
 task default -depends Build
@@ -137,8 +139,8 @@ Import-Module PowerShellBuild
 . PowerShellBuild.IB.Tasks
 
 # Overwrite build settings contained in PowerShellBuild
-$scriptAnalysisEnabled = $true
-$codeCoverageEnabled   = $false
+$PSBPreference.Test.ScriptAnalysisEnabled = $true
+$PSBPreference.Test.CodeCoverage.Enabled  = $false
 ```
 
 ![Example](./media/ib_example.png)
