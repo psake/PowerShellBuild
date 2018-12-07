@@ -13,4 +13,5 @@
     psake            = 'latest'
     PSScriptAnalyzer = 'latest'
     InvokeBuild      = 'latest'
+    platyPS          = 'latest'
 }
