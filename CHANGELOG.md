@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.3.0] - Unreleased
 
+### Breaking changes
+
+- Refactor build properties into a single hashtable `$PSBPreference`
+
 ### Changed
 
 - [**#11**](https://github.com/psake/PowerShellBuild/pull/11) The Invoke-Build tasks are now auto-generated from the psake tasks via a converter script (via [@JustinGrote](https://github.com/JustinGrote))
