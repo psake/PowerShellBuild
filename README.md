@@ -114,7 +114,7 @@ When executed, the dependent tasks `Init`, `Clear`, and `StageFiles` also contai
 
 ```powershell
 properties {
-    # These settings overwrite values supplied form the PowerShellBuild
+    # These settings overwrite values supplied from the PowerShellBuild
     # module and govern how those tasks are executed
     $PSBPreference.Test.ScriptAnalysisEnabled = $false
     $PSBPreference.Test.CodeCoverage.Enabled  = $true
