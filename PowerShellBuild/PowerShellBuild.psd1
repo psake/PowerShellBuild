@@ -24,6 +24,7 @@
     AliasesToExport   = @('*tasks')
     PrivateData       = @{
         PSData = @{
+            PreRelease   = 'beta'
             Tags         = @('psake', 'build', 'InvokeBuild')
             LicenseUri   = 'https://raw.githubusercontent.com/psake/PowerShellBuild/master/LICENSE'
             ProjectUri   = 'https://github.com/psake/PowerShellBuild'
