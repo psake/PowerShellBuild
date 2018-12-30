@@ -4,6 +4,8 @@ function Initialize-PSBuild {
         Initializes BuildHelpers to populate build environment variables.
     .DESCRIPTION
         Initializes BuildHelpers to populate build environment variables.
+    .PARAMETER BuildEnvironment
+        Contains the PowerShellBuild settings (known as $PSBPreference).
     .PARAMETER UseBuildHelpers
         Use BuildHelpers module to popular common environment variables based on current build system context.
     .EXAMPLE
@@ -13,10 +15,17 @@ function Initialize-PSBuild {
     #>
     [cmdletbinding()]
     param(
+        [Parameter(Mandatory)]
+        [Hashtable]
+        $BuildEnvironment,
+
         [switch]$UseBuildHelpers
     )
 
-    Set-BuildEnvironment -Force
+    $params = @{
+        BuildOutput = $BuildEnvironment.Build.ModuleOutDir
+    }
+    Set-BuildEnvironment @params -Force
 
     Write-Host 'Build System Details:' -ForegroundColor Yellow
     $psVersion          = $PSVersionTable.PSVersion.ToString()
