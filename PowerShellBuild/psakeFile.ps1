@@ -16,7 +16,7 @@ FormatTaskName {
 # Task default -depends Test
 
 task Init {
-    Initialize-PSBuild -UseBuildHelpers
+    Initialize-PSBuild -UseBuildHelpers -BuildEnvironment $PSBPreference
 } -description 'Initialize build environment variables'
 
 task Clean -depends Init {
