@@ -2,7 +2,7 @@
 Set-BuildEnvironment -Force
 
 # Dot source public functions
-$public  = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'public/*.ps1')  -Recurse -ErrorAction Stop)
+$public  = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public/*.ps1')  -Recurse -ErrorAction Stop)
 foreach ($import in $public) {
     try {
         . $import.FullName
