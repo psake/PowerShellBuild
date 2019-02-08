@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.3.0] - Unreleased
 
+### Fixed
+
+- [**#24**](https://github.com/psake/PowerShellBuild/pull/24) Fix case of 'Public' folder when dot sourcing functions in PSM1 (via [@pauby](https://github.com/pauby))
+
 ### Changed
 
 - [**#19**](https://github.com/psake/PowerShellBuild/pull/19) Allow the `BHBuildOutput` environment variable defined by `BuildHelpers` to be set via the `$PSBPreference.Build.ModuleOutDir` property of the build tasks (via [@pauby](https://github.com/pauby))
