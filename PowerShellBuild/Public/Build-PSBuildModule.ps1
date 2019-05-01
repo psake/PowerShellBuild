@@ -57,13 +57,13 @@ function Build-PSBuildModule {
     }
 
     # Copy "non-processed files"
-    Get-ChildItem -Path $Path -Include '*.psm1', '*.psd1', '*.ps1xml' -Depth 1 | Copy-Item -Destination $DestinationPath -Force
+    Get-ChildItem -Path $Path -Include '*.psd1', '*.ps1xml' -Depth 1 | Copy-Item -Destination $DestinationPath -Force
 
     # Copy README as about_<modulename>.help.txt
     if (-not [string]::IsNullOrEmpty($ReadMePath)) {
         $culturePath = Join-Path -Path $DestinationPath -ChildPath $Culture
         $aboutModulePath = Join-Path -Path $culturePath -ChildPath "about_$($ModuleName).help.txt"
-        if(-not (Test-Path $culturePath -PathType Container)) {
+        if (-not (Test-Path $culturePath -PathType Container)) {
             New-Item $culturePath -Type Directory -Force > $null
             Copy-Item -LiteralPath $ReadMePath -Destination $aboutModulePath -Force
         }
@@ -78,7 +78,7 @@ function Build-PSBuildModule {
             Write-Verbose "Adding $srcFile to PSM1"
             Get-Content $srcFile
         } | Add-Content -Path $rootModule -Encoding utf8
-    } else{
+    } else {
         $copyParams = @{
             Path        = (Join-Path -Path $Path -ChildPath '*')
             Destination = $DestinationPath
