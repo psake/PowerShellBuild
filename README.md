@@ -10,10 +10,10 @@ Using these shared tasks reduces the boilerplate scaffolding needed in most Powe
 This consistency ultimately helps the community in building high-quality PowerShell modules.
 
 > If using [psake](https://github.com/psake/psake) as your task runner, version `4.8.0` or greater is required to make use of shared tasks distributed in separate modules.
-> Currently, `v4.8.0` of psake is in `alpha`. You can install the pre-release version with:
+> To install psake `4.8.0` you can run:
 
 ```powershell
-Install-Module -Name psake -RequiredVersion 4.8.0-alpha -Repository PSGallery -AllowPrerelease -Force
+Install-Module -Name psake -RequiredVersion 4.8.0 -Repository PSGallery
 ```
 
 > For [Invoke-Build](https://github.com/nightroman/Invoke-Build), see the [how to dot source tasks using PowerShell aliases](https://github.com/nightroman/Invoke-Build/blob/master/Tasks/Import/README.md#example-2-import-from-a-module-with-tasks) example.
@@ -24,11 +24,8 @@ Install-Module -Name psake -RequiredVersion 4.8.0-alpha -Repository PSGallery -A
 
 ## Status - Work in progress
 
-> This project is a **work in progress** and may change significantly before release based on feedback from the community.
+> This project is a **work in progress** and may change significantly before reaching stability based on feedback from the community.
 > **Please do not base critical processes on this project** until it has been further refined.
->
-> This is in part based on the [PlasterBuild](https://github.com/PowerShell/PlasterBuild) project and _MAY_ be merged into it.
-> It is being kept separate for now so experimental features can be explored.
 
 ## Tasks
 
