@@ -55,7 +55,6 @@ function Build-PSBuildMarkdown {
             Module         = $ModuleName
             Locale         = $Locale
             OutputFolder   = (Join-Path $DocsPath $Locale)
-            WithModulePage = $true
             ErrorAction    = 'SilentlyContinue'
             Verbose        = $VerbosePreference
         }
