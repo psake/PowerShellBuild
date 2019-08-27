@@ -10,18 +10,22 @@ function Publish-PSBuildModule {
         The version of the module to publish.
     .PARAMETER Repository
         The PowerShell repository name to publish to.
-    .PARAMETER ApiKey
+    .PARAMETER NuGetApiKey
         The API key to use to authenticate to the PowerShell repository with.
     .PARAMETER Credential
         The credential to use to authenticate to the PowerShell repository with.
     .EXAMPLE
-        PS> Publish-PSBuildModule -Path .\Output\0.1.0\MyModule -Version 0.1.0 -Repository PSGallery -ApiKey 12345
+        PS> Publish-PSBuildModule -Path .\Output\0.1.0\MyModule -Version 0.1.0 -Repository PSGallery -NuGetApiKey 12345
 
         Publish version 0.1.0 of the module at path .\Output\0.1.0\MyModule to the PSGallery repository using an API key.
     .EXAMPLE
         PS> Publish-PSBuildModule -Path .\Output\0.1.0\MyModule -Version 0.1.0 -Repository PSGallery -Credential $myCred
 
         Publish version 0.1.0 of the module at path .\Output\0.1.0\MyModule to the PSGallery repository using a PowerShell credential.
+    .EXAMPLE
+        PS> Publish-PSBuildModule -Path .\Output\0.1.0\MyModule -Version 0.1.0 -Repository PSGallery -NuGetApiKey 12345 -Credential $myCred
+
+        Publish version 0.1.0 of the module at path .\Output\0.1.0\MyModule to the PSGallery repository using an API key and a PowerShell credential.
     #>
     [cmdletbinding(DefaultParameterSetName = 'ApiKey')]
     param(
@@ -43,10 +47,9 @@ function Publish-PSBuildModule {
         [parameter(Mandatory)]
         [string]$Repository,
 
-        [parameter(Mandatory, ParameterSetName = 'ApiKey')]
-        [string]$ApiKey,
+        [Alias('ApiKey')]
+        [string]$NuGetApiKey,
 
-        [parameter(Mandatory, ParameterSetName = 'Credential')]
         [pscredential]$Credential
     )
 
@@ -57,9 +60,12 @@ function Publish-PSBuildModule {
         Repository = $Repository
         Verbose    = $VerbosePreference
     }
-    switch ($PSCmdlet.ParameterSetName) {
-        'Credential' { $publishParams.Credential  = $Credential }
-        'ApiKey'     { $publishParams.NuGetApiKey = $ApiKey }
+
+    'NuGetApiKey', 'Credential' | ForEach-Object {
+        if ($PSBoundParameters.ContainsKey($_)) {
+            $publishParams.$_ = $PSBoundParameters.$_
+        }
     }
+
     Publish-Module @publishParams
 }
