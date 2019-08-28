@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.0] - Unreleased
+
+### Changed
+
+- Allow using both `Credential` and `ApiKey` when publishing a module (via [@pauby](https://github.com/pauby))
+
 ## [0.3.1] - 2019-06-09
 
 ### Fixed
