@@ -153,7 +153,9 @@ task Publish -depends Test {
     }
     if ($PSBPreference.Publish.PSRepositoryApiKey) {
         $publishParams.ApiKey = $PSBPreference.Publish.PSRepositoryApiKey
-    } else {
+    }
+
+    if ($PSBPreference.Publish.PSRepositoryCredential) {
         $publishParams.Credential = $PSBPreference.Publish.PSRepositoryCredential
     }
 
