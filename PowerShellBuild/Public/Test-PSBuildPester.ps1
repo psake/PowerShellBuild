@@ -52,10 +52,8 @@ function Test-PSBuildPester {
             Verbose  = $VerbosePreference
         }
         if (-not [string]::IsNullOrEmpty($OutputPath)) {
-            $pesterParams = @{
-                OutputFile   = $OutputPath
-                OutputFormat = $OutputFormat
-            }
+            $pesterParams.OutputFile   = $OutputPath
+            $pesterParams.OutputFormat = $OutputFormat
         }
 
         # To control the Pester code coverage, a boolean $CodeCoverageEnabled is used.
