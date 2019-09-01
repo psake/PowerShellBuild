@@ -5,11 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2019-08-31
 
 ### Changed
 
 - Allow using both `Credential` and `ApiKey` when publishing a module (via [@pauby](https://github.com/pauby))
+
+### Fixed
+
+- Don't overwrite Pester parameters when specifying `OutputPath` or `OutputFormat` (via [@ChrisLGardner](https://github.com/ChrisLGardner))
 
 ## [0.3.1] - 2019-06-09
 
