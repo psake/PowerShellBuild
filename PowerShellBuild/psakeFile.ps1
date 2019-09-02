@@ -25,12 +25,12 @@ task Clean -depends Init {
 
 task StageFiles -depends Clean {
     $buildParams = @{
-        Path               = $PSBPreference.General.SrcRootDir
-        ModuleName         = $PSBPreference.General.ModuleName
-        DestinationPath    = $PSBPreference.Build.ModuleOutDir
-        Exclude            = $PSBPreference.Build.Exclude
-        Compile            = $PSBPreference.Build.CompileModule
-        Culture            = $PSBPreference.Help.DefaultLocale
+        Path                = $PSBPreference.General.SrcRootDir
+        ModuleName          = $PSBPreference.General.ModuleName
+        DestinationPath     = $PSBPreference.Build.ModuleOutDir
+        Exclude             = $PSBPreference.Build.Exclude
+        Compile             = $PSBPreference.Build.CompileModule
+        Culture             = $PSBPreference.Help.DefaultLocale
     }
 
     if ($PSBPreference.Help.ConvertReadMeToAboutHelp) {
@@ -40,6 +40,14 @@ task StageFiles -depends Clean {
             $buildParams.ReadMePath = $readMePath
         }
     }
+
+    # only add these configuration values to the build parameters if they have been been set
+    'CompileHeader', 'CompileFooter', 'CompileScriptHeader', 'CompileScriptFooter' | ForEach-Object {
+        if ($PSBPreference.Build.Keys -contains $_) {
+            $buildParams.$_ = $PSBPreference.Build.$_
+        }
+    }
+
     Build-PSBuildModule @buildParams
 } -description 'Builds module based on source directory'
 

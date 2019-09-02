@@ -13,6 +13,14 @@ function Build-PSBuildModule {
         The name of the module.
     .PARAMETER Compile
         Switch to indicate if separete function files should be concatenated into monolithic .PSM1 file.
+    .PARAMETER CompileHeader
+        String that will be at the top of your PSM1 file.
+    .PARAMETER CompileFooter
+        String that will be added to the bottom of your PSM1 file.
+    .PARAMETER CompileScriptHeader
+        String that will be added to your PSM1 file before each script file.
+    .PARAMETER CompileScriptFooter
+        String that will be added to your PSM1 file beforeafter each script file.
     .PARAMETER ReadMePath
         Path to project README. If present, this will become the "about_<ModuleName>.help.txt" file in the build module.
     .PARAMETER Exclude
@@ -45,6 +53,14 @@ function Build-PSBuildModule {
 
         [switch]$Compile,
 
+        [string]$CompileHeader,
+
+        [string]$CompileFooter,
+
+        [string]$CompileScriptHeader,
+
+        [string]$CompileScriptFooter,
+
         [string]$ReadMePath,
 
         [string[]]$Exclude = @(),
@@ -72,12 +88,30 @@ function Build-PSBuildModule {
     # Copy source files to destination and optionally combine *.ps1 files into the PSM1
     if ($Compile.IsPresent) {
         $rootModule = Join-Path -Path $DestinationPath -ChildPath "$ModuleName.psm1"
+        if ($CompileHeader) {
+            $CompileHeader | Add-Content -Path $rootModule -Encoding utf8
+        }
+
         $allScripts = Get-ChildItem -Path (Join-Path -Path $Path -ChildPath '*.ps1') -Recurse -ErrorAction SilentlyContinue
         $allScripts | ForEach-Object {
             $srcFile = Resolve-Path $_.FullName -Relative
             Write-Verbose "Adding $srcFile to PSM1"
+
+            if ($CompileScriptHeader) {
+                Write-Output $CompileScriptHeader
+            }
+
             Get-Content $srcFile
+
+            if ($CompileScriptFooter) {
+                Write-Output $CompileScriptFooter
+            }
+
         } | Add-Content -Path $rootModule -Encoding utf8
+
+        if ($CompileFooter) {
+            $CompileFooter | Add-Content -Path $rootModule -Encoding utf8
+        }
     } else{
         $copyParams = @{
             Path        = (Join-Path -Path $Path -ChildPath '*')
