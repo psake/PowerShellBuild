@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.0] - Unreleased
+
+### Added
+
+- When "compiling" a monolithic PSM1, add support for both inserting headers/footers for the entire PSM1, and for each script file. Control these via the following new build parameters (via [@pauby](https://github.com/pauby))
+  - `$PSBPreference.Build.CompileHeader`
+  - `$PSBPreference.Build.CompileFooter`
+  - `$PSBPreference.Build.CompileScriptHeader`
+  - `$PSBPreference.Build.CompileScriptFooter`
+
 ## [0.4.0] - 2019-08-31
 
 ### Changed
