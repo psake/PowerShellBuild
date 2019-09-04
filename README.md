@@ -75,7 +75,7 @@ You can override these in either psake or Invoke-Build to match your environment
 | $PSBPreference.General.ModuleManifestPath | $env:BHPSModuleManifest | Path to the module manifest (PSD1)
 | $PSBPreference.Build.OutDir | $projectRoot/Output | Output directory when building the module
 | $PSBPreference.Build.Dependencies | 'StageFiles, 'BuildHelp' | Default task dependencies for the `Build` task
-| $PSBPreference.Build.ModuleOutDir | $outDir/$moduleName/$moduleVersion | Module output directory
+| $PSBPreference.Build.ModuleOutDir | $outDir/$moduleName/$moduleVersion | `For internal use only. Do not overwrite. Use '$PSBPreference.Build.OutDir' to set output directory`
 | $PSBPreference.Build.CompileModule | $false | Controls whether to "compile" module into single PSM1 or not
 | $PSBPreference.Build.CompileHeader | $false | String that appears at the top of your compiled PSM1 file
 | $PSBPreference.Build.CompileFooter | $false | String that appears at the bottom of your compiled PSM1 file

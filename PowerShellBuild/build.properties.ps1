@@ -28,7 +28,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         OutDir = $outDir
 
         # Module output directory
-        ModuleOutDir = "$outDir/$env:BHProjectName/$moduleVersion"
+        # This will be computed in 'Initialize-PSBuild' so we can allow the user to
+        # override the top-level 'OutDir' above and compute the full path to the module internally
+        ModuleOutDir = $null
 
         # Controls whether to "compile" module into single PSM1 or not
         CompileModule = $false

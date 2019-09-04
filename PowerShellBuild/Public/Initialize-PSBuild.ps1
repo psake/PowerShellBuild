@@ -7,7 +7,7 @@ function Initialize-PSBuild {
     .PARAMETER BuildEnvironment
         Contains the PowerShellBuild settings (known as $PSBPreference).
     .PARAMETER UseBuildHelpers
-        Use BuildHelpers module to popular common environment variables based on current build system context.
+        Use BuildHelpers module to populate common environment variables based on current build system context.
     .EXAMPLE
         PS> Initialize-PSBuild -UseBuildHelpers
 
@@ -21,6 +21,12 @@ function Initialize-PSBuild {
 
         [switch]$UseBuildHelpers
     )
+
+    if ([IO.Path]::IsPathFullyQualified($BuildEnvironment.Build.OutDir)) {
+        $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine($BuildEnvironment.Build.OutDir, $env:BHProjectName, $BuildEnvironment.General.ModuleVersion)
+    } else {
+        $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine($env:BHProjectPath, $BuildEnvironment.Build.OutDir, $env:BHProjectName, $BuildEnvironment.General.ModuleVersion)
+    }
 
     $params = @{
         BuildOutput = $BuildEnvironment.Build.ModuleOutDir
@@ -36,7 +42,8 @@ function Initialize-PSBuild {
 
     if ($UseBuildHelpers.IsPresent) {
         $nl = [System.Environment]::NewLine
-        "$nl`Environment variables:"
+
+        Write-Host "$nl`Environment variables:" -ForegroundColor Yellow
         (Get-Item ENV:BH*).Foreach({
             '{0,-20}{1}' -f $_.name, $_.value
         })

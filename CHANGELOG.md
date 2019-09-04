@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `$PSBPreference.Build.CompileScriptHeader`
   - `$PSBPreference.Build.CompileScriptFooter`
 
+### Fixed
+
+- Overriding `$PSBPreference.Build.OutDir` now correctly determines the final module output directory. `$PSBPreference.Build.ModuleOutDir` is now computed internally and **SHOULD NOT BE SET DIRECTLY**. ` $PSBPreference.Build.OutDir` will accept both relative and fully-qualified paths.
+
 ## [0.4.0] - 2019-08-31
 
 ### Changed
