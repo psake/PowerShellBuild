@@ -55,10 +55,11 @@ task Build -depends Init, Clean {
     New-Item -Path $settings.ModuleOutDir -ItemType Directory -Force > $null
     Copy-Item -Path "$($settings.SUT)/*" -Destination $settings.ModuleOutDir -Recurse
 
+    # Commented out rather than removed to allow easy use in future
     #Generate Invoke-Build tasks from Psake tasks
-    $psakePath = join-path $settings.ModuleOutDir 'psakefile.ps1'
-    $ibPath = join-path $settings.ModuleOutDir 'IB.tasks.ps1'
-    & .\Build\Convert-PSAke.ps1 $psakePath | Out-File -Encoding UTF8 $ibPath
+    #$psakePath = join-path $settings.ModuleOutDir 'psakefile.ps1'
+    #$ibPath = join-path $settings.ModuleOutDir 'IB.tasks.ps1'
+    #& .\Build\Convert-PSAke.ps1 $psakePath | Out-File -Encoding UTF8 $ibPath
 }
 
 task Publish -depends Test {
