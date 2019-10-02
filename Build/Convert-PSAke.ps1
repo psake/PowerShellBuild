@@ -30,6 +30,10 @@ function Convert-PsakeStatement ([Language.StatementAst]$statement) {
     $statementText = $statement.extent.text
     $psakeStatement = ($statementText | Select-String '^\w+\b').matches.value
 
+    #Escape out variables in parameters so they get passed through literally
+    #TODO: Do this with AST instead of RegEX
+    $statementText = $statementText -replace '(\$[\.\w]*)',(@("'",'$1',"'") -join $null)
+
     if ($psakeStatement -in $psakeStatements) {
         if (-not (Get-Alias "$psakeStatement" -erroraction SilentlyContinue)) {
             if (get-command "Convert-$psakeStatement" -erroraction SilentlyContinue) {
