@@ -6,7 +6,7 @@ $outputModVerDir    = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleV
 $ibTasksFilePath    = Join-Path -Path $outputModVerDir -ChildPath 'IB.tasks.ps1'
 $psakeFilePath       = Join-Path -Path $outputModVerDir -ChildPath 'psakeFile.ps1'
 
-Describe 'Invoke-Build Conversion' {
+Describe 'Invoke-Build Tasks' {
     $IBTasksResult = $null
     It 'IB.tasks.ps1 exists' {
         Test-Path $IBTasksFilePath | Should Be $true
