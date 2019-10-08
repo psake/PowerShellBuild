@@ -1,17 +1,19 @@
-# properties {
-#     # Disable "compiling" module into monolithinc PSM1.
-#     $PSBPreference.Build.CompileModule = $true
+Import-Module ../../Output/PowerShellBuild -Force
 
-#     # Headers/footers for entire PSM1 and for each inserted function
-#     $PSBPreference.Build.CompileHeader       = "# Module Header"
-#     $PSBPreference.Build.CompileFooter       = '# Module Footer'
-#     $PSBPreference.Build.CompileScriptHeader = '# Function header'
-#     $PSBPreference.Build.CompileScriptFooter = '# Function footer'
+properties {
+    # Disable "compiling" module into monolithinc PSM1.
+    $PSBPreference.Build.CompileModule = $true
 
-#     # Override the default output directory
-#     $PSBPreference.Build.OutDir = 'Output'
-# }
+    # Headers/footers for entire PSM1 and for each inserted function
+    $PSBPreference.Build.CompileHeader       = "# Module Header"
+    $PSBPreference.Build.CompileFooter       = '# Module Footer'
+    $PSBPreference.Build.CompileScriptHeader = '# Function header'
+    $PSBPreference.Build.CompileScriptFooter = '# Function footer'
 
-task default -depends Test
+    # Override the default output directory
+    $PSBPreference.Build.OutDir = 'Output'
+}
 
-task Build -FromModule PowerShellBuild -Version '0.4.0'
+task default -depends Build
+
+task Build -FromModule PowerShellBuild

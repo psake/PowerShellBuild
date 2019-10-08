@@ -11,6 +11,9 @@ param(
     [parameter(ParameterSetName = 'Help')]
     [switch]$Help,
 
+    [ValidateSet('InvokeBuild', 'psake')]
+    [string]$BuildTool = 'psake',
+
     # Optional properties to pass to psake
     [hashtable]$Properties
 )
@@ -32,13 +35,25 @@ if ($Bootstrap.IsPresent) {
     }
 }
 
-# Execute psake task(s)
-$psakeFile = './psakeFile.ps1'
-if ($PSCmdlet.ParameterSetName -eq 'Help') {
-    Get-PSakeScriptTasks -buildFile $psakeFile |
-        Format-Table -Property Name, Description, Alias, DependsOn
+if ($BuildTool -eq 'psake') {
+    if (Get-Module InvokeBuild) {Remove-Module InvokeBuild -Force}
+    # Execute psake task(s)
+    $psakeFile = './psakeFile.ps1'
+    if ($PSCmdlet.ParameterSetName -eq 'Help') {
+        Get-PSakeScriptTasks -buildFile $psakeFile |
+            Format-Table -Property Name, Description, Alias, DependsOn
+    } else {
+        Set-BuildEnvironment -Force
+        Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -properties $Properties
+        exit ([int](-not $psake.build_success))
+    }
 } else {
-    Set-BuildEnvironment -Force
-    Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -properties $Properties
-    exit ([int](-not $psake.build_success))
+    if ($PSCmdlet.ParameterSetName -eq 'Help') {
+        Invoke-Build -File ./.build.ps1 ?
+    } else {
+        # Execute IB task(s)
+        Import-Module InvokeBuild
+        if ($Task -eq 'Default') {$Task = '.'}
+        Invoke-Build -File ./.build.ps1 -Task $Task
+    }
 }

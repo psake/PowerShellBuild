@@ -2,6 +2,9 @@
     PSDependOptions = @{
         Target = 'CurrentUser'
     }
+    'InvokeBuild' = @{
+        Version = '5.5.1'
+    }
     'Pester' = @{
         Version = '4.8.1'
         Parameters = @{
