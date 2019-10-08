@@ -1,0 +1,4 @@
+site_name: mkdocs@testmodule.com
+repo_url: https://github.com/psake/PowerShellBuild
+theme: readthedocs
+
