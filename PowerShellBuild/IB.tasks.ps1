@@ -83,7 +83,7 @@ $pesterPreReqs = {
 }
 
 # Synopsis: Execute Pester tests
-task Pester Build, {
+task Pester Build -If $pesterPreReqs, {
     $pesterParams = @{
         Path                  = $PSBPreference.Test.RootDir
         ModuleName            = $PSBPreference.General.ModuleName
