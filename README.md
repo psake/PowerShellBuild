@@ -77,10 +77,10 @@ You can override these in either psake or Invoke-Build to match your environment
 | $PSBPreference.Build.Dependencies | 'StageFiles, 'BuildHelp' | Default task dependencies for the `Build` task
 | $PSBPreference.Build.ModuleOutDir | $outDir/$moduleName/$moduleVersion | `For internal use only. Do not overwrite. Use '$PSBPreference.Build.OutDir' to set output directory`
 | $PSBPreference.Build.CompileModule | $false | Controls whether to "compile" module into single PSM1 or not
-| $PSBPreference.Build.CompileHeader | $false | String that appears at the top of your compiled PSM1 file
-| $PSBPreference.Build.CompileFooter | $false | String that appears at the bottom of your compiled PSM1 file
-| $PSBPreference.Build.CompileScriptHeader | $false | String that appears in your compiled PSM1 file before each added script
-| $PSBPreference.Build.CompileScriptFooter | $false | String that appears in your compiled PSM1 file after each added script
+| $PSBPreference.Build.CompileHeader | <empty> | String that appears at the top of your compiled PSM1 file
+| $PSBPreference.Build.CompileFooter | <empty> | String that appears at the bottom of your compiled PSM1 file
+| $PSBPreference.Build.CompileScriptHeader | <empty> | String that appears in your compiled PSM1 file before each added script
+| $PSBPreference.Build.CompileScriptFooter | <empty> | String that appears in your compiled PSM1 file after each added script
 | $PSBPreference.Build.Exclude | <empty> | Array of files to exclude when building module
 | $PSBPreference.Test.Enabled | $true | Enable/disable Pester tests
 | $PSBPreference.Test.RootDir | $projectRoot/tests | Directory containing Pester tests
