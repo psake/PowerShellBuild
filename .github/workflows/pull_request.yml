@@ -1,0 +1,16 @@
+on: [pull_request]
+name: PSSA
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run PSSA
+      uses: devblackops/github-action-psscriptanalyzer@master
+      with:
+        repoToken: ${{ secrets.GITHUB_TOKEN }}
+        rootPath: PowerShellBuild
+        sendComment: true
+        failOnErrors: true
+        failOnWarnings: true
+        failOnInfos: false
