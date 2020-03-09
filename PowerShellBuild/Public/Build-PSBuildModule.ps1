@@ -93,6 +93,15 @@ function Build-PSBuildModule {
         }
 
         $allScripts = Get-ChildItem -Path (Join-Path -Path $Path -ChildPath '*.ps1') -Recurse -ErrorAction SilentlyContinue
+        # do this because -Exclude in Get-ChildItem is broken
+        $allScripts = $allScripts | ForEach-Object {
+            ForEach ($regex in $Exclude) {
+                if ($_ -notmatch $regex) {
+                    $_
+                }
+            }
+        }
+
         $allScripts | ForEach-Object {
             $srcFile = Resolve-Path $_.FullName -Relative
             Write-Verbose "Adding $srcFile to PSM1"
