@@ -37,6 +37,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # List of files to exclude from output directory
         Exclude = @()
+
+        # Build output module manifest
+        ModuleOutputManifest = "$outDir/$env:BHProjectName/$moduleVersion/$env:BHProjectName.psd1"
     }
     Test = @{
         # Enable/disable Pester tests

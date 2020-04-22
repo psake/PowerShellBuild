@@ -38,7 +38,9 @@ function Test-PSBuildPester {
 
         [double]$CodeCoverageThreshold,
 
-        [string[]]$CodeCoverageFiles = @()
+        [string[]]$CodeCoverageFiles = @(),
+
+        [string]$ModuleOutputManifest
     )
 
     if (-not (Get-Module -Name Pester)) {
@@ -46,6 +48,11 @@ function Test-PSBuildPester {
     }
 
     try {
+        # Remove any previously imported project modules
+        Get-Module $ModuleName | Remove-Module -Force
+        # Import recently built project module from versioned output dir
+        Import-Module $ModuleOutputManifest -Force
+
         Push-Location -LiteralPath $Path
         $pesterParams = @{
             PassThru = $true
