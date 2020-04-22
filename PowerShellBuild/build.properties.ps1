@@ -37,9 +37,6 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # List of files to exclude from output directory
         Exclude = @()
-
-        # Build output module manifest
-        ModuleOutputManifest = "$outDir/$env:BHProjectName/$moduleVersion/$env:BHProjectName.psd1"
     }
     Test = @{
         # Enable/disable Pester tests
@@ -71,6 +68,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             # Path to the PSScriptAnalyzer settings file.
             SettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
         }
+
+        # Build output module manifest
+        ModuleOutputManifest = "$outDir/$env:BHProjectName/$moduleVersion/$env:BHProjectName.psd1"
 
         CodeCoverage = @{
             # Enable/disable Pester code coverage reporting.
