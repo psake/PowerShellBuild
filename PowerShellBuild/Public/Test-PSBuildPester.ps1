@@ -18,6 +18,8 @@ function Test-PSBuildPester {
         Threshold required to pass code coverage test (.90 = 90%).
     .PARAMETER CodeCoverageFiles
         Array of files to validate code coverage for.
+    .PARAMETER ModuleOutputManifest
+        Path to the module manifest that was built in the output directory. Used to load the project module.
     .EXAMPLE
         PS> Test-PSBuildPester -Path ./tests -ModuleName Mymodule -OutputPath ./out/testResults.xml
 
