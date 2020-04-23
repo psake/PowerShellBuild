@@ -19,7 +19,9 @@ function Test-PSBuildPester {
     .PARAMETER CodeCoverageFiles
         Array of files to validate code coverage for.
     .PARAMETER ModuleOutputManifest
-        Path to the module manifest that was built in the output directory. Used to load the project module.
+        Path to the module manifest that was built in the output directory. Used to import the project module.
+    .PARAMETER ImportModule
+        Import module from provided ModuleOutputManifest path.
     .EXAMPLE
         PS> Test-PSBuildPester -Path ./tests -ModuleName Mymodule -OutputPath ./out/testResults.xml
 
@@ -42,7 +44,9 @@ function Test-PSBuildPester {
 
         [string[]]$CodeCoverageFiles = @(),
 
-        [string]$ModuleOutputManifest
+        [string]$ModuleOutputManifest,
+
+        [switch]$ImportModule
     )
 
     if (-not (Get-Module -Name Pester)) {
@@ -50,10 +54,12 @@ function Test-PSBuildPester {
     }
 
     try {
-        # Remove any previously imported project modules
-        Get-Module $ModuleName | Remove-Module -Force
-        # Import recently built project module from versioned output dir
-        Import-Module $ModuleOutputManifest -Force
+        if ($ImportModule) {
+            # Remove any previously imported project modules
+            Get-Module $ModuleName | Remove-Module -Force
+            # Import recently built project module from versioned output dir
+            Import-Module $ModuleOutputManifest -Force
+        }
 
         Push-Location -LiteralPath $Path
         $pesterParams = @{

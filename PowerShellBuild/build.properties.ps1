@@ -72,6 +72,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Build output module manifest
         ModuleOutputManifest = "$outDir/$env:BHProjectName/$moduleVersion/$env:BHProjectName.psd1"
 
+        # Import module from provided ModuleOutputManifest path.
+        ImportModule = $false
+
         CodeCoverage = @{
             # Enable/disable Pester code coverage reporting.
             Enabled = $false
