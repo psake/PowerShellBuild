@@ -5,16 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.5.1] - 2020-04-22
-
-### Added
-
-- Define `ModuleOutputManifest` in build properties.
-
-### Fixed
-
-- Use `ModuleOutputManifest` build property to load the recently built module before pester tests are executed. This also ensures the tests that are being run are run against the built code vs. whats in development.
-
 ## [0.5.0] - Unreleased
 
 ### Added
@@ -24,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `$PSBPreference.Build.CompileFooter`
   - `$PSBPreference.Build.CompileScriptHeader`
   - `$PSBPreference.Build.CompileScriptFooter`
+
+- Add ability to import project module from output directory prior to executing Pester tests. Toggle this with `$PSBPreference.Test.ImportModule`. Defaults to `false`. (via [@joeypiccola](https://github.com/joeypiccola))
 
 ### Fixed
 
