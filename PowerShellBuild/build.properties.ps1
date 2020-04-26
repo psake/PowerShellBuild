@@ -69,10 +69,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             SettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
         }
 
-        # Build output module manifest
-        ModuleOutputManifest = "$outDir/$env:BHProjectName/$moduleVersion/$env:BHProjectName.psd1"
-
-        # Import module from provided ModuleOutputManifest path.
+        # Import module from OutDir prior to running Pester tests.
         ImportModule = $false
 
         CodeCoverage = @{

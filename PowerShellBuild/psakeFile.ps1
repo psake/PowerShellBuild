@@ -99,7 +99,6 @@ task Pester -depends Build -precondition $pesterPreReqs {
         CodeCoverage          = $PSBPreference.Test.CodeCoverage.Enabled
         CodeCoverageThreshold = $PSBPreference.Test.CodeCoverage.Threshold
         CodeCoverageFiles     = $PSBPreference.Test.CodeCoverage.Files
-        ModuleOutputManifest  = $PSBPreference.Test.ModuleOutputManifest
         ImportModule          = $PSBPreference.Test.ImportModule
     }
     Test-PSBuildPester @pesterParams
