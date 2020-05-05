@@ -10,6 +10,8 @@ properties {
     $PSBPreference.Build.CompileScriptHeader = '# Function header'
     $PSBPreference.Build.CompileScriptFooter = '# Function footer'
 
+    $PSBPreference.Test.ImportModule = $true
+
     # Override the default output directory
     $PSBPreference.Build.OutDir = 'Output'
 }
