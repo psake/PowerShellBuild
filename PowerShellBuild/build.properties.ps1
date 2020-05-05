@@ -69,6 +69,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             SettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
         }
 
+        # Import module from OutDir prior to running Pester tests.
+        ImportModule = $false
+
         CodeCoverage = @{
             # Enable/disable Pester code coverage reporting.
             Enabled = $false

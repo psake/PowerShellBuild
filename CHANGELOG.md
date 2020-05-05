@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `$PSBPreference.Build.CompileScriptHeader`
   - `$PSBPreference.Build.CompileScriptFooter`
 
+- Add ability to import project module from output directory prior to executing Pester tests. Toggle this with `$PSBPreference.Test.ImportModule`. Defaults to `false`. (via [@joeypiccola](https://github.com/joeypiccola))
+
 ### Fixed
 
 - Overriding `$PSBPreference.Build.OutDir` now correctly determines the final module output directory. `$PSBPreference.Build.ModuleOutDir` is now computed internally and **SHOULD NOT BE SET DIRECTLY**. ` $PSBPreference.Build.OutDir` will accept both relative and fully-qualified paths.

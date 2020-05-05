@@ -18,6 +18,8 @@ function Test-PSBuildPester {
         Threshold required to pass code coverage test (.90 = 90%).
     .PARAMETER CodeCoverageFiles
         Array of files to validate code coverage for.
+    .PARAMETER ImportModule
+        Import module from OutDir prior to running Pester tests.
     .EXAMPLE
         PS> Test-PSBuildPester -Path ./tests -ModuleName Mymodule -OutputPath ./out/testResults.xml
 
@@ -38,7 +40,9 @@ function Test-PSBuildPester {
 
         [double]$CodeCoverageThreshold,
 
-        [string[]]$CodeCoverageFiles = @()
+        [string[]]$CodeCoverageFiles = @(),
+
+        [switch]$ImportModule
     )
 
     if (-not (Get-Module -Name Pester)) {
@@ -46,6 +50,14 @@ function Test-PSBuildPester {
     }
 
     try {
+        if ($ImportModule) {
+            $ModuleOutputManifest = Join-Path -Path $env:BHBuildOutput -ChildPath "$($ModuleName).psd1"
+            # Remove any previously imported project modules
+            Get-Module $ModuleName | Remove-Module -Force
+            # Import recently built project module from BHBuildOutput
+            Import-Module $ModuleOutputManifest -Force
+        }
+
         Push-Location -LiteralPath $Path
         $pesterParams = @{
             PassThru = $true
