@@ -13,17 +13,17 @@ task Init {
 task Test -Depends Init, Analyze, Pester -description 'Run test suite'
 
 task Analyze -depends Build {
-    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false
+    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings (Join-Path $env:BHModulePath ScriptAnalyzerSettings.psd1)
     $errors   = $analysis | Where-Object {$_.Severity -eq 'Error'}
     $warnings = $analysis | Where-Object {$_.Severity -eq 'Warning'}
     if (@($errors).Count -gt 0) {
         Write-Error -Message 'One or more Script Analyzer errors were found. Build cannot continue!'
-        $errors | Format-Table
+        $errors | Format-Table -AutoSize
     }
 
     if (@($warnings).Count -gt 0) {
         Write-Warning -Message 'One or more Script Analyzer warnings were found. These should be corrected.'
-        $warnings | Format-Table
+        $warnings | Format-Table -AutoSize
     }
 } -description 'Run PSScriptAnalyzer'
 
