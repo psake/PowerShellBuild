@@ -81,7 +81,7 @@ You can override these in either psake or Invoke-Build to match your environment
 | $PSBPreference.Build.CompileFooter | <empty> | String that appears at the bottom of your compiled PSM1 file
 | $PSBPreference.Build.CompileScriptHeader | <empty> | String that appears in your compiled PSM1 file before each added script
 | $PSBPreference.Build.CompileScriptFooter | <empty> | String that appears in your compiled PSM1 file after each added script
-| $PSBPreference.Build.Exclude | <empty> | Array of files to exclude when building module
+| $PSBPreference.Build.Exclude | <empty> | Array of files to exclude when building module. If `$PSBPreference.Build.CompileModule` is `$true` this will be an array of regular expressions to match fiels to exclude
 | $PSBPreference.Test.Enabled | $true | Enable/disable Pester tests
 | $PSBPreference.Test.RootDir | $projectRoot/tests | Directory containing Pester tests
 | $PSBPreference.Test.OutputFile | $null | Output file path Pester will save test results to
