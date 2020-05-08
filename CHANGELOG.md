@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Overriding `$PSBPreference.Build.OutDir` now correctly determines the final module output directory. `$PSBPreference.Build.ModuleOutDir` is now computed internally and **SHOULD NOT BE SET DIRECTLY**. ` $PSBPreference.Build.OutDir` will accept both relative and fully-qualified paths.
 
+- Before, when `$PSBPreference.Build.CompileModule` was set to `$true`, any files listed in `$PSBPreference.Build.Exclude` weren't being excluded like they should have been. Now, when it is `$true`, files matching regex expressions in `$PSBPreference.Build.Exclude` will be properly excluded (via [@pauby](https://github.com/pauby))
+
 ## [0.4.0] - 2019-08-31
 
 ### Changed
