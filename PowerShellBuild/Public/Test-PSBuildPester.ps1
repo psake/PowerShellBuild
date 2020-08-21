@@ -18,6 +18,10 @@ function Test-PSBuildPester {
         Threshold required to pass code coverage test (.90 = 90%).
     .PARAMETER CodeCoverageFiles
         Array of files to validate code coverage for.
+    .PARAMETER CodeCoverageOutputFile
+        Output path to store Pester code coverage results to..
+    .PARAMETER CodeCoverageOutputFileFormat
+        code coverage result output format (JoCoCo).
     .PARAMETER ImportModule
         Import module from OutDir prior to running Pester tests.
     .EXAMPLE
@@ -41,6 +45,10 @@ function Test-PSBuildPester {
         [double]$CodeCoverageThreshold,
 
         [string[]]$CodeCoverageFiles = @(),
+
+        [string]$CodeCoverageOutputFile,
+
+        [string]$CodeCoverageOutputFileFormat,
 
         [switch]$ImportModule
     )
@@ -71,6 +79,8 @@ function Test-PSBuildPester {
         # To control the Pester code coverage, a boolean $CodeCoverageEnabled is used.
         if ($CodeCoverage.IsPresent) {
             $pesterParams.CodeCoverage = $CodeCoverageFiles
+            $pesterParams.CodeCoverageOutputFile = $CodeCoverageOutputFile
+            $pesterParams.CodeCoverageOutputFileFormat = $CodeCoverageOutputFileFormat
         }
 
         $testResult = Invoke-Pester @pesterParams

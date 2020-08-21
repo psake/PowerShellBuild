@@ -86,6 +86,15 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
                 Join-Path -Path $env:BHPSModulePath -ChildPath '*.ps1'
                 Join-Path -Path $env:BHPSModulePath -ChildPath '*.psm1'
             )
+
+            # Specifies an output file path to send to Invoke-Pester's -CodeCoverageOutputFile parameter.
+            # This is typically used to write out code coverage results so that they can be sent to a CI
+            # system like Azure Devops.
+            OutputFile = $null
+
+            # Specifies the code coverage output format to use when the CodeCoverageOutputFile property is given
+            # a path.  This parameter is passed through to Invoke-Pester's -CodeCoverageOutputFileFormat parameter.
+            OutputFileFormat = $null
         }
     }
     Help  = @{
