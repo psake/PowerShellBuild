@@ -79,14 +79,6 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             # Fail Pester code coverage test if below this threshold
             Threshold = .75
 
-            # CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
-            # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
-            # like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.
-            Files = @(
-                Join-Path -Path $env:BHPSModulePath -ChildPath '*.ps1'
-                Join-Path -Path $env:BHPSModulePath -ChildPath '*.psm1'
-            )
-
             # Specifies an output file path to send to Invoke-Pester's -CodeCoverageOutputFile parameter.
             # This is typically used to write out code coverage results so that they can be sent to a CI
             # system like Azure Devops.
@@ -95,6 +87,14 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             # Specifies the code coverage output format to use when the CodeCoverageOutputFile property is given
             # a path.  This parameter is passed through to Invoke-Pester's -CodeCoverageOutputFileFormat parameter.
             OutputFileFormat = $null
+
+            # CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
+            # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
+            # like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.
+            Files = @(
+                Join-Path -Path $env:BHPSModulePath -ChildPath '*.ps1'
+                Join-Path -Path $env:BHPSModulePath -ChildPath '*.psm1'
+            )
         }
     }
     Help  = @{
