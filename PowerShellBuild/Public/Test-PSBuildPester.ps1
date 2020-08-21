@@ -21,7 +21,7 @@ function Test-PSBuildPester {
     .PARAMETER CodeCoverageOutputFile
         Output path to store Pester code coverage results to..
     .PARAMETER CodeCoverageOutputFileFormat
-        code coverage result output format (JoCoCo).
+        code coverage result output format (JaCoCo).
     .PARAMETER ImportModule
         Import module from OutDir prior to running Pester tests.
     .EXAMPLE
