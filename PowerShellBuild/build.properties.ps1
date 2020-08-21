@@ -86,7 +86,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
             # Specifies the code coverage output format to use when the CodeCoverageOutputFile property is given
             # a path.  This parameter is passed through to Invoke-Pester's -CodeCoverageOutputFileFormat parameter.
-            OutputFileFormat = 'JaCoCo'
+            OutputFileFormat = $null
 
             # CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
             # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
