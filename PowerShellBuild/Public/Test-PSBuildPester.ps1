@@ -79,6 +79,10 @@ function Test-PSBuildPester {
         # To control the Pester code coverage, a boolean $CodeCoverageEnabled is used.
         if ($CodeCoverage.IsPresent) {
             $pesterParams.CodeCoverage = $CodeCoverageFiles
+        }
+
+        # Add Code Coverage OutputFile if specified
+        if (-not [string]::IsNullOrEmpty($CodeCoverageOutputFile)) {
             $pesterParams.CodeCoverageOutputFile = $CodeCoverageOutputFile
             $pesterParams.CodeCoverageOutputFileFormat = $CodeCoverageOutputFileFormat
         }
