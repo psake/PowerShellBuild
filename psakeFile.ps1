@@ -31,7 +31,7 @@ task Pester -depends Build {
     Remove-Module $settings.ProjectName -ErrorAction SilentlyContinue -Verbose:$false
 
     $testResultsXml = Join-Path -Path $settings.OutputDir -ChildPath 'testResults.xml'
-    $testResults = Invoke-Pester -Path $settings.Tests -PassThru -OutputFile $testResultsXml -OutputFormat NUnitXml
+    $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed
 
     # Upload test artifacts to AppVeyor
     if ($env:APPVEYOR_JOB_ID) {

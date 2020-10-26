@@ -4,7 +4,7 @@
     This module helps fix problems, found by Meta.Tests.ps1
 #>
 
-$ErrorActionPreference = 'stop'
+#$ErrorActionPreference = 'stop'
 Set-StrictMode -Version latest
 
 function ConvertTo-UTF8() {

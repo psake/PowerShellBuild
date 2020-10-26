@@ -3,15 +3,15 @@
         Target = 'CurrentUser'
     }
 
-    BuildHelpers     = 'latest'
+    BuildHelpers     = '2.0.15'
     Pester           = @{
-        Version = 'latest'
+        Version = '5.0.2'
         Parameters = @{
             SkipPublisherCheck = $true
         }
     }
-    psake            = 'latest'
-    PSScriptAnalyzer = 'latest'
-    InvokeBuild      = 'latest'
-    platyPS          = 'latest'
+    psake            = '4.9.0'
+    PSScriptAnalyzer = '1.19.0'
+    InvokeBuild      = '5.5.3'
+    platyPS          = '0.14.0'
 }
