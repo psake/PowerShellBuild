@@ -1,7 +1,7 @@
 InModuleScope TestModule {
-    describe 'MyModule' {
-        context 'Private' {
-            it 'Can test a private module' {
+    Describe 'MyModule' {
+        Context 'Private' {
+            It 'Can test a private module' {
                 (GetHelloWorld) | Should -BeExactly 'Hello world'
             }
         }

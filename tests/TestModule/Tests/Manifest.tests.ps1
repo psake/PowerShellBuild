@@ -1,13 +1,17 @@
-
-$moduleName         = $env:BHProjectName
-$manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
-$outputDir          = Join-Path -Path $ENV:BHProjectPath -ChildPath 'Output'
-$outputModDir       = Join-Path -Path $outputDir -ChildPath $env:BHProjectName
-$outputModVerDir    = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleVersion
-$outputManifestPath = Join-Path -Path $outputModVerDir -Child "$($moduleName).psd1"
-$changelogPath      = Join-Path -Path $env:BHProjectPath -Child 'CHANGELOG.md'
-
 Describe 'Module manifest' {
+
+    BeforeAll {
+        Set-BuildEnvironment -Force
+
+        $moduleName         = $env:BHProjectName
+        $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
+        $outputDir          = Join-Path -Path $env:BHProjectPath -ChildPath 'Output'
+        $outputModDir       = Join-Path -Path $outputDir -ChildPath $env:BHProjectName
+        $outputModVerDir    = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleVersion
+        $outputManifestPath = Join-Path -Path $outputModVerDir -Child "$($moduleName).psd1"
+        $changelogPath      = Join-Path -Path $env:BHProjectPath -Child 'CHANGELOG.md'
+    }
+
     Context 'Validation' {
 
         $script:manifest = $null
@@ -15,37 +19,37 @@ Describe 'Module manifest' {
         It 'has a valid manifest' {
             {
                 $script:manifest = Test-ModuleManifest -Path $outputManifestPath -Verbose:$false -ErrorAction Stop -WarningAction SilentlyContinue
-            } | Should Not Throw
+            } | Should -Not -Throw
         }
 
         It 'has a valid name in the manifest' {
-            $script:manifest.Name | Should Be $env:BHProjectName
+            $script:manifest.Name | Should -Be $env:BHProjectName
         }
 
         It 'has a valid root module' {
-            $script:manifest.RootModule | Should Be "$($moduleName).psm1"
+            $script:manifest.RootModule | Should -Be "$($moduleName).psm1"
         }
 
         It 'has a valid version in the manifest' {
-            $script:manifest.Version -as [Version] | Should Not BeNullOrEmpty
+            $script:manifest.Version -as [Version] | Should -Not -BeNullOrEmpty
         }
 
         It 'has a valid description' {
-            $script:manifest.Description | Should Not BeNullOrEmpty
+            $script:manifest.Description | Should -Not -BeNullOrEmpty
         }
 
         It 'has a valid author' {
-            $script:manifest.Author | Should Not BeNullOrEmpty
+            $script:manifest.Author | Should -Not -BeNullOrEmpty
         }
 
         It 'has a valid guid' {
             {
                 [guid]::Parse($script:manifest.Guid)
-            } | Should Not throw
+            } | Should -Not -Throw
         }
 
         It 'has a valid copyright' {
-            $script:manifest.CopyRight | Should Not BeNullOrEmpty
+            $script:manifest.CopyRight | Should -Not -BeNullOrEmpty
         }
 
         $script:changelogVersion = $null
@@ -56,12 +60,12 @@ Describe 'Module manifest' {
                     break
                 }
             }
-            $script:changelogVersion               | Should Not BeNullOrEmpty
-            $script:changelogVersion -as [Version] | Should Not BeNullOrEmpty
+            $script:changelogVersion               | Should -Not -BeNullOrEmpty
+            $script:changelogVersion -as [Version] | Should -Not -BeNullOrEmpty
         }
 
         It 'changelog and manifest versions are the same' {
-            $script:changelogVersion -as [Version] | Should be ( $script:manifest.Version -as [Version] )
+            $script:changelogVersion -as [Version] | Should -Be ($script:manifest.Version -as [Version])
         }
 
         if (Get-Command git.exe -ErrorAction SilentlyContinue) {
@@ -73,13 +77,12 @@ Describe 'Module manifest' {
                     $script:tagVersion = $matches[1]
                 }
 
-                $script:tagVersion               | Should Not BeNullOrEmpty
-                $script:tagVersion -as [Version] | Should Not BeNullOrEmpty
+                $script:tagVersion               | Should -Not -BeNullOrEmpty
+                $script:tagVersion -as [Version] | Should -Not -BeNullOrEmpty
             }
 
             It 'all versions are the same' {
-                $script:changelogVersion -as [Version] | Should be ( $script:manifest.Version -as [Version] )
-                #$script:manifest.Version -as [Version] | Should be ( $script:tagVersion -as [Version] )
+                $script:changelogVersion -as [Version] | Should -Be ( $script:manifest.Version -as [Version] )
             }
         }
     }
