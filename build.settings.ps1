@@ -1,13 +1,13 @@
 $projectRoot    = if ($ENV:BHProjectPath) { $ENV:BHProjectPath } else { $PSScriptRoot }
 $moduleName     = $env:BHProjectName
 $moduleVersion  = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).ModuleVersion
-$outDir         = Join-Path -Path $projectRoot -ChildPath Output
+$outDir         = [IO.Path]::Combine($projectRoot, 'Output')
 $moduleOutDir   = "$outDir/$moduleName/$moduleVersion"
 @{
     ProjectRoot     = $projectRoot
     ProjectName     = $env:BHProjectName
     SUT             = $env:BHModulePath
-    Tests           = Get-ChildItem -Path (Join-Path -Path $projectRoot -ChildPath tests) -Filter '*.tests.ps1'
+    Tests           = Get-ChildItem -Path ([IO.Path]::Combine($projectRoot, 'tests')) -Filter '*.tests.ps1'
     OutputDir       = $outDir
     ModuleOutDir    = $moduleOutDir
     ManifestPath    = $env:BHPSModuleManifest

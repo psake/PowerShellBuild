@@ -51,10 +51,9 @@ function Test-PSBuildPester {
 
     try {
         if ($ImportModule) {
-            $ModuleOutputManifest = Join-Path -Path $env:BHBuildOutput -ChildPath "$($ModuleName).psd1"
-            # Remove any previously imported project modules
+            # Remove any previously imported project modules and import from the output dir
+            $ModuleOutputManifest = [IO.Path]::Combine($env:BHBuildOutput, "$($ModuleName).psd1")
             Get-Module $ModuleName | Remove-Module -Force
-            # Import recently built project module from BHBuildOutput
             Import-Module $ModuleOutputManifest -Force
         }
 

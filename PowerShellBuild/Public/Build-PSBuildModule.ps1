@@ -77,8 +77,8 @@ function Build-PSBuildModule {
 
     # Copy README as about_<modulename>.help.txt
     if (-not [string]::IsNullOrEmpty($ReadMePath)) {
-        $culturePath = Join-Path -Path $DestinationPath -ChildPath $Culture
-        $aboutModulePath = Join-Path -Path $culturePath -ChildPath "about_$($ModuleName).help.txt"
+        $culturePath     = [IO.Path]::Combine($DestinationPath, $Culture)
+        $aboutModulePath = [IO.Path]::Combine($culturePath, "about_$($ModuleName).help.txt")
         if(-not (Test-Path $culturePath -PathType Container)) {
             New-Item $culturePath -Type Directory -Force > $null
             Copy-Item -LiteralPath $ReadMePath -Destination $aboutModulePath -Force
@@ -87,7 +87,7 @@ function Build-PSBuildModule {
 
     # Copy source files to destination and optionally combine *.ps1 files into the PSM1
     if ($Compile.IsPresent) {
-        $rootModule = Join-Path -Path $DestinationPath -ChildPath "$ModuleName.psm1"
+        $rootModule = [IO.Path]::Combine($DestinationPath, "$ModuleName.psm1")
         if ($CompileHeader) {
             $CompileHeader | Add-Content -Path $rootModule -Encoding utf8
         }
@@ -123,7 +123,7 @@ function Build-PSBuildModule {
         }
     } else{
         $copyParams = @{
-            Path        = (Join-Path -Path $Path -ChildPath '*')
+            Path        = [IO.Path]::Combine($Path, '*')
             Destination = $DestinationPath
             Recurse     = $true
             Exclude     = $Exclude
@@ -136,7 +136,7 @@ function Build-PSBuildModule {
     # Export public functions in manifest if there are any public functions
     $publicFunctions = Get-ChildItem $Path/Public/*.ps1 -Recurse -ErrorAction SilentlyContinue
     if ($publicFunctions) {
-        $outputManifest = Join-Path -Path $DestinationPath -ChildPath "$ModuleName.psd1"
+        $outputManifest = [IO.Path]::Combine($DestinationPath, "$ModuleName.psd1")
         Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $publicFunctions.BaseName
     }
 }

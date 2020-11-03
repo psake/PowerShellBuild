@@ -1,7 +1,7 @@
 
 # Load in build settings
 Remove-Variable -Name PSBPreference -Scope Script -Force -ErrorAction Ignore
-Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. (Join-Path -Path $PSScriptRoot -ChildPath build.properties.ps1))
+Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. ([IO.Path]::Combine($PSScriptRoot, 'build.properties.ps1')))
 
 properties {}
 

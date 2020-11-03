@@ -54,7 +54,7 @@ function Build-PSBuildMarkdown {
         $newMDParams = @{
             Module         = $ModuleName
             Locale         = $Locale
-            OutputFolder   = (Join-Path $DocsPath $Locale)
+            OutputFolder   = [IO.Path]::Combine($DocsPath, $Locale)
             ErrorAction    = 'SilentlyContinue'
             Verbose        = $VerbosePreference
         }

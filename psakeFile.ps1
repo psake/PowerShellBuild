@@ -1,5 +1,5 @@
 properties {
-    $settings = . (Join-Path -path $PSScriptRoot -ChildPath build.settings.ps1)
+    $settings = . ([IO.Path]::Combine($PSScriptRoot, 'build.settings.ps1'))
 }
 
 task default -depends Test
@@ -13,7 +13,7 @@ task Init {
 task Test -Depends Init, Analyze, Pester -description 'Run test suite'
 
 task Analyze -depends Build {
-    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings (Join-Path $env:BHModulePath ScriptAnalyzerSettings.psd1)
+    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings ([IO.Path]::Combine($env:BHModulePath, 'ScriptAnalyzerSettings.psd1'))
     $errors   = $analysis | Where-Object {$_.Severity -eq 'Error'}
     $warnings = $analysis | Where-Object {$_.Severity -eq 'Warning'}
     if (@($errors).Count -gt 0) {
@@ -30,7 +30,7 @@ task Analyze -depends Build {
 task Pester -depends Build {
     Remove-Module $settings.ProjectName -ErrorAction SilentlyContinue -Verbose:$false
 
-    $testResultsXml = Join-Path -Path $settings.OutputDir -ChildPath 'testResults.xml'
+    $testResultsXml = [IO.Path]::Combine($settings.OutputDir, 'testResults.xml')
     $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed
 
     # Upload test artifacts to AppVeyor
@@ -56,10 +56,10 @@ task Build -depends Init, Clean {
     Copy-Item -Path "$($settings.SUT)/*" -Destination $settings.ModuleOutDir -Recurse
 
     # Commented out rather than removed to allow easy use in future
-    #Generate Invoke-Build tasks from Psake tasks
-    #$psakePath = join-path $settings.ModuleOutDir 'psakefile.ps1'
-    #$ibPath = join-path $settings.ModuleOutDir 'IB.tasks.ps1'
-    #& .\Build\Convert-PSAke.ps1 $psakePath | Out-File -Encoding UTF8 $ibPath
+    # Generate Invoke-Build tasks from Psake tasks
+    # $psakePath = [IO.Path]::Combine($settings.ModuleOutDir, 'psakefile.ps1')
+    # $ibPath    = [IO.Path]::Combine($settings.ModuleOutDir, 'IB.tasks.ps1')
+    # & .\Build\Convert-PSAke.ps1 $psakePath | Out-File -Encoding UTF8 $ibPath
 }
 
 task Publish -depends Test {

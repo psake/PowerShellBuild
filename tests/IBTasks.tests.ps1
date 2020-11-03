@@ -3,11 +3,11 @@
 Describe 'Invoke-Build Tasks' {
     BeforeAll {
         $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
-        $outputDir          = Join-Path -Path $ENV:BHProjectPath -ChildPath 'Output'
-        $outputModDir       = Join-Path -Path $outputDir -ChildPath $env:BHProjectName
-        $outputModVerDir    = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleVersion
-        $ibTasksFilePath    = Join-Path -Path $outputModVerDir -ChildPath 'IB.tasks.ps1'
-        $psakeFilePath      = Join-Path -Path $outputModVerDir -ChildPath 'psakeFile.ps1'
+        $outputDir          = [IO.Path]::Combine($ENV:BHProjectPath, 'Output')
+        $outputModDir       = [IO.Path]::Combine($outputDir, $env:BHProjectName)
+        $outputModVerDir    = [IO.Path]::Combine($outputModDir, $manifest.ModuleVersion)
+        $ibTasksFilePath    = [IO.Path]::Combine($outputModVerDir, 'IB.tasks.ps1')
+        $psakeFilePath      = [IO.Path]::Combine($outputModVerDir, 'psakeFile.ps1')
     }
 
     $IBTasksResult = $null

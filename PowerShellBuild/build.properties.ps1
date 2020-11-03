@@ -1,6 +1,6 @@
 BuildHelpers\Set-BuildEnvironment -Force
 
-$outDir        = Join-Path -Path $env:BHProjectPath -ChildPath Output
+$outDir        = [IO.Path]::Combine($env:BHProjectPath, 'Output')
 $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).ModuleVersion
 
 [ordered]@{
@@ -43,7 +43,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         Enabled = $true
 
         # Directory containing Pester tests
-        RootDir = Join-Path -Path $env:BHProjectPath -ChildPath tests
+        RootDir = [IO.Path]::Combine($env:BHProjectPath, 'tests')
 
         # Specifies an output file path to send to Invoke-Pester's -OutputFile parameter.
         # This is typically used to write out test results so that they can be sent to a CI
@@ -66,7 +66,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             FailBuildOnSeverityLevel = 'Error'
 
             # Path to the PSScriptAnalyzer settings file.
-            SettingsPath = Join-Path $PSScriptRoot -ChildPath ScriptAnalyzerSettings.psd1
+            SettingsPath = [IO.Path]::Combine($PSScriptRoot, 'ScriptAnalyzerSettings.psd1')
         }
 
         # Import module from OutDir prior to running Pester tests.
@@ -83,14 +83,14 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
             # like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.
             Files = @(
-                Join-Path -Path $env:BHPSModulePath -ChildPath '*.ps1'
-                Join-Path -Path $env:BHPSModulePath -ChildPath '*.psm1'
+                [IO.Path]::Combine($env:BHPSModulePath, '*.ps1')
+                [IO.Path]::Combine($env:BHPSModulePath, '*.psm1')
             )
         }
     }
     Help  = @{
         # Path to updateable help CAB
-        UpdatableHelpOutDir = Join-Path -Path $outDir -ChildPath 'UpdatableHelp'
+        UpdatableHelpOutDir = [IO.Path]::Combine($outDir, 'UpdatableHelp')
 
         # Default Locale used for help generation, defaults to en-US
         DefaultLocale = (Get-UICulture).Name
@@ -100,7 +100,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
     }
     Docs = @{
         # Directory PlatyPS markdown documentation will be saved to
-        RootDir = Join-Path -Path $env:BHProjectPath -ChildPath 'docs'
+        RootDir = [IO.Path]::Combine($env:BHProjectPath, 'docs')
     }
     Publish = @{
         # PowerShell repository name to publish modules to

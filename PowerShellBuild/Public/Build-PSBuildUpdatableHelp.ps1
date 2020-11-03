@@ -41,7 +41,7 @@ function Build-PSBuildUpdatableHelp {
     # file in the metadata.
     foreach ($locale in $helpLocales) {
         $cabParams = @{
-            CabFilesFolder  = Join-Path $moduleOutDir $locale
+            CabFilesFolder  = [IO.Path]::Combine($moduleOutDir, $locale)
             LandingPagePath = "$DocsPath/$locale/$ModuleName.md"
             OutputFolder    = $OutputPath
             Verbose         = $VerbosePreference

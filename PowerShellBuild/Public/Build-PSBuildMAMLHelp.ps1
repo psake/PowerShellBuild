@@ -28,8 +28,8 @@ function Build-PSBuildMAMLHelp {
     # Generate the module's primary MAML help file
     foreach ($locale in $helpLocales) {
         $externalHelpParams = @{
-            Path        = Join-Path $Path $locale
-            OutputPath  = Join-Path $DestinationPath $locale
+            Path        = [IO.Path]::Combine($Path, $locale)
+            OutputPath  = [IO.Path]::Combine($DestinationPath, $locale)
             Force       = $true
             ErrorAction = 'SilentlyContinue'
             Verbose     = $VerbosePreference
