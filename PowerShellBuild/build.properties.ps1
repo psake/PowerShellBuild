@@ -93,7 +93,8 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         UpdatableHelpOutDir = [IO.Path]::Combine($outDir, 'UpdatableHelp')
 
         # Default Locale used for help generation, defaults to en-US
-        DefaultLocale = (Get-UICulture).Name
+        # Get-UICulture doesn't return a name on Linux so default to en-US
+        DefaultLocale = if ($IsLinux) { 'en-US' } else { (Get-UICulture).Name }
 
         # Convert project readme into the module about file
         ConvertReadMeToAboutHelp = $false
