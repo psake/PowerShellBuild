@@ -5,11 +5,11 @@ Describe 'Module manifest' {
 
         $moduleName         = $env:BHProjectName
         $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
-        $outputDir          = Join-Path -Path $env:BHProjectPath -ChildPath 'Output'
-        $outputModDir       = Join-Path -Path $outputDir -ChildPath $env:BHProjectName
-        $outputModVerDir    = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleVersion
-        $outputManifestPath = Join-Path -Path $outputModVerDir -Child "$($moduleName).psd1"
-        $changelogPath      = Join-Path -Path $env:BHProjectPath -Child 'CHANGELOG.md'
+        $outputDir          = [IO.Path]::Combine($env:BHProjectPath, 'Output')
+        $outputModDir       = [IO.Path]::Combine($outputDir, $env:BHProjectName)
+        $outputModVerDir    = [IO.Path]::Combine($outputModDir, $manifest.ModuleVersion)
+        $outputManifestPath = [IO.Path]::Combine($outputModVerDir, "$($moduleName).psd1")
+        $changelogPath      = [IO.Path]::Combine($env:BHProjectPath, 'CHANGELOG.md')
     }
 
     Context 'Validation' {
