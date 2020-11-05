@@ -1,6 +1,7 @@
 # Dot source public functions
-$public  = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public/*.ps1')  -Recurse -ErrorAction Stop)
-foreach ($import in $public) {
+$private = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Private/*.ps1')) -Recurse)
+$public  = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Public/*.ps1')) -Recurse)
+foreach ($import in $public + $private) {
     try {
         . $import.FullName
     } catch {

@@ -35,7 +35,13 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Controls whether to "compile" module into single PSM1 or not
         CompileModule = $false
 
-        # List of files to exclude from output directory
+        # List of directories that if CompileModule is $true, will be concatenated into the PSM1
+        CompileDirectories = @('Enum', 'Classes', 'Private', 'Public')
+
+        # List of directories that will always be copied "as is" to output directory
+        CopyDirectories = @()
+
+        # List of files (regular expressions) to exclude from output directory
         Exclude = @()
     }
     Test = @{

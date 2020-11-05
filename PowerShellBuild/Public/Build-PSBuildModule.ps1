@@ -23,8 +23,12 @@ function Build-PSBuildModule {
         String that will be added to your PSM1 file beforeafter each script file.
     .PARAMETER ReadMePath
         Path to project README. If present, this will become the "about_<ModuleName>.help.txt" file in the build module.
+    .PARAMETER CompileDirectories
+        List of directories containing .ps1 files that will also be compiled into the PSM1.
+    .PARAMETER CopyDirectories
+        List of directories that will copying "as-is" into the build module.
     .PARAMETER Exclude
-        Array of files to exclude from copying into built module.
+        Array of files (regular expressions) to exclude from copying into built module.
     .PARAMETER Culture
         UI Culture. This is used to determine what culture directory to store "about_<ModuleName>.help.txt" in.
     .EXAMPLE
@@ -63,6 +67,10 @@ function Build-PSBuildModule {
 
         [string]$ReadMePath,
 
+        [string[]]$CompileDirectories = @(),
+
+        [string[]]$CopyDirectories = @(),
+
         [string[]]$Exclude = @(),
 
         [string]$Culture = (Get-UICulture).Name
@@ -74,6 +82,10 @@ function Build-PSBuildModule {
 
     # Copy "non-processed files"
     Get-ChildItem -Path $Path -Include '*.psm1', '*.psd1', '*.ps1xml' -Depth 1 | Copy-Item -Destination $DestinationPath -Force
+    foreach ($dir in $CopyDirectories) {
+        $copyPath = [IO.Path]::Combine($Path, $dir)
+        Copy-Item -Path $copyPath -Destination $DestinationPath -Recurse -Force
+    }
 
     # Copy README as about_<modulename>.help.txt
     if (-not [string]::IsNullOrEmpty($ReadMePath)) {
@@ -88,23 +100,26 @@ function Build-PSBuildModule {
     # Copy source files to destination and optionally combine *.ps1 files into the PSM1
     if ($Compile.IsPresent) {
         $rootModule = [IO.Path]::Combine($DestinationPath, "$ModuleName.psm1")
+
+        # Grab the contents of the copied over PSM1
+        # This will be appended to the end of the finished PSM1
+        $psm1Contents = Get-Content -Path $rootModule -Raw
+        '' | Out-File -FilePath $rootModule
+
         if ($CompileHeader) {
             $CompileHeader | Add-Content -Path $rootModule -Encoding utf8
         }
 
-        $allScripts = Get-ChildItem -Path (Join-Path -Path $Path -ChildPath '*.ps1') -Recurse -ErrorAction SilentlyContinue
-        # do this because -Exclude in Get-ChildItem is broken
-        $allScripts = $allScripts | ForEach-Object {
-            ForEach ($regex in $Exclude) {
-                if ($_ -notmatch $regex) {
-                    $_
-                }
-            }
+        $resolvedCompileDirectories = $CompileDirectories | ForEach-Object {
+            [IO.Path]::Combine($Path, $_)
         }
+        $allScripts = Get-ChildItem -Path $resolvedCompileDirectories -Filter '*.ps1' -File -Recurse -ErrorAction SilentlyContinue
+
+        $allScripts = $allScripts | Remove-ExcludedItem -Exclude $Exclude
 
         $allScripts | ForEach-Object {
             $srcFile = Resolve-Path $_.FullName -Relative
-            Write-Verbose "Adding $srcFile to PSM1"
+            Write-Verbose "Adding [$srcFile] to PSM1"
 
             if ($CompileScriptHeader) {
                 Write-Output $CompileScriptHeader
@@ -118,19 +133,31 @@ function Build-PSBuildModule {
 
         } | Add-Content -Path $rootModule -Encoding utf8
 
+        $psm1Contents | Add-Content -Path $rootModule -Encoding utf8
+
         if ($CompileFooter) {
             $CompileFooter | Add-Content -Path $rootModule -Encoding utf8
         }
     } else{
+        # Copy everything over, then remove stuff that should have been excluded
+        # It's just easier this way
         $copyParams = @{
             Path        = [IO.Path]::Combine($Path, '*')
             Destination = $DestinationPath
             Recurse     = $true
-            Exclude     = $Exclude
             Force       = $true
             Verbose     = $VerbosePreference
         }
         Copy-Item @copyParams
+        $allItems = Get-ChildItem -Path $DestinationPath -Recurse
+        $toRemove = foreach ($item in $allItems) {
+            foreach ($regex in $Exclude) {
+                if ($item -match $regex) {
+                    $item
+                }
+            }
+        }
+        $toRemove | Remove-Item -Recurse -Force -ErrorAction Ignore
     }
 
     # Export public functions in manifest if there are any public functions

@@ -30,6 +30,8 @@ task StageFiles -depends Clean {
         DestinationPath     = $PSBPreference.Build.ModuleOutDir
         Exclude             = $PSBPreference.Build.Exclude
         Compile             = $PSBPreference.Build.CompileModule
+        CompileDirectories  = $PSBPreference.Build.CompileDirectories
+        CopyDirectories     = $PSBPreference.Build.CopyDirectories
         Culture             = $PSBPreference.Help.DefaultLocale
     }
 

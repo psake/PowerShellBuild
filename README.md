@@ -68,38 +68,40 @@ You can override these in either psake or Invoke-Build to match your environment
 
 | Setting | Default value | Description |
 |---------|---------------|-------------|
-| $PSBPreference.General.ProjectRoot | $env:BHProjectPath | Root directory for the project
-| $PSBPreference.General.SrcRootDir | $env:BHPSModulePath | Root directory for the module
-| $PSBPreference.General.ModuleName | $env:BHProjectName | The name of the module. This should match the basename of the PSD1 file
-| $PSBPreference.General.ModuleVersion | \<computed> | The version of the module
-| $PSBPreference.General.ModuleManifestPath | $env:BHPSModuleManifest | Path to the module manifest (PSD1)
-| $PSBPreference.Build.OutDir | $projectRoot/Output | Output directory when building the module
+| $PSBPreference.General.ProjectRoot | `$env:BHProjectPath` | Root directory for the project
+| $PSBPreference.General.SrcRootDir | `$env:BHPSModulePath` | Root directory for the module
+| $PSBPreference.General.ModuleName | `$env:BHProjectName` | The name of the module. This should match the basename of the PSD1 file
+| $PSBPreference.General.ModuleVersion | `\<computed>` | The version of the module
+| $PSBPreference.General.ModuleManifestPath | `$env:BHPSModuleManifest` | Path to the module manifest (PSD1)
+| $PSBPreference.Build.OutDir | `$projectRoot/Output` | Output directory when building the module
 | $PSBPreference.Build.Dependencies | 'StageFiles, 'BuildHelp' | Default task dependencies for the `Build` task
-| $PSBPreference.Build.ModuleOutDir | $outDir/$moduleName/$moduleVersion | `For internal use only. Do not overwrite. Use '$PSBPreference.Build.OutDir' to set output directory`
-| $PSBPreference.Build.CompileModule | $false | Controls whether to "compile" module into single PSM1 or not
-| $PSBPreference.Build.CompileHeader | <empty> | String that appears at the top of your compiled PSM1 file
-| $PSBPreference.Build.CompileFooter | <empty> | String that appears at the bottom of your compiled PSM1 file
-| $PSBPreference.Build.CompileScriptHeader | <empty> | String that appears in your compiled PSM1 file before each added script
-| $PSBPreference.Build.CompileScriptFooter | <empty> | String that appears in your compiled PSM1 file after each added script
-| $PSBPreference.Build.Exclude | <empty> | Array of files to exclude when building module. If `$PSBPreference.Build.CompileModule` is `$true` this will be an array of regular expressions to match fiels to exclude
-| $PSBPreference.Test.Enabled | $true | Enable/disable Pester tests
-| $PSBPreference.Test.RootDir | $projectRoot/tests | Directory containing Pester tests
-| $PSBPreference.Test.OutputFile | $null | Output file path Pester will save test results to
-| $PSBPreference.Test.OutputFormat | NUnitXml | Test output format to use when saving Pester test results
-| $PSBPreference.Test.ScriptAnalysis.Enabled | $true | Enable/disable use of PSScriptAnalyzer to perform script analysis
-| $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel | Error | PSScriptAnalyzer threshold to fail the build on
-| $PSBPreference.Test.ScriptAnalysis.SettingsPath | ./ScriptAnalyzerSettings.psd1 | Path to the PSScriptAnalyzer settings file
-| $PSBPreference.Test.CodeCoverage.Enabled | $false | Enable/disable Pester code coverage reporting
-| $PSBPreference.Test.CodeCoverage.Threshold | .75 | Fail Pester code coverage test if below this threshold
-| $PSBPreference.Test.CodeCoverage.Files | *.ps1, *.psm1 | Files to perform code coverage analysis on
-| $PSBPreference.Test.ImportModule | $false | Import module from output directory prior to running Pester tests
-| $PSBPreference.Help.UpdatableHelpOutDir | $OutDir/UpdatableHelp | Output directory to store update module help (CAB)
-| $PSBPreference.Help.DefaultLocale | (Get-UICulture).Name | Default locale used for help generation
-| $PSBPreference.Help.ConvertReadMeToAboutHelp | $false | Convert project readme into the module about file
-| $PSBPreference.Docs.RootDir | $projectRoot/docs | Directory PlatyPS markdown documentation will be saved to
-| $PSBPreference.Publish.PSRepository | PSGallery | PowerShell repository name to publish
-| $PSBPreference.Publish.PSRepositoryApiKey | $env:PSGALLERY_API_KEY | API key to authenticate to PowerShell repository with
-| $PSBPreference.Publish.PSRepositoryCredential | $null | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined
+| $PSBPreference.Build.ModuleOutDir | `$outDir/$moduleName/$moduleVersion` | `For internal use only. Do not overwrite. Use '$PSBPreference.Build.OutDir' to set output directory`
+| $PSBPreference.Build.CompileModule | `$false` | Controls whether to "compile" module into single PSM1 or not
+| $PSBPreference.Build.CompileDirectories | `@('Enum', 'Classes', 'Private', 'Public')` | List of directories to "compile" into monolithic PSM1. Only valid when `$PSBPreference.Build.CompileModule` is `$true`.
+| $PSBPreference.Build.CopyDirectories | `@()` | List of directories to copy "as-is" to built module
+| $PSBPreference.Build.CompileHeader | `<empty>` | String that appears at the top of your compiled PSM1 file
+| $PSBPreference.Build.CompileFooter | `<empty>` | String that appears at the bottom of your compiled PSM1 file
+| $PSBPreference.Build.CompileScriptHeader | `<empty>` | String that appears in your compiled PSM1 file before each added script
+| $PSBPreference.Build.CompileScriptFooter | `<empty>` | String that appears in your compiled PSM1 file after each added script
+| $PSBPreference.Build.Exclude | `<empty>` | Array of files (regular expressions) to exclude when building module
+| $PSBPreference.Test.Enabled | `$true` | Enable/disable Pester tests
+| $PSBPreference.Test.RootDir | `$projectRoot/tests` | Directory containing Pester tests
+| $PSBPreference.Test.OutputFile | `$null` | Output file path Pester will save test results to
+| $PSBPreference.Test.OutputFormat | `NUnitXml` | Test output format to use when saving Pester test results
+| $PSBPreference.Test.ScriptAnalysis.Enabled | `$true` | Enable/disable use of PSScriptAnalyzer to perform script analysis
+| $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel | `Error` | PSScriptAnalyzer threshold to fail the build on
+| $PSBPreference.Test.ScriptAnalysis.SettingsPath | `./ScriptAnalyzerSettings.psd1` | Path to the PSScriptAnalyzer settings file
+| $PSBPreference.Test.CodeCoverage.Enabled | `$false` | Enable/disable Pester code coverage reporting
+| $PSBPreference.Test.CodeCoverage.Threshold | `.75` | Fail Pester code coverage test if below this threshold
+| $PSBPreference.Test.CodeCoverage.Files | `*.ps1, *.psm1` | Files to perform code coverage analysis on
+| $PSBPreference.Test.ImportModule | `$false` | Import module from output directory prior to running Pester tests
+| $PSBPreference.Help.UpdatableHelpOutDir | `$OutDir/UpdatableHelp` | Output directory to store update module help (CAB)
+| $PSBPreference.Help.DefaultLocale | `(Get-UICulture).Name` | Default locale used for help generation
+| $PSBPreference.Help.ConvertReadMeToAboutHelp | `$false` | Convert project readme into the module about file
+| $PSBPreference.Docs.RootDir | `$projectRoot/docs` | Directory PlatyPS markdown documentation will be saved to
+| $PSBPreference.Publish.PSRepository | `PSGallery` | PowerShell repository name to publish
+| $PSBPreference.Publish.PSRepositoryApiKey | `$env:PSGALLERY_API_KEY` | API key to authenticate to PowerShell repository with
+| $PSBPreference.Publish.PSRepositoryCredential | `$null` | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined
 
 ## Examples
 
