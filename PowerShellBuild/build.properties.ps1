@@ -87,11 +87,8 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
             # CodeCoverageFiles specifies the files to perform code coverage analysis on. This property
             # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
-            # like the ones found here: https://github.com/pester/Pester/wiki/Code-Coverage.
-            Files = @(
-                [IO.Path]::Combine($env:BHPSModulePath, '*.ps1')
-                [IO.Path]::Combine($env:BHPSModulePath, '*.psm1')
-            )
+            # like the ones found here: https://pester.dev/docs/usage/code-coverage.
+            Files = @()
         }
     }
     Help  = @{

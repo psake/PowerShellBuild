@@ -1,7 +1,3 @@
-param(
-    [hashtable]$PSBPreference
-)
-
 describe 'Build' {
 
     BeforeAll {

@@ -1,4 +1,4 @@
 # Don't check in the MyOutput dir
 docs/
 Output/
-coverage.xml
+Tests/*.xml
