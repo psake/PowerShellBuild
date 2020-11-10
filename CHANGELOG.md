@@ -15,7 +15,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `$PSBPreference.Build.CompileScriptHeader`
   - `$PSBPreference.Build.CompileScriptFooter`
 
-- Add ability to import project module from output directory prior to executing Pester tests. Toggle this with `$PSBPreference.Test.ImportModule`. Defaults to `false`. (via [@joeypiccola](https://github.com/joeypiccola))
+- Add ability to import project module from output directory prior to executing Pester tests. Toggle this with `$PSBPreference.Test.ImportModule`. Defaults to `$false`. (via [@joeypiccola](https://github.com/joeypiccola))
+
+- Use `$PSBPreference.Build.CompileDirectories` to control directories who's contents will be concatenated into the PSM1 when `$PSBPreference.Build.CompileModule` is `$true`. Defaults to `@('Enum', 'Classes', 'Private', 'Public')`.
+- Use `$PSBPreference.Build.CopyDirectories` to control directories that will be copied "as is" into the built module. Default is an empty array.
+
+### Changed
+
+- `$PSBPreference.Build.Exclude` now should be a list of regex expressions when `$PSBPreference.Build.CompileModule` is `$false` (default).
+
+- Use Pester v5
 
 ### Fixed
 
