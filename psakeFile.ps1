@@ -33,12 +33,6 @@ task Pester -depends Build {
     $testResultsXml = [IO.Path]::Combine($settings.OutputDir, 'testResults.xml')
     $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed
 
-    # Upload test artifacts to AppVeyor
-    if ($env:APPVEYOR_JOB_ID) {
-        $wc = New-Object 'System.Net.WebClient'
-        $wc.UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $testResultsXml)
-    }
-
     if ($testResults.FailedCount -gt 0) {
         $testResults | Format-List
         Write-Error -Message 'One or more Pester tests failed. Build cannot continue!'
