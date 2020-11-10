@@ -31,7 +31,7 @@ task Pester -depends Build {
     Remove-Module $settings.ProjectName -ErrorAction SilentlyContinue -Verbose:$false
 
     $testResultsXml = [IO.Path]::Combine($settings.OutputDir, 'testResults.xml')
-    $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed
+    $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed -PassThru
 
     if ($testResults.FailedCount -gt 0) {
         $testResults | Format-List
