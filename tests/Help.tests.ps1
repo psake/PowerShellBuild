@@ -1,6 +1,13 @@
 # Taken with love from @juneb_get_help (https://raw.githubusercontent.com/juneb/PesterTDD/master/Module.Help.Tests.ps1)
 
 Describe 'Help' {
+    $moduleName         = $env:BHProjectName
+    $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
+    $outputDir          = [IO.Path]::Combine($env:BHProjectPath, 'Output')
+    $outputModDir       = [IO.Path]::Combine($outputDir, $env:BHProjectName)
+    $outputModVerDir    = [IO.Path]::Combine($outputModDir, $manifest.ModuleVersion)
+    $outputManifestPath = [IO.Path]::Combine($outputModVerDir, "$($moduleName).psd1")
+    Import-Module $outputManifestPath
     $testCases = Get-Command -Module $env:BHProjectName -CommandType Cmdlet, Function | ForEach-Object {
         @{
             Name    = $_.Name
