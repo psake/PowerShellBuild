@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Before, when `$PSBPreference.Build.CompileModule` was set to `$true`, any files listed in `$PSBPreference.Build.Exclude` weren't being excluded like they should have been. Now, when it is `$true`, files matching regex expressions in `$PSBPreference.Build.Exclude` will be properly excluded (via [@pauby](https://github.com/pauby))
 
+- `$PSBPreference.Help.DefaultLocale` now defaults to `en-US` on Linux since it is not correctly determined with `Get-UICulture`.
+
 ## [0.4.0] - 2019-08-31
 
 ### Changed
