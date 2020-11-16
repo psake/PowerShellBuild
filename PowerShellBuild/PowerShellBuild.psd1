@@ -11,6 +11,7 @@
         @{ModuleName = 'BuildHelpers'; ModuleVersion = '2.0.15'}
         @{ModuleName = 'Pester';       ModuleVersion = '5.0.2'}
         @{ModuleName = 'platyPS';      ModuleVersion = '0.14.0'}
+        @{ModuleName = 'psake';        ModuleVersion = '4.9.0'}
     )
     FunctionsToExport = @(
         'Build-PSBuildMAMLHelp'
