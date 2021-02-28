@@ -32,4 +32,4 @@ properties {
 
 task default -depends Build
 
-task Build -FromModule PowerShellBuild
+task Build -FromModule PowerShellBuild -minimumVersion 0.5.0
