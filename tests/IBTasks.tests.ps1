@@ -14,15 +14,21 @@ Describe 'Invoke-Build Tasks' {
     It 'IB.tasks.ps1 exists' {
         Test-Path $IBTasksFilePath | Should -Be $true
     }
+
     It 'Parseable by invoke-build' {
-        #Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. This doesn't happen locally. Redirecting all output to null
-        Invoke-Build -file $IBTasksFilePath -whatif -result IBTasksResult -ErrorAction Stop *>$null
+        # Run IB in job to not pollute the environment
+        # Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. This doesn't happen locally. Redirecting all output to null
+        $IBTasksResult = Start-Job -ScriptBlock {
+            Invoke-Build -File $using:IBTasksFilePath -Whatif -Result IBTasksResult -ErrorAction Stop *>$null
+            $IBTasksResult
+        } | Wait-Job | Receive-Job
+
         $IBTasksResult | Should -Not -BeNullOrEmpty
     }
     It 'Contains all the tasks that were in the Psake file' {
-        #Invoke-PSake Fails in Pester Scope, have to run it in a completely separate runspace
+        # Run psake in job to not pollute the environment
         $psakeTaskNames = Start-Job -ScriptBlock {
-            Invoke-PSake -docs -buildfile $USING:psakeFilePath | Where-Object name -notmatch '^(default|\?)$' | ForEach-Object name
+            Invoke-PSake -docs -buildfile $using:psakeFilePath | Where-Object name -notmatch '^(default|\?)$' | ForEach-Object name
         } | Wait-Job | Receive-Job
 
         $IBTaskNames = $IBTasksResult.all.name
