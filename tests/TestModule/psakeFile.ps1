@@ -21,10 +21,10 @@ properties {
     $PSBPreference.Build.CompileScriptFooter = '# Function footer' + [Environment]::NewLine
 
     # So Pester InModuleScope works
-    $PSBPreference.Test.ImportModule         = $true
-    $PSBPreference.Test.OutputFile           = 'fooResults.xml'
-    $PSBPreference.Test.CodeCoverage.Enabled = $true
+    $PSBPreference.Test.ImportModule           = $true
+    $PSBPreference.Test.CodeCoverage.Enabled   = $true
     $PSBPreference.Test.CodeCoverage.Threshold = 0.0
+    $PSBPreference.Test.CodeCoverage.OutputFile = 'cc.xml'
 
     # Override the default output directory
     $PSBPreference.Build.OutDir = 'Output'

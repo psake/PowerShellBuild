@@ -8,6 +8,8 @@ function Test-PSBuildPester {
         Directory Pester tests to execute.
     .PARAMETER ModuleName
         Name of Module to test.
+    .PARAMETER ModuleManifest
+        Path to module manifest to import during test
     .PARAMETER OutputPath
         Output path to store Pester test results to.
     .PARAMETER OutputFormat
@@ -18,6 +20,10 @@ function Test-PSBuildPester {
         Threshold required to pass code coverage test (.90 = 90%).
     .PARAMETER CodeCoverageFiles
         Array of files to validate code coverage for.
+    .PARAMETER CodeCoverageOutputFile
+        Output path (relative to Pester tests directory) to store code coverage results to.
+    .PARAMETER CodeCoverageOutputFileFormat
+        Code coverage result output format. Currently, only 'JaCoCo' is supported by Pester.
     .PARAMETER ImportModule
         Import module from OutDir prior to running Pester tests.
     .EXAMPLE
@@ -32,6 +38,8 @@ function Test-PSBuildPester {
 
         [string]$ModuleName,
 
+        [string]$ModuleManifest,
+
         [string]$OutputPath,
 
         [string]$OutputFormat = 'NUnit2.5',
@@ -42,6 +50,10 @@ function Test-PSBuildPester {
 
         [string[]]$CodeCoverageFiles = @(),
 
+        [string]$CodeCoverageOutputFile = 'coverage.xml',
+
+        [string]$CodeCoverageOutputFileFormat = 'JaCoCo',
+
         [switch]$ImportModule
     )
 
@@ -51,10 +63,13 @@ function Test-PSBuildPester {
 
     try {
         if ($ImportModule) {
-            # Remove any previously imported project modules and import from the output dir
-            $ModuleOutputManifest = [IO.Path]::Combine($env:BHBuildOutput, "$($ModuleName).psd1")
-            Get-Module $ModuleName | Remove-Module -Force
-            Import-Module $ModuleOutputManifest -Force
+            if (-not (Test-Path $ModuleManifest)) {
+                Write-Error "Unable to find module manifest [$ModuleManifest]. Can't import module"
+            } else {
+                # Remove any previously imported project modules and import from the output dir
+                Get-Module $ModuleName | Remove-Module -Force -ErrorAction SilentlyContinue
+                Import-Module $ModuleManifest -Force
+            }
         }
 
         Push-Location -LiteralPath $Path
@@ -72,7 +87,8 @@ function Test-PSBuildPester {
             if ($CodeCoverageFiles.Count -gt 0) {
                 $configuration.CodeCoverage.Path = $CodeCoverageFiles
             }
-            $configuration.CodeCoverage.OutputPath = 'coverage.xml'
+            $configuration.CodeCoverage.OutputPath   = $CodeCoverageOutputFile
+            $configuration.CodeCoverage.OutputFormat = $CodeCoverageOutputFileFormat
         }
 
         $testResult = Invoke-Pester -Configuration $configuration -Verbose:$VerbosePreference
@@ -83,9 +99,9 @@ function Test-PSBuildPester {
 
         if ($CodeCoverage.IsPresent) {
             Write-Host "`nCode Coverage:`n" -ForegroundColor Yellow
-            if (Test-Path coverage.xml) {
+            if (Test-Path $CodeCoverageOutputFile) {
                 $textInfo = (Get-Culture).TextInfo
-                [xml]$testCoverage = Get-Content coverage.xml
+                [xml]$testCoverage = Get-Content $CodeCoverageOutputFile
                 $ccReport = $testCoverage.report.counter.ForEach({
                     $total = [int]$_.missed + [int]$_.covered
                     $perc  = [Math]::Truncate([int]$_.covered / $total)
@@ -95,20 +111,19 @@ function Test-PSBuildPester {
                     }
                 })
 
-                $ccfail     = $false
                 $ccFailMsgs = @()
                 $ccReport.ForEach({
-                    'Code coverage type [{0}] on specified files: {1:p}' -f $_.name, $_.percent
+                    'Type: [{0}]: {1:p}' -f $_.name, $_.percent
                     if ($_.percent -lt $CodeCoverageThreshold) {
-                        $ccFail      = $true
                         $ccFailMsgs += ('Code coverage: [{0}] is [{1:p}], which is less than the threshold of [{2:p}]' -f $_.name, $_.percent, $CodeCoverageThreshold)
                     }
                 })
-                if ($ccFail) {
-                    throw $ccFailMsgs
-                }
+                Write-Host "`n"
+                $ccFailMsgs.Foreach({
+                    Write-Error $_
+                })
             } else {
-                Write-Error 'coverage.xml not found'
+                Write-Error "Code coverage file [$CodeCoverageOutputFile] not found."
             }
         }
     } finally {

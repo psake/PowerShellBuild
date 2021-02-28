@@ -2,3 +2,5 @@
 docs/
 Output/
 Tests/*.xml
+codeCoverage.xml
+testResults.xml

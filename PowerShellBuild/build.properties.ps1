@@ -52,9 +52,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         RootDir = [IO.Path]::Combine($env:BHProjectPath, 'tests')
 
         # Specifies an output file path to send to Invoke-Pester's -OutputFile parameter.
-        # This is typically used to write out test results so that they can be sent to a CI
-        # system like AppVeyor.
-        OutputFile = $null
+        # This is typically used to write out test results so that they can be sent to a CI system
+        # This path is relative to the directory containing Pester tests
+        OutputFile = [IO.Path]::Combine($env:BHProjectPath, 'testResults.xml')
 
         # Specifies the test output format to use when the TestOutputFile property is given
         # a path.  This parameter is passed through to Invoke-Pester's -OutputFormat parameter.
@@ -89,6 +89,12 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             # acts as a direct input to the Pester -CodeCoverage parameter, so will support constructions
             # like the ones found here: https://pester.dev/docs/usage/code-coverage.
             Files = @()
+
+            # Path to write code coverage report to
+            OutputFile = [IO.Path]::Combine($env:BHProjectPath, 'codeCoverage.xml')
+
+            # The code coverage output format to use
+            OutputFileFormat = 'JaCoCo'
         }
     }
     Help  = @{

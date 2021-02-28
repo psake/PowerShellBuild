@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.0] Unreleased
+
+### Added
+
+- New code coverage parameters for setting output path and format:
+  - `$PSBPreference.Test.CodeCoverage.OutputFile` - Output file path for code coverage results
+  - `$PSBPreference.Test.CodeCoverage.OutputFileFormat` - Code coverage output format
+
 ## [0.5.0] (beta1) - 2020-11-15
 
 ### Added

@@ -94,14 +94,17 @@ $pesterPreReqs = {
 }
 task Pester -depends Build -precondition $pesterPreReqs {
     $pesterParams = @{
-        Path                  = $PSBPreference.Test.RootDir
-        ModuleName            = $PSBPreference.General.ModuleName
-        OutputPath            = $PSBPreference.Test.OutputFile
-        OutputFormat          = $PSBPreference.Test.OutputFormat
-        CodeCoverage          = $PSBPreference.Test.CodeCoverage.Enabled
-        CodeCoverageThreshold = $PSBPreference.Test.CodeCoverage.Threshold
-        CodeCoverageFiles     = $PSBPreference.Test.CodeCoverage.Files
-        ImportModule          = $PSBPreference.Test.ImportModule
+        Path                         = $PSBPreference.Test.RootDir
+        ModuleName                   = $PSBPreference.General.ModuleName
+        ModuleManifest               = Join-Path $PSBPreference.Build.ModuleOutDir "$($PSBPreference.General.ModuleName).psd1"
+        OutputPath                   = $PSBPreference.Test.OutputFile
+        OutputFormat                 = $PSBPreference.Test.OutputFormat
+        CodeCoverage                 = $PSBPreference.Test.CodeCoverage.Enabled
+        CodeCoverageThreshold        = $PSBPreference.Test.CodeCoverage.Threshold
+        CodeCoverageFiles            = $PSBPreference.Test.CodeCoverage.Files
+        CodeCoverageOutputFile       = $PSBPreference.Test.CodeCoverage.OutputFile
+        CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFormat
+        ImportModule                 = $PSBPreference.Test.ImportModule
     }
     Test-PSBuildPester @pesterParams
 } -description 'Execute Pester tests'

@@ -94,6 +94,8 @@ You can override these in either psake or Invoke-Build to match your environment
 | $PSBPreference.Test.CodeCoverage.Enabled | `$false` | Enable/disable Pester code coverage reporting
 | $PSBPreference.Test.CodeCoverage.Threshold | `.75` | Fail Pester code coverage test if below this threshold
 | $PSBPreference.Test.CodeCoverage.Files | `*.ps1, *.psm1` | Files to perform code coverage analysis on
+| $PSBPreference.Test.CodeCoverage.OutputFile | `coverage.xml` | Output file path (relative to Pester test directory) where Pester will save code coverage results to
+| $PSBPreference.Test.CodeCoverage.OutputFileFormat | `$null` | Test output format to use when saving Pester code coverage results
 | $PSBPreference.Test.ImportModule | `$false` | Import module from output directory prior to running Pester tests
 | $PSBPreference.Help.UpdatableHelpOutDir | `$OutDir/UpdatableHelp` | Output directory to store update module help (CAB)
 | $PSBPreference.Help.DefaultLocale | `(Get-UICulture).Name` | Default locale used for help generation
