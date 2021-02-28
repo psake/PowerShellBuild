@@ -53,7 +53,7 @@ describe 'Build' {
             "$testModuleOutputPath/TestModule.psm1" | Should -FileContentMatch '# Function header'
         }
 
-        it 'Has function hfootereader text' {
+        it 'Has function footer text' {
             "$testModuleOutputPath/TestModule.psm1" | Should -FileContentMatch '# Function footer'
         }
 
