@@ -1,5 +1,6 @@
 Remove-Variable -Name PSBPreference -Scope Script -Force -ErrorAction Ignore
 Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. ([IO.Path]::Combine($PSScriptRoot, 'build.properties.ps1')))
+$__DefaultBuildDependencies = $PSBPreference.Build.Dependencies
 
 # Synopsis: Initialize build environment variables
 task Init {
@@ -14,12 +15,14 @@ task Clean Init, {
 # Synopsis: Builds module based on source directory
 task StageFiles Clean, {
     $buildParams = @{
-        Path               = $PSBPreference.General.SrcRootDir
-        ModuleName         = $PSBPreference.General.ModuleName
-        DestinationPath    = $PSBPreference.Build.ModuleOutDir
-        Exclude            = $PSBPreference.Build.Exclude
-        Compile            = $PSBPreference.Build.CompileModule
-        Culture            = $PSBPreference.Help.DefaultLocale
+        Path                = $PSBPreference.General.SrcRootDir
+        ModuleName          = $PSBPreference.General.ModuleName
+        DestinationPath     = $PSBPreference.Build.ModuleOutDir
+        Exclude             = $PSBPreference.Build.Exclude
+        Compile             = $PSBPreference.Build.CompileModule
+        CompileDirectories  = $PSBPreference.Build.CompileDirectories
+        CopyDirectories     = $PSBPreference.Build.CopyDirectories
+        Culture             = $PSBPreference.Help.DefaultLocale
     }
 
     if ($PSBPreference.Help.ConvertReadMeToAboutHelp) {
@@ -30,6 +33,7 @@ task StageFiles Clean, {
         }
     }
 
+    # only add these configuration values to the build parameters if they have been been set
     'CompileHeader', 'CompileFooter', 'CompileScriptHeader', 'CompileScriptFooter' | ForEach-Object {
         if ($PSBPreference.Build.Keys -contains $_) {
             $buildParams.$_ = $PSBPreference.Build.$_
@@ -39,8 +43,7 @@ task StageFiles Clean, {
     Build-PSBuildModule @buildParams
 }
 
-# Synopsis: Builds module and generate help documentation
-Task Build $($PSBPreference.Build.Dependencies -join ", ")
+
 
 $analyzePreReqs = {
     $result = $true
@@ -56,7 +59,7 @@ $analyzePreReqs = {
 }
 
 # Synopsis: Execute PSScriptAnalyzer tests
-task Analyze Build, {
+task Analyze -If (. $analyzePreReqs) Build,{
     $analyzeParams = @{
         Path              = $PSBPreference.Build.ModuleOutDir
         SeverityThreshold = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
@@ -83,25 +86,24 @@ $pesterPreReqs = {
 }
 
 # Synopsis: Execute Pester tests
-task Pester Build -If $pesterPreReqs, {
+task Pester -If (. $pesterPreReqs) Build,{
     $pesterParams = @{
-        Path                  = $PSBPreference.Test.RootDir
-        ModuleName            = $PSBPreference.General.ModuleName
-        OutputPath            = $PSBPreference.Test.OutputFile
-        OutputFormat          = $PSBPreference.Test.OutputFormat
-        CodeCoverage          = $PSBPreference.Test.CodeCoverage.Enabled
-        CodeCoverageThreshold = $PSBPreference.Test.CodeCoverage.Threshold
-        CodeCoverageFiles     = $PSBPreference.Test.CodeCoverage.Files
+        Path                         = $PSBPreference.Test.RootDir
+        ModuleName                   = $PSBPreference.General.ModuleName
+        ModuleManifest               = Join-Path $PSBPreference.Build.ModuleOutDir "$($PSBPreference.General.ModuleName).psd1"
+        OutputPath                   = $PSBPreference.Test.OutputFile
+        OutputFormat                 = $PSBPreference.Test.OutputFormat
+        CodeCoverage                 = $PSBPreference.Test.CodeCoverage.Enabled
+        CodeCoverageThreshold        = $PSBPreference.Test.CodeCoverage.Threshold
+        CodeCoverageFiles            = $PSBPreference.Test.CodeCoverage.Files
+        CodeCoverageOutputFile       = $PSBPreference.Test.CodeCoverage.OutputFile
+        CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFormat
+        ImportModule                 = $PSBPreference.Test.ImportModule
     }
     Test-PSBuildPester @pesterParams
 }
 
-# Synopsis: Execute Pester and ScriptAnalyzer tests
-task Test Pester, Analyze, {
-}
 
-# Synopsis: Builds help documentation
-task BuildHelp GenerateMarkdown, GenerateMAML, {}
 
 $genMarkdownPreReqs = {
     $result = $true
@@ -113,7 +115,7 @@ $genMarkdownPreReqs = {
 }
 
 # Synopsis: Generates PlatyPS markdown files from module help
-task GenerateMarkdown StageFiles, {
+task GenerateMarkdown -if ($genMarkdownPreReqs) StageFiles,{
     $buildMDParams = @{
         ModulePath = $PSBPreference.Build.ModuleOutDir
         ModuleName = $PSBPreference.General.ModuleName
@@ -133,7 +135,7 @@ $genHelpFilesPreReqs = {
 }
 
 # Synopsis: Generates MAML-based help from PlatyPS markdown files
-task GenerateMAML GenerateMarkdown, {
+task GenerateMAML -if (. $genHelpFilesPreReqs) GenerateMarkdown, {
     Build-PSBuildMAMLHelp -Path $PSBPreference.Docs.RootDir -DestinationPath $PSBPreference.Build.ModuleOutDir
 }
 
@@ -147,7 +149,7 @@ $genUpdatableHelpPreReqs = {
 }
 
 # Synopsis: Create updatable help .cab file based on PlatyPS markdown help
-task GenerateUpdatableHelp BuildHelp, {
+task GenerateUpdatableHelp -if (. $genUpdatableHelpPreReqs) BuildHelp, {
     Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
 }
 
@@ -171,3 +173,22 @@ Task Publish Test, {
 
     Publish-PSBuildModule @publishParams
 }
+
+
+#region Summary Tasks
+
+# Synopsis: Builds help documentation
+task BuildHelp GenerateMarkdown,GenerateMAML
+
+Task Build {
+    if ($PSBPreference.Build.Dependencies -ne $__DefaultBuildDependencies) {
+        throw [NotSupportedException]'You cannot use $PSBPreference.Build.Dependencies with Invoke-Build. Please instead redefine the build task or your default task to include your dependencies. Example: Task . Dependency1,Dependency2,Build,Test or Task Build Dependency1,Dependency2,StageFiles'
+    }
+},StageFiles,BuildHelp
+
+# Synopsis: Execute Pester and ScriptAnalyzer tests
+task Test Analyze,Pester
+
+task . Build,Test
+
+#endregion Summary Tasks
