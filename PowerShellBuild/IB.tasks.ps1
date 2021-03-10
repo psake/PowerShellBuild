@@ -181,7 +181,7 @@ Task Publish Test, {
 task BuildHelp GenerateMarkdown,GenerateMAML
 
 Task Build {
-    if ($PSBPreference.Build.Dependencies -ne $__DefaultBuildDependencies) {
+    if ([String]$PSBPreference.Build.Dependencies -ne [String]$__DefaultBuildDependencies) {
         throw [NotSupportedException]'You cannot use $PSBPreference.Build.Dependencies with Invoke-Build. Please instead redefine the build task or your default task to include your dependencies. Example: Task . Dependency1,Dependency2,Build,Test or Task Build Dependency1,Dependency2,StageFiles'
     }
 },StageFiles,BuildHelp
