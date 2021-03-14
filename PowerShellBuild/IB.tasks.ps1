@@ -115,7 +115,7 @@ $genMarkdownPreReqs = {
 }
 
 # Synopsis: Generates PlatyPS markdown files from module help
-task GenerateMarkdown -if ($genMarkdownPreReqs) StageFiles,{
+task GenerateMarkdown -if (. $genMarkdownPreReqs) StageFiles,{
     $buildMDParams = @{
         ModulePath = $PSBPreference.Build.ModuleOutDir
         ModuleName = $PSBPreference.General.ModuleName
