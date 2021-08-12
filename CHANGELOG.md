@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.2] Unreleased
+
+### Fixed
+
+- Pester object wasn't being passed back after running tests, causing the Pester task to never fail (via [@webtroter](https://github.com/webtroter))
+
 ## [0.6.1] 2021-03-14
 
 ### Fixed
