@@ -22,7 +22,7 @@ function Initialize-PSBuild {
         [switch]$UseBuildHelpers
     )
 
-    if ([IO.Path]::IsPathFullyQualified($BuildEnvironment.Build.OutDir)) {
+    if ($BuildEnvironment.Build.OutDir.StartsWith($env:BHProjectPath, [System.StringComparison]::InvariantCultureIgnoreCase)) {
         $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine($BuildEnvironment.Build.OutDir, $env:BHProjectName, $BuildEnvironment.General.ModuleVersion)
     } else {
         $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine($env:BHProjectPath, $BuildEnvironment.Build.OutDir, $env:BHProjectName, $BuildEnvironment.General.ModuleVersion)
