@@ -19,7 +19,9 @@ function Build-PSBuildUpdatableHelp {
         [string]$DocsPath,
 
         [parameter(Mandatory)]
-        [string]$OutputPath
+        [string]$OutputPath,
+
+        [string]$Module = $ModuleName
     )
 
     if ($null -ne $IsWindows -and -not $IsWindows) {
@@ -42,7 +44,7 @@ function Build-PSBuildUpdatableHelp {
     foreach ($locale in $helpLocales) {
         $cabParams = @{
             CabFilesFolder  = [IO.Path]::Combine($moduleOutDir, $locale)
-            LandingPagePath = "$DocsPath/$locale/$ModuleName.md"
+            LandingPagePath = [IO.Path]::Combine($DocsPath, $locale, "$Module.md")
             OutputFolder    = $OutputPath
             Verbose         = $VerbosePreference
         }
