@@ -8,6 +8,8 @@ function Build-PSBuildUpdatableHelp {
         Path to PlatyPS markdown help files.
     .PARAMETER OutputPath
         Path to create updatable help .cab file in.
+    .PARAMETER Module
+        Name of the module to create a .cab file for. Defaults to the $ModuleName variable from the parent scope.
     .EXAMPLE
         PS> Build-PSBuildUpdatableHelp -DocsPath ./docs -OutputPath ./Output/UpdatableHelp
 
