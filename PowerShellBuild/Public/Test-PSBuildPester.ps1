@@ -104,7 +104,7 @@ function Test-PSBuildPester {
                 [xml]$testCoverage = Get-Content $CodeCoverageOutputFile
                 $ccReport = $testCoverage.report.counter.ForEach({
                     $total = [int]$_.missed + [int]$_.covered
-                    $perc  = [Math]::Truncate([int]$_.covered / $total)
+                    $perc  = ([int]$_.covered / $total)
                     [pscustomobject]@{
                         name    = $textInfo.ToTitleCase($_.Type.ToLower())
                         percent = $perc
