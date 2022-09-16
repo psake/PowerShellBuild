@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [**#52**](https://github.com/psake/PowerShellBuild/pull/52) Pester object wasn't being passed back after running tests, causing the Pester task to never fail (via [@webtroter](https://github.com/webtroter))
 - [**#55**](https://github.com/psake/PowerShellBuild/pull/55) Add `-Module` parameter to `Build-PSBuildUpdatableHelp` (via [@IMJLA](https://github.com/IMJLA))
+- [**#60**](https://github.com/psake/PowerShellBuild/pull/60) Fix Windows PowerShell compatibility in `Initialize-PSBuild` (via [@joshooaj](https://github.com/joshooaj))
 - [**#62**](https://github.com/psake/PowerShellBuild/pull/62) Fix code coverage output fle format not working (via [@OpsM0nkey](https://github.com/OpsM0nkey))
 
 ## [0.6.1] 2021-03-14
