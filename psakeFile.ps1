@@ -1,5 +1,8 @@
 properties {
     $settings = . ([IO.Path]::Combine($PSScriptRoot, 'build.settings.ps1'))
+    if ($galleryApiKey) {
+        $settings.PSGalleryApiKey = $galleryApiKey.GetNetworkCredential().password
+    }
 }
 
 task default -depends Test
@@ -59,7 +62,7 @@ task Build -depends Init, Clean {
 task Publish -depends Test {
     "    Publishing version [$($settings.Manifest.ModuleVersion)] to PSGallery..."
     if ($settings.PSGalleryApiKey) {
-        Publish-Module -Path $settings.ModuleOutDir -NuGetApiKey $settings.PSGalleryApiKey -Repository PSGallery
+        Publish-Module -Path $settings.ModuleOutDir -NuGetApiKey $settings.PSGalleryApiKey
     } else {
         throw 'Did not find PSGallery API key!'
     }

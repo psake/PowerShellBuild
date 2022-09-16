@@ -2,7 +2,6 @@
     PSDependOptions = @{
         Target = 'CurrentUser'
     }
-
     BuildHelpers     = '2.0.16'
     Pester           = @{
         MinimumVersion = '5.2.2'
