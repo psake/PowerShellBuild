@@ -57,6 +57,7 @@ function Build-PSBuildMarkdown {
             OutputFolder   = [IO.Path]::Combine($DocsPath, $Locale)
             ErrorAction    = 'SilentlyContinue'
             Verbose        = $VerbosePreference
+            Force          = $true
         }
         New-MarkdownHelp @newMDParams > $null
     } finally {
