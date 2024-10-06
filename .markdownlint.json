@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/vscode-markdownlint/refs/heads/main/markdownlint-config-schema.json",
+  "MD024": {
+    "siblings_only": true
+  }
+}
