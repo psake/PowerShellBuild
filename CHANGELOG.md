@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- [**#71**](https://github.com/psake/PowerShellBuild/pull/71) Compiled modules
+  are now explicitly created as UTF-8 files.
+
+
 ## [0.6.2] 2024-10-06
 
 ### Changed

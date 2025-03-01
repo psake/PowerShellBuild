@@ -104,7 +104,7 @@ function Build-PSBuildModule {
         # Grab the contents of the copied over PSM1
         # This will be appended to the end of the finished PSM1
         $psm1Contents = Get-Content -Path $rootModule -Raw
-        '' | Out-File -FilePath $rootModule
+        '' | Out-File -FilePath $rootModule -Encoding utf8
 
         if ($CompileHeader) {
             $CompileHeader | Add-Content -Path $rootModule -Encoding utf8
