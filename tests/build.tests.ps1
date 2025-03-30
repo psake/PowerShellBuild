@@ -19,7 +19,7 @@ Describe 'Build' {
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -Scriptblock {
+            Start-Job -ScriptBlock {
                 Set-Location $using:PSScriptRoot/TestModule
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
@@ -71,7 +71,7 @@ Describe 'Build' {
     Context 'Dot-sourced module' {
         BeforeAll {
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -Scriptblock {
+            Start-Job -ScriptBlock {
                 Set-Location $using:PSScriptRoot/TestModule
                 $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
