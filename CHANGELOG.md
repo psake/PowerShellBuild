@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   overwrite existing markdown files using `$PSBPreference.Docs.Overwrite` and
   setting it to `$true`.
 - Loose dependencies by allowing them to be overwritten with $PSBPreference.
-- [**#71**](https://github.com/psake/PowerShellBuild/pull/71) Compiled modules
-  are now explicitly created as UTF-8 files.
+- [**#72**](https://github.com/psake/PowerShellBuild/pull/72) Loosen
+  dependencies by allowing them to be overwritten with
+  `$PSBPreference.TaskDependencies`.
 
 ## [0.6.2] 2024-10-06
 
