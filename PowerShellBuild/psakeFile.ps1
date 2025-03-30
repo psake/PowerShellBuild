@@ -1,4 +1,4 @@
-
+# spell-checker:ignore Reqs
 # Load in build settings
 Remove-Variable -Name PSBPreference -Scope Script -Force -ErrorAction Ignore
 Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. ([IO.Path]::Combine($PSScriptRoot, 'build.properties.ps1')))
@@ -25,14 +25,14 @@ Task Clean -depends $PSBPreference.TaskDependencies.Clean {
 
 Task StageFiles -depends $PSBPreference.TaskDependencies.StageFiles {
     $buildParams = @{
-        Path = $PSBPreference.General.SrcRootDir
-        ModuleName = $PSBPreference.General.ModuleName
-        DestinationPath = $PSBPreference.Build.ModuleOutDir
-        Exclude = $PSBPreference.Build.Exclude
-        Compile = $PSBPreference.Build.CompileModule
+        Path               = $PSBPreference.General.SrcRootDir
+        ModuleName         = $PSBPreference.General.ModuleName
+        DestinationPath    = $PSBPreference.Build.ModuleOutDir
+        Exclude            = $PSBPreference.Build.Exclude
+        Compile            = $PSBPreference.Build.CompileModule
         CompileDirectories = $PSBPreference.Build.CompileDirectories
-        CopyDirectories = $PSBPreference.Build.CopyDirectories
-        Culture = $PSBPreference.Help.DefaultLocale
+        CopyDirectories    = $PSBPreference.Build.CopyDirectories
+        Culture            = $PSBPreference.Help.DefaultLocale
     }
 
     if ($PSBPreference.Help.ConvertReadMeToAboutHelp) {
@@ -69,9 +69,9 @@ $analyzePreReqs = {
 }
 Task Analyze -depends $PSBPreference.TaskDependencies.Analyze -precondition $analyzePreReqs {
     $analyzeParams = @{
-        Path = $PSBPreference.Build.ModuleOutDir
+        Path              = $PSBPreference.Build.ModuleOutDir
         SeverityThreshold = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
-        SettingsPath = $PSBPreference.Test.ScriptAnalysis.SettingsPath
+        SettingsPath      = $PSBPreference.Test.ScriptAnalysis.SettingsPath
     }
     Test-PSBuildScriptAnalysis @analyzeParams
 } -description 'Execute PSScriptAnalyzer tests'
@@ -94,17 +94,17 @@ $pesterPreReqs = {
 }
 Task Pester -depends $PSBPreference.TaskDependencies.Pester -precondition $pesterPreReqs {
     $pesterParams = @{
-        Path = $PSBPreference.Test.RootDir
-        ModuleName = $PSBPreference.General.ModuleName
-        ModuleManifest = Join-Path $PSBPreference.Build.ModuleOutDir "$($PSBPreference.General.ModuleName).psd1"
-        OutputPath = $PSBPreference.Test.OutputFile
-        OutputFormat = $PSBPreference.Test.OutputFormat
-        CodeCoverage = $PSBPreference.Test.CodeCoverage.Enabled
-        CodeCoverageThreshold = $PSBPreference.Test.CodeCoverage.Threshold
-        CodeCoverageFiles = $PSBPreference.Test.CodeCoverage.Files
-        CodeCoverageOutputFile = $PSBPreference.Test.CodeCoverage.OutputFile
+        Path                         = $PSBPreference.Test.RootDir
+        ModuleName                   = $PSBPreference.General.ModuleName
+        ModuleManifest               = Join-Path $PSBPreference.Build.ModuleOutDir "$($PSBPreference.General.ModuleName).psd1"
+        OutputPath                   = $PSBPreference.Test.OutputFile
+        OutputFormat                 = $PSBPreference.Test.OutputFormat
+        CodeCoverage                 = $PSBPreference.Test.CodeCoverage.Enabled
+        CodeCoverageThreshold        = $PSBPreference.Test.CodeCoverage.Threshold
+        CodeCoverageFiles            = $PSBPreference.Test.CodeCoverage.Files
+        CodeCoverageOutputFile       = $PSBPreference.Test.CodeCoverage.OutputFile
         CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFileFormat
-        ImportModule = $PSBPreference.Test.ImportModule
+        ImportModule                 = $PSBPreference.Test.ImportModule
     }
     Test-PSBuildPester @pesterParams
 } -description 'Execute Pester tests'
@@ -126,9 +126,9 @@ Task GenerateMarkdown -depends $PSBPreference.TaskDependencies.GenerateMarkdown 
     $buildMDParams = @{
         ModulePath = $PSBPreference.Build.ModuleOutDir
         ModuleName = $PSBPreference.General.ModuleName
-        DocsPath = $PSBPreference.Docs.RootDir
-        Locale = $PSBPreference.Help.DefaultLocale
-        Overwrite = $PSBPreference.Docs.Overwrite
+        DocsPath   = $PSBPreference.Docs.RootDir
+        Locale     = $PSBPreference.Help.DefaultLocale
+        Overwrite  = $PSBPreference.Docs.Overwrite
     }
     Build-PSBuildMarkdown @buildMDParams
 } -description 'Generates PlatyPS markdown files from module help'
@@ -161,10 +161,10 @@ Task Publish -depends $PSBPreference.TaskDependencies.Publish {
     Assert -conditionToCheck ($PSBPreference.Publish.PSRepositoryApiKey -or $PSBPreference.Publish.PSRepositoryCredential) -failureMessage "API key or credential not defined to authenticate with [$($PSBPreference.Publish.PSRepository)] with."
 
     $publishParams = @{
-        Path = $PSBPreference.Build.ModuleOutDir
-        Version = $PSBPreference.General.ModuleVersion
+        Path       = $PSBPreference.Build.ModuleOutDir
+        Version    = $PSBPreference.General.ModuleVersion
         Repository = $PSBPreference.Publish.PSRepository
-        Verbose = $VerbosePreference
+        Verbose    = $VerbosePreference
     }
     if ($PSBPreference.Publish.PSRepositoryApiKey) {
         $publishParams.ApiKey = $PSBPreference.Publish.PSRepositoryApiKey
