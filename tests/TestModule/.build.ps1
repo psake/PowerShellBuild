@@ -3,6 +3,6 @@ Import-Module ../../Output/PowerShellBuild -Force
 
 $PSBPreference.Build.CompileModule = $true
 
-task Build $PSBPreference.build.dependencies
+Task Build $PSBPreference.TaskDependencies.Build
 
-task . Build
+Task . Build
