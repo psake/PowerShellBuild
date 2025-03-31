@@ -5,6 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run Build and Debug (Temp Console)",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${cwd}/build.ps1",
+            "args": [
+                "-Task Test",
+                "-Verbose"
+            ],
+            "cwd": "${workspaceFolder}",
+            "createTemporaryIntegratedConsole": true
+        },
+        {
+            "name": "Run Build and Debug",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${cwd}/build.ps1",
+            "args": [
+                "-Task Test",
+                "-Verbose"
+            ],
+            "cwd": "${workspaceFolder}",
+            "createTemporaryIntegratedConsole": true
+        },
+        {
             "name": "PowerShell: Interactive Session",
             "type": "PowerShell",
             "request": "launch",
