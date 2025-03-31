@@ -1,9 +1,4 @@
 function Publish-PSBuildModule {
-    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        '',
-        Justification = 'Both Credential and NuGetApiKey are used just not via explicit variable call.'
-    )]
     <#
     .SYNOPSIS
         Publishes a module to the defined PowerShell repository.
@@ -32,6 +27,11 @@ function Publish-PSBuildModule {
 
         Publish version 0.1.0 of the module at path .\Output\0.1.0\MyModule to the PSGallery repository using an API key and a PowerShell credential.
     #>
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        '',
+        Justification = 'Both Credential and NuGetApiKey are used just not via explicit variable call.'
+    )]
     [CmdletBinding(DefaultParameterSetName = 'ApiKey')]
     param(
         [parameter(Mandatory)]

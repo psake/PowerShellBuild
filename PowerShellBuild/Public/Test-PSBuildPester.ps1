@@ -1,9 +1,4 @@
 function Test-PSBuildPester {
-    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSReviewUnusedParameter',
-        'CodeCoverageThreshold',
-        Justification = 'Used inside a foreach method call.'
-    )]
     <#
     .SYNOPSIS
         Execute Pester tests for module.
@@ -41,6 +36,11 @@ function Test-PSBuildPester {
         Run Pester tests in ./tests and save results to ./out/testResults.xml
     #>
     [CmdletBinding()]
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'CodeCoverageThreshold',
+        Justification = 'Used inside a foreach method call.'
+    )]
     param(
         [parameter(Mandatory)]
         [string]$Path,
