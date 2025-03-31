@@ -12,6 +12,8 @@ function Build-PSBuildMarkdown {
         The path where PlatyPS markdown docs will be saved.
     .PARAMETER Locale
         The locale to save the markdown docs.
+    .PARAMETER Overwrite
+        Overwrite existing markdown files and use comment based help as the source of truth.
     .EXAMPLE
         PS> Build-PSBuildMarkdown -ModulePath ./output/MyModule/0.1.0 -ModuleName MyModule -DocsPath ./docs -Locale en-US
 
@@ -55,12 +57,12 @@ function Build-PSBuildMarkdown {
 
         # ErrorAction set to SilentlyContinue so this command will not overwrite an existing MD file.
         $newMDParams = @{
-            Module         = $ModuleName
-            Locale         = $Locale
-            OutputFolder   = [IO.Path]::Combine($DocsPath, $Locale)
-            ErrorAction    = 'SilentlyContinue'
-            Verbose        = $VerbosePreference
-            Force          = $Overwrite
+            Module = $ModuleName
+            Locale = $Locale
+            OutputFolder = [IO.Path]::Combine($DocsPath, $Locale)
+            ErrorAction = 'SilentlyContinue'
+            Verbose = $VerbosePreference
+            Force = $Overwrite
         }
         New-MarkdownHelp @newMDParams > $null
     } finally {
