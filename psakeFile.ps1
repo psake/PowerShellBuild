@@ -1,24 +1,24 @@
-properties {
+Properties {
     $settings = . ([IO.Path]::Combine($PSScriptRoot, 'build.settings.ps1'))
     if ($galleryApiKey) {
         $settings.PSGalleryApiKey = $galleryApiKey.GetNetworkCredential().password
     }
 }
 
-task default -depends Test
+Task default -depends Test
 
-task Init {
+Task Init {
     "STATUS: Testing with PowerShell $($settings.PSVersion)"
     'Build System Details:'
     Get-Item ENV:BH*
 } -description 'Initialize build environment'
 
-task Test -Depends Init, Analyze, Pester -description 'Run test suite'
+Task Test -depends Init, Analyze, Pester -description 'Run test suite'
 
-task Analyze -depends Build {
-    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings ([IO.Path]::Combine($env:BHModulePath, 'ScriptAnalyzerSettings.psd1'))
-    $errors   = $analysis | Where-Object {$_.Severity -eq 'Error'}
-    $warnings = $analysis | Where-Object {$_.Severity -eq 'Warning'}
+Task Analyze -depends Build {
+    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings ([IO.Path]::Combine('tests', 'ScriptAnalyzerSettings.psd1'))
+    $errors = $analysis | Where-Object { $_.Severity -eq 'Error' }
+    $warnings = $analysis | Where-Object { $_.Severity -eq 'Warning' }
     if (@($errors).Count -gt 0) {
         Write-Error -Message 'One or more Script Analyzer errors were found. Build cannot continue!'
         $errors | Format-Table -AutoSize
@@ -30,11 +30,11 @@ task Analyze -depends Build {
     }
 } -description 'Run PSScriptAnalyzer'
 
-task Pester -depends Build {
+Task Pester -depends Build {
     Remove-Module $settings.ProjectName -ErrorAction SilentlyContinue -Verbose:$false
 
     $testResultsXml = [IO.Path]::Combine($settings.OutputDir, 'testResults.xml')
-    $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed -PassThru
+    $testResults = Invoke-Pester -Path $settings.Tests -Output Detailed -PassThru
 
     if ($testResults.FailedCount -gt 0) {
         $testResults | Format-List
@@ -42,13 +42,13 @@ task Pester -depends Build {
     }
 } -description 'Run Pester tests'
 
-task Clean -depends Init {
+Task Clean -depends Init {
     if (Test-Path -Path $settings.ModuleOutDir) {
         Remove-Item -Path $settings.ModuleOutDir -Recurse -Force -Verbose:$false
     }
 }
 
-task Build -depends Init, Clean {
+Task Build -depends Init, Clean {
     New-Item -Path $settings.ModuleOutDir -ItemType Directory -Force > $null
     Copy-Item -Path "$($settings.SUT)/*" -Destination $settings.ModuleOutDir -Recurse
 
@@ -59,7 +59,7 @@ task Build -depends Init, Clean {
     # & .\Build\Convert-PSAke.ps1 $psakePath | Out-File -Encoding UTF8 $ibPath
 }
 
-task Publish -depends Test {
+Task Publish -depends Test {
     "    Publishing version [$($settings.Manifest.ModuleVersion)] to PSGallery..."
     if ($settings.PSGalleryApiKey) {
         Publish-Module -Path $settings.ModuleOutDir -NuGetApiKey $settings.PSGalleryApiKey

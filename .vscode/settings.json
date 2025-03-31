@@ -7,6 +7,7 @@
     "powershell.codeFormatting.useCorrectCasing": true,
     "powershell.codeFormatting.newLineAfterOpenBrace": true,
     "powershell.codeFormatting.alignPropertyValuePairs": true,
+    "powershell.scriptAnalysis.settingsPath": "tests/ScriptAnalyzerSettings.psd1",
     "search.useIgnoreFiles": true,
     "search.exclude": {
         "**/node_modules": true,
