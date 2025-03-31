@@ -16,7 +16,7 @@ Task Init {
 Task Test -depends Init, Analyze, Pester -description 'Run test suite'
 
 Task Analyze -depends Build {
-    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings ([IO.Path]::Combine('tests', 'ScriptAnalyzerSettings.psd1'))
+    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings './tests/ScriptAnalyzerSettings.psd1'
     $errors = $analysis | Where-Object { $_.Severity -eq 'Error' }
     $warnings = $analysis | Where-Object { $_.Severity -eq 'Warning' }
     if (@($errors).Count -gt 0) {
