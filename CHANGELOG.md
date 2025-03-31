@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
 - Add new dependencies variables to allow end user to modify which tasks are
   run.
 - Add localization support.
+
+### Fixes
+
+- Fix a bug in `Build-PSBuildMarkdown` where a hashtable item was added twice.
 
 ## [0.7.2] 2025-05-21
 
@@ -27,11 +33,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `$PSBPreference.Test.OutputVerbosity` can be set to **None**, **Normal**,
     **Detailed**, and **Diagnostic**. The default value is **Detailed**.
 
-## [0.7.1] 2025-04-01
+## [0.7.1] 2025-03-31 Bugfix
 
-### Fixes
+### Fixed
 
-- Fix a bug in `Build-PSBuildMarkdown` where a hashtable item was added twice.
+- Remove extra item from `New-MarkdownHelp` splat that would result in a failure
+  when using `$PSBPreference.Docs.Overwrite = $true`
+- Clean up some failing Script Analyzer settings, including moving the file.
 
 ## [0.7.0] 2025-03-31
 
