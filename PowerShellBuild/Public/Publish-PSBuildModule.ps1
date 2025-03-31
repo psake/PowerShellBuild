@@ -1,4 +1,9 @@
 function Publish-PSBuildModule {
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        '',
+        Justification = 'Both Credential and NuGetApiKey are used just not via explicit variable call.'
+    )]
     <#
     .SYNOPSIS
         Publishes a module to the defined PowerShell repository.
@@ -32,10 +37,10 @@ function Publish-PSBuildModule {
         [parameter(Mandatory)]
         [ValidateScript({
                 if (-not (Test-Path -Path $_ )) {
-                    throw ($LocalizedData.PathDoesNotExist -f $_)
+                    throw 'Folder does not exist'
                 }
                 if (-not (Test-Path -Path $_ -PathType Container)) {
-                    throw $LocalizedData.PathArgumentMustBeAFolder
+                    throw 'The Path argument must be a folder. File paths are not allowed.'
                 }
                 $true
             })]

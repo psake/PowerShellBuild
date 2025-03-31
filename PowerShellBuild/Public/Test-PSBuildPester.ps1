@@ -1,4 +1,9 @@
 function Test-PSBuildPester {
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'CodeCoverageThreshold',
+        Justification = 'Used inside a foreach method call.'
+    )]
     <#
     .SYNOPSIS
         Execute Pester tests for module.
@@ -124,9 +129,9 @@ function Test-PSBuildPester {
 
                 $ccFailMsgs = @()
                 $ccReport.ForEach({
-                        '{0}: [{1}]: {2:p}' -f $LocalizedData.Type, $_.name, $_.percent
+                        'Type: [{0}]: {1:p}' -f $_.name, $_.percent
                         if ($_.percent -lt $CodeCoverageThreshold) {
-                            $ccFailMsgs += ($LocalizedData.CodeCoverageLessThanThreshold -f $_.name, $_.percent, $CodeCoverageThreshold)
+                            $ccFailMsgs += ('Code coverage: [{0}] is [{1:p}], which is less than the threshold of [{2:p}]' -f $_.name, $_.percent, $CodeCoverageThreshold)
                         }
                     })
                 Write-Host "`n"
