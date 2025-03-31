@@ -1,7 +1,7 @@
 # PowerShellBuild
 
-| GitHub Actions | PS Gallery | License |
-|----------------|------------|---------|
+| GitHub Actions                                                                                                                                        | PS Gallery                                          | License                              |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|--------------------------------------|
 | [![GitHub Actions Status][github-actions-badge]][github-actions-build] [![GitHub Actions Status][github-actions-badge-publish]][github-actions-build] | [![PowerShell Gallery][psgallery-badge]][psgallery] | [![License][license-badge]][license] |
 
 This project aims to provide common [psake](https://github.com/psake/psake) and
@@ -53,28 +53,28 @@ other projects.
 These primary tasks are the main tasks you'll typically call as part of
 PowerShell module development.
 
-| Name                  | Dependencies          | Description |
-| --------------------- | --------------------- | ----------- |
-| Init                  | _none_                | Initialize psake and task variables |
-| Clean                 | init                  | Clean output directory |
-| Build                 | StageFiles, BuildHelp | Clean and build module in output directory |
-| Analyze               | Build                 | Run PSScriptAnalyzer tests |
-| Pester                | Build                 | Run Pester tests |
-| Test                  | Analyze, Pester       | Run combined tests |
-| Publish               | Test                  | Publish module to defined PowerShell repository |
+| Name    | Dependencies          | Description                                     |
+|---------|-----------------------|-------------------------------------------------|
+| Init    | _none_                | Initialize psake and task variables             |
+| Clean   | init                  | Clean output directory                          |
+| Build   | StageFiles, BuildHelp | Clean and build module in output directory      |
+| Analyze | Build                 | Run PSScriptAnalyzer tests                      |
+| Pester  | Build                 | Run Pester tests                                |
+| Test    | Analyze, Pester       | Run combined tests                              |
+| Publish | Test                  | Publish module to defined PowerShell repository |
 
 ### Secondary Tasks
 
 These secondary tasks are called as dependencies from the primary tasks but may
 also be called directly.
 
-| Name                  | Dependencies                   | Description |
-| --------------------- | -------------------------------| ----------- |
-| BuildHelp             | GenerateMarkdown, GenerateMAML | Build all help files |
+| Name                  | Dependencies                   | Description                      |
+|-----------------------|--------------------------------|----------------------------------|
+| BuildHelp             | GenerateMarkdown, GenerateMAML | Build all help files             |
 | StageFiles            | Clean                          | Build module in output directory |
-| GenerateMarkdown      | StageFiles                     | Build markdown-based help |
-| GenerateMAML          | GenerateMarkdown               | Build MAML help |
-| GenerateUpdatableHelp | BuildHelp                      | Build updatable help cab |
+| GenerateMarkdown      | StageFiles                     | Build markdown-based help        |
+| GenerateMAML          | GenerateMarkdown               | Build MAML help                  |
+| GenerateUpdatableHelp | BuildHelp                      | Build updatable help cab         |
 
 ## Task customization
 
@@ -119,10 +119,21 @@ match your environment.
 | $PSBPreference.Help.DefaultLocale                           | `(Get-UICulture).Name`                      | Default locale used for help generation                                                                                 |
 | $PSBPreference.Help.ConvertReadMeToAboutHelp                | `$false`                                    | Convert project readme into the module about file                                                                       |
 | $PSBPreference.Docs.RootDir                                 | `$projectRoot/docs`                         | Directory PlatyPS markdown documentation will be saved to                                                               |
-| $PSBPreference.Docs.Overwrite                               | `$false`                                     | Overwrite the markdown files in the docs folder using the comment based help as the source of truth.                    |
+| $PSBPreference.Docs.Overwrite                               | `$false`                                    | Overwrite the markdown files in the docs folder using the comment based help as the source of truth.                    |
 | $PSBPreference.Publish.PSRepository                         | `PSGallery`                                 | PowerShell repository name to publish                                                                                   |
 | $PSBPreference.Publish.PSRepositoryApiKey                   | `$env:PSGALLERY_API_KEY`                    | API key to authenticate to PowerShell repository with                                                                   |
 | $PSBPreference.Publish.PSRepositoryCredential               | `$null`                                     | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined                    |
+| $PSBPreference.TaskDependencies.Clean                       | 'Init'                                      | Tasks the 'Clean' task depends on.                                                                                      |
+| $PSBPreference.TaskDependencies.StageFiles                  | 'Clean'                                     | Tasks the 'StageFiles' task depends on.                                                                                 |
+| $PSBPreference.TaskDependencies.Build                       | 'StageFiles', 'BuildHelp'                   | Tasks the 'Build' task depends on.                                                                                      |
+| $PSBPreference.TaskDependencies.Analyze                     | 'Build'                                     | Tasks the 'Analyze' task depends on.                                                                                    |
+| $PSBPreference.TaskDependencies.Pester                      | 'Build'                                     | Tasks the 'Pester' task depends on.                                                                                     |
+| $PSBPreference.TaskDependencies.Test                        | 'Pester', 'Analyze'                         | Tasks the 'Test' task depends on.                                                                                       |
+| $PSBPreference.TaskDependencies.BuildHelp                   | 'GenerateMarkdown', 'GenerateMAML'          | Tasks the 'BuildHelp' task depends on.                                                                                  |
+| $PSBPreference.TaskDependencies.GenerateMarkdown            | 'StageFiles'                                | Tasks the 'GenerateMarkdown' task depends on.                                                                           |
+| $PSBPreference.TaskDependencies.GenerateMAML                | 'GenerateMarkdown'                          | Tasks the 'GenerateMAML' task depends on.                                                                               |
+| $PSBPreference.TaskDependencies.GenerateUpdatableHelp       | 'BuildHelp'                                 | Tasks the 'GenerateUpdatableHelp' task depends on.                                                                      |
+| $PSBPreference.TaskDependencies.Publish                     | 'Test'                                      | Tasks the 'Publish' task depends on.                                                                                    |
 
 ## Examples
 
