@@ -1,4 +1,9 @@
 function Test-PSBuildPester {
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter',
+        'CodeCoverageThreshold',
+        Justification = 'Used inside a foreach method call.'
+    )]
     <#
     .SYNOPSIS
         Execute Pester tests for module.

@@ -25,9 +25,11 @@ Install-Module -Name psake -RequiredVersion 4.8.0 -Repository PSGallery
 > [how to dot source tasks using PowerShell aliases](https://github.com/nightroman/Invoke-Build/blob/master/Tasks/Import/README.md#example-2-import-from-a-module-with-tasks)
 > example.
 
+<!-- markdownlint-disable no-inline-html -->
 <p align="center">
     <img src="media/psaketaskmodule-256x256.png" alt="Logo">
 </p>
+<!-- markdownlint-enable no-inline-html -->
 
 ## Status - Work in progress
 
@@ -209,3 +211,5 @@ $PSBPreference.Test.CodeCoverage.Enabled  = $false
 [psgallery]: https://www.powershellgallery.com/packages/PowerShellBuild
 [license-badge]: https://img.shields.io/github/license/psake/PowerShellBuild.svg
 [license]: https://raw.githubusercontent.com/psake/PowerShellBuild/main/LICENSE
+
+<!-- spell-checker:ignore PSGALLERY psaketaskmodule -->
