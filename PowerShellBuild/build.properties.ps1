@@ -112,8 +112,8 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Directory PlatyPS markdown documentation will be saved to
         RootDir = [IO.Path]::Combine($env:BHProjectPath, 'docs')
 
-        # Overwrite existing markdown files and use comment based help as the source of truth
-        Overwrite = $true
+        # Whether to overwrite existing markdown files and use comment based help as the source of truth
+        Overwrite = $false
     }
     Publish = @{
         # PowerShell repository name to publish modules to

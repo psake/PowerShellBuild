@@ -64,7 +64,13 @@ function Build-PSBuildMarkdown {
             Verbose = $VerbosePreference
             Force = $Overwrite
         }
+        if ($Overwrite) {
+            $newMDParams.Add('Force', $true)
+            $newMDParams.Remove('ErrorAction')
+        }
         New-MarkdownHelp @newMDParams > $null
+    } catch {
+        Write-Error "Failed to generate markdown help. : $_"
     } finally {
         Remove-Module $moduleName
     }
