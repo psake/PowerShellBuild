@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
 - Add new dependencies variables to allow end user to modify which tasks are
   run.
 - Add localization support.
+
+### Fixed
+
+- Remove extra item from `New-MarkdownHelp` splat that would result in a failure
+  when using `$PSBPreference.Docs.Overwrite = $true`
+- Clean up some failing Script Analyzer settings, including moving the file.
 
 ## [0.7.2] 2025-05-21
 
