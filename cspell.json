@@ -1,0 +1,18 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [
+        "powershell",
+        "csharp",
+        "json",
+        "xml",
+        "markdown"
+    ],
+    "words": [],
+    "ignoreWords": [
+        "psake",
+        "MAML"
+    ],
+    "import": []
+}

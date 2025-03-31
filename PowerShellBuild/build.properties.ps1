@@ -1,3 +1,4 @@
+# spell-checker:ignore PSGALLERY BHPS MAML
 BuildHelpers\Set-BuildEnvironment -Force
 
 $outDir = [IO.Path]::Combine($env:BHProjectPath, 'Output')
@@ -22,7 +23,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
     }
     Build = @{
 
-        Dependencies = @('StageFiles', 'BuildHelp')
+        # "Dependencies" moved to TaskDependencies section
 
         # Output directory when building a module
         OutDir = $outDir
@@ -98,7 +99,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         }
     }
     Help = @{
-        # Path to updateable help CAB
+        # Path to updatable help CAB
         UpdatableHelpOutDir = [IO.Path]::Combine($outDir, 'UpdatableHelp')
 
         # Default Locale used for help generation, defaults to en-US
@@ -124,6 +125,19 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # Credential to authenticate to PowerShell repository with
         PSRepositoryCredential = $null
+    }
+    TaskDependencies = @{
+        Clean = @('Init')
+        StageFiles = @('Clean')
+        Build = @('StageFiles', 'BuildHelp')
+        Analyze = @('Build')
+        Pester = @('Build')
+        Test = @('Pester', 'Analyze')
+        BuildHelp = @('GenerateMarkdown', 'GenerateMAML')
+        GenerateMarkdown = @('StageFiles')
+        GenerateMAML = @('GenerateMarkdown')
+        GenerateUpdatableHelp = @('BuildHelp')
+        Publish = @('Test')
     }
 }
 

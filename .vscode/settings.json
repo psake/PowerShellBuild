@@ -2,5 +2,9 @@
     "editor.insertSpaces": true,
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
-    "powershell.codeFormatting.preset": "OTBS"
+    "powershell.codeFormatting.preset": "OTBS",
+    "powershell.codeFormatting.addWhitespaceAroundPipe": true,
+    "powershell.codeFormatting.useCorrectCasing": true,
+    "powershell.codeFormatting.newLineAfterOpenBrace": true,
+    "powershell.codeFormatting.alignPropertyValuePairs": true
 }

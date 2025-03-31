@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### Breaking Changes
+### Changed
 
 - [**#71**](https://github.com/psake/PowerShellBuild/pull/71) Compiled modules
   are now explicitly created as UTF-8 files.
 - [**#67**](https://github.com/psake/PowerShellBuild/pull/67) You can now
   overwrite existing markdown files using `$PSBPreference.Docs.Overwrite` and
   setting it to `$true`.
+- Loose dependencies by allowing them to be overwritten with $PSBPreference.
+- [**#72**](https://github.com/psake/PowerShellBuild/pull/72) Loosen
+  dependencies by allowing them to be overwritten with
+  `$PSBPreference.TaskDependencies`.
 
 ## [0.6.2] 2024-10-06
 
@@ -133,13 +137,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   'Public' folder when dot sourcing functions in PSM1 (via
   [@pauby](https://github.com/pauby))
 
-### Changed
-
-- [**#19**](https://github.com/psake/PowerShellBuild/pull/19) Allow the
-  `BHBuildOutput` environment variable defined by `BuildHelpers` to be set via
-  the `$PSBPreference.Build.ModuleOutDir` property of the build tasks (via
-  [@pauby](https://github.com/pauby))
-
 ### Breaking changes
 
 - Refactor build properties into a single hashtable `$PSBPreference`
@@ -149,6 +146,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [**#11**](https://github.com/psake/PowerShellBuild/pull/11) The Invoke-Build
   tasks are now auto-generated from the psake tasks via a converter script (via
   [@JustinGrote](https://github.com/JustinGrote))
+
+- [**#19**](https://github.com/psake/PowerShellBuild/pull/19) Allow the
+  `BHBuildOutput` environment variable defined by `BuildHelpers` to be set via
+  the `$PSBPreference.Build.ModuleOutDir` property of the build tasks (via
+  [@pauby](https://github.com/pauby))
 
 ## [0.2.0] - 2018-11-15
 
@@ -170,3 +172,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Initial commit
+
+<!--spell-checker:ignore IMJLA webtroter joshooaj pauby joeypiccola nightroman -->
