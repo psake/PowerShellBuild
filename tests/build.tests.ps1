@@ -21,7 +21,7 @@ Describe 'Build' {
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -Scriptblock {
+            Start-Job -ScriptBlock {
                 Set-Location -Path $using:testModuleSource
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
@@ -68,12 +68,38 @@ Describe 'Build' {
         It 'Has MAML help XML' {
             "$script:testModuleOutputPath/en-US/TestModule-help.xml" | Should -Exist
         }
+
+        It 'Can Overwrite the Docs' {
+            # Replace with a different string to test the overwrite
+            $docPath = "$PSScriptRoot/TestModule/docs/en-US/Get-HelloWorld.md"
+            $original = Get-Content $docPath -Raw
+            $new = $original -replace 'Hello World', 'Hello Universe'
+            Set-Content $docPath -Value $new -Force
+            # Test that the file was updated
+            Get-Content $docPath -Raw | Should -BeExactly $new
+
+            # Update the psake file
+            $psakeFile = "$PSScriptRoot/TestModule/psakeFile.ps1"
+            $psakeFileContent = Get-Content $psakeFile -Raw
+            $psakeFileContent = $psakeFileContent -replace '\$PSBPreference.Docs.Overwrite = \$false', '$PSBPreference.Docs.Overwrite = $true'
+            Set-Content $psakeFile -Value $psakeFileContent -Force
+
+            # build is PS job so psake doesn't freak out because it's nested
+            Start-Job -ScriptBlock {
+                Set-Location $using:PSScriptRoot/TestModule
+                $global:PSBuildCompile = $true
+                ./build.ps1 -Task Build
+            } | Wait-Job
+
+            # Test that the file reset as expected
+            Get-Content $docPath -Raw | Should -BeExactly $original
+        }
     }
 
     Context 'Dot-sourced module' {
         BeforeAll {
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -Scriptblock {
+            Start-Job -ScriptBlock {
                 Set-Location -Path $using:testModuleSource
                 $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
