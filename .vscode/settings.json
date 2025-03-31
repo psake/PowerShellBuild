@@ -6,5 +6,6 @@
     "powershell.codeFormatting.addWhitespaceAroundPipe": true,
     "powershell.codeFormatting.useCorrectCasing": true,
     "powershell.codeFormatting.newLineAfterOpenBrace": true,
-    "powershell.codeFormatting.alignPropertyValuePairs": true
+    "powershell.codeFormatting.alignPropertyValuePairs": true,
+    "powershell.scriptAnalysis.settingsPath": "tests/ScriptAnalyzerSettings.psd1"
 }
