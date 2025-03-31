@@ -10,7 +10,7 @@ Describe 'Build' {
         [array]$script:jobs = @()
 
         $path = 'Output/TestModule/0.1.0'
-        $script:testModuleOutputPath = Join-Path . $path
+        $script:testModuleOutputPath = Join-Path $tempDir $path
     }
 
     AfterAll {
