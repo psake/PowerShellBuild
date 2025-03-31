@@ -1,6 +1,6 @@
 BuildHelpers\Set-BuildEnvironment -Force
 
-$outDir        = [IO.Path]::Combine($env:BHProjectPath, 'Output')
+$outDir = [IO.Path]::Combine($env:BHProjectPath, 'Output')
 $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).ModuleVersion
 
 [ordered]@{
@@ -97,7 +97,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             OutputFileFormat = 'JaCoCo'
         }
     }
-    Help  = @{
+    Help = @{
         # Path to updateable help CAB
         UpdatableHelpOutDir = [IO.Path]::Combine($outDir, 'UpdatableHelp')
 
@@ -111,6 +111,9 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
     Docs = @{
         # Directory PlatyPS markdown documentation will be saved to
         RootDir = [IO.Path]::Combine($env:BHProjectPath, 'docs')
+
+        # Overwrite existing markdown files and use comment based help as the source of truth
+        Overwrite = $true
     }
     Publish = @{
         # PowerShell repository name to publish modules to

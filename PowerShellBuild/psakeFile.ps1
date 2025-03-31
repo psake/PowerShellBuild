@@ -128,6 +128,7 @@ task GenerateMarkdown -depends StageFiles -precondition $genMarkdownPreReqs {
         ModuleName = $PSBPreference.General.ModuleName
         DocsPath   = $PSBPreference.Docs.RootDir
         Locale     = $PSBPreference.Help.DefaultLocale
+        Overwrite  = $PSBPreference.Docs.Overwrite
     }
     Build-PSBuildMarkdown @buildMDParams
 } -description 'Generates PlatyPS markdown files from module help'
