@@ -14,7 +14,6 @@ Describe 'Build' {
     }
 
     AfterAll {
-        Set-Location $PSScriptRoot
         $jobs | Stop-Job -ErrorAction Ignore
         $jobs | Remove-Job -ErrorAction Ignore
     }
