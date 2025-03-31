@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [0.7.0] 2025-03-31
 
 ### Changed
 
@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [**#67**](https://github.com/psake/PowerShellBuild/pull/67) You can now
   overwrite existing markdown files using `$PSBPreference.Docs.Overwrite` and
   setting it to `$true`.
-- Loose dependencies by allowing them to be overwritten with $PSBPreference.
 - [**#72**](https://github.com/psake/PowerShellBuild/pull/72) Loosen
   dependencies by allowing them to be overwritten with
   `$PSBPreference.TaskDependencies`.
