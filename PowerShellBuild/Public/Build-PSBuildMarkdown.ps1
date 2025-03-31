@@ -29,7 +29,10 @@ function Build-PSBuildMarkdown {
         [string]$DocsPath,
 
         [parameter(Mandatory)]
-        [string]$Locale
+        [string]$Locale,
+
+        [parameter(Mandatory)]
+        [bool]$Overwrite
     )
 
     $moduleInfo = Import-Module "$ModulePath/$ModuleName.psd1" -Global -Force -PassThru
@@ -57,7 +60,7 @@ function Build-PSBuildMarkdown {
             OutputFolder   = [IO.Path]::Combine($DocsPath, $Locale)
             ErrorAction    = 'SilentlyContinue'
             Verbose        = $VerbosePreference
-            Force          = $true
+            Force          = $Overwrite
         }
         New-MarkdownHelp @newMDParams > $null
     } finally {
