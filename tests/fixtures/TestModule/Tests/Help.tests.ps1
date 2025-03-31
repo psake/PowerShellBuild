@@ -1,11 +1,11 @@
 # Taken with love from @juneb_get_help (https://raw.githubusercontent.com/juneb/PesterTDD/master/Module.Help.Tests.ps1)
 
 BeforeDiscovery {
-
     function global:FilterOutCommonParams {
         param ($Params)
-        $commonParameters = [System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
-        $params | Where-Object { $_.Name -notin $commonParameters } | Sort-Object -Property Name -Unique
+        $commonParams = [System.Management.Automation.PSCmdlet]::OptionalCommonParameters +
+        [System.Management.Automation.PSCmdlet]::CommonParameters
+        $params | Where-Object { $_.Name -notin $commonParams } | Sort-Object -Property Name -Unique
     }
 
     $manifest = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
@@ -25,10 +25,14 @@ BeforeDiscovery {
     if ($PSVersionTable.PSVersion.Major -lt 6) {
         $params.CommandType[0] += 'Workflow'
     }
-    $script:commands = Get-Command @params
+    $commands = Get-Command @params
 
     ## When testing help, remember that help is cached at the beginning of each session.
     ## To test, restart session.
+}
+
+AfterAll {
+    Remove-Item Function:/FilterOutCommonParams
 }
 
 Describe "Test help for <_.Name>" -ForEach $commands {
@@ -38,19 +42,19 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         $command = $_
         $commandHelp = Get-Help $command.Name -ErrorAction SilentlyContinue
         $commandParameters = global:FilterOutCommonParams -Params $command.ParameterSets.Parameters
-        $script:commandParameterNames = $commandParameters.Name
-        $script:helpLinks = $commandHelp.relatedLinks.navigationLink.uri
+        $commandParameterNames = $commandParameters.Name
+        $helpLinks = $commandHelp.relatedLinks.navigationLink.uri
     }
 
     BeforeAll {
         # These vars are needed in both discovery and test phases so we need to duplicate them here
         $command = $_
-        $script:commandName = $_.Name
+        $commandName = $_.Name
         $commandHelp = Get-Help $command.Name -ErrorAction SilentlyContinue
         $commandParameters = global:FilterOutCommonParams -Params $command.ParameterSets.Parameters
-        $script:commandParameterNames = $commandParameters.Name
+        $commandParameterNames = $commandParameters.Name
         $helpParameters = global:FilterOutCommonParams -Params $commandHelp.Parameters.Parameter
-        $script:helpParameterNames = $helpParameters.Name
+        $helpParameterNames = $helpParameters.Name
     }
 
     # If help is not found, synopsis in auto-generated help is the syntax diagram
@@ -83,7 +87,7 @@ Describe "Test help for <_.Name>" -ForEach $commands {
             $parameter = $_
             $parameterName = $parameter.Name
             $parameterHelp = $commandHelp.parameters.parameter | Where-Object Name -EQ $parameterName
-            $script:parameterHelpType = if ($parameterHelp.ParameterValue) { $parameterHelp.ParameterValue.Trim() }
+            $parameterHelpType = if ($parameterHelp.ParameterValue) { $parameterHelp.ParameterValue.Trim() }
         }
 
         # Should be a description for every parameter
