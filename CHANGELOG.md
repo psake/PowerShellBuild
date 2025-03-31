@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Breaking Changes
+
 - [**#71**](https://github.com/psake/PowerShellBuild/pull/71) Compiled modules
   are now explicitly created as UTF-8 files.
-
+- [**#67**](https://github.com/psake/PowerShellBuild/pull/67) You can now
+  overwrite existing markdown files using `$PSBPreference.Docs.Overwrite` and
+  setting it to `$true`.
 
 ## [0.6.2] 2024-10-06
 
