@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.1] 2025-04-01
+
+### Fixes
+
+- Fix a bug in `Build-PSBuildMarkdown` where a hashtable item was added twice.
+
 ## [0.7.0] 2025-03-31
 
 ### Changed
