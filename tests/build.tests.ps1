@@ -4,7 +4,7 @@ Describe 'Build' {
     BeforeAll {
         $tempDir = Join-Path $TestDrive 'TestModule'
         Copy-Item $PSScriptRoot/fixtures/TestModule $tempDir -Recurse
-        Set-Location $tempDir
+        Push-Location $tempDir
 
         # Capture any of the jobs for cleanup later
         [array]$script:jobs = @()
@@ -14,6 +14,7 @@ Describe 'Build' {
     }
 
     AfterAll {
+        Pop-Location
         $jobs | Stop-Job -ErrorAction Ignore
         $jobs | Remove-Job -ErrorAction Ignore
     }
