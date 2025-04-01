@@ -2,25 +2,31 @@
 Describe 'Build' {
 
     BeforeAll {
-        # Hack for GH Actions
-        # For some reason, the TestModule build process create the output in the project root
-        # and not relative to it's own build file.
-        if ($env:GITHUB_ACTION) {
-            $script:testModuleOutputPath = [IO.Path]::Combine($env:BHProjectPath, 'Output', 'TestModule', '0.1.0')
-        } else {
-            $script:testModuleOutputPath = [IO.Path]::Combine($env:BHProjectPath, 'tests', 'TestModule', 'Output', 'TestModule', '0.1.0')
-        }
+        $tempDir = Join-Path $TestDrive 'TestModule'
+        Copy-Item $PSScriptRoot/fixtures/TestModule $tempDir -Recurse
+        Push-Location $tempDir
+
+        # Capture any of the jobs for cleanup later
+        [array]$script:jobs = @()
+
+        $path = 'Output/TestModule/0.1.0'
+        $script:testModuleOutputPath = Join-Path $tempDir $path
+    }
+
+    AfterAll {
+        Pop-Location
+        $jobs | Stop-Job -ErrorAction Ignore
+        $jobs | Remove-Job -ErrorAction Ignore
     }
 
     Context 'Compile module' {
         BeforeAll {
-
-            Write-Host "PSScriptRoot: $PSScriptRoot"
+            Write-Host "PSScriptRoot: $tempDir"
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -ScriptBlock {
-                Set-Location $using:PSScriptRoot/TestModule
+            $script:jobs += Start-Job -Scriptblock {
+                Set-Location $using:tempDir
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
             } | Wait-Job
@@ -71,8 +77,8 @@ Describe 'Build' {
     Context 'Dot-sourced module' {
         BeforeAll {
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -ScriptBlock {
-                Set-Location $using:PSScriptRoot/TestModule
+            $script:jobs += Start-Job -Scriptblock {
+                Set-Location $using:tempDir
                 $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
             } | Wait-Job
@@ -100,6 +106,40 @@ Describe 'Build' {
 
         It 'Has MAML help XML' {
             "$script:testModuleOutputPath/en-US/TestModule-help.xml" | Should -Exist
+        }
+    }
+    Context 'Overwrite Docs' {
+        BeforeAll {
+
+            Write-Host "PSScriptRoot: $tempDir"
+            Write-Host "OutputPath: $script:testModuleOutputPath"
+
+            # Replace with a different string to test the overwrite
+            $script:docPath = "$tempDir/docs/en-US/Get-HelloWorld.md"
+            $script:original = Get-Content $docPath -Raw
+            $new = $original -replace 'Hello World', 'Hello Universe'
+            Set-Content $docPath -Value $new -Force
+
+            # Update the psake file
+            $psakeFile = "$tempDir/psakeFile.ps1"
+            $psakeFileContent = Get-Content $psakeFile -Raw
+            $psakeFileContent = $psakeFileContent -replace '\$PSBPreference.Docs.Overwrite = \$false', '$PSBPreference.Docs.Overwrite = $true'
+            Set-Content $psakeFile -Value $psakeFileContent -Force
+
+            # build is PS job so psake doesn't freak out because it's nested
+            $script:jobs += Start-Job -Scriptblock {
+                Set-Location $using:tempDir
+                $global:PSBuildCompile = $true
+                ./build.ps1 -Task Build
+            } | Wait-Job
+        }
+
+        AfterAll {
+            Remove-Item $script:testModuleOutputPath -Recurse -Force
+        }
+        It 'Can Overwrite the Docs' {
+            # Test that the file reset as expected
+            Get-Content $script:docPath -Raw | Should -BeExactly $script:original
         }
     }
 }

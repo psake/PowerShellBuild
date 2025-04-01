@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.1] 2025-03-31 Bugfix
+
+### Fixed
+
+- Remove extra item from `New-MarkdownHelp` splat that would result in a failure
+  when using `$PSBPreference.Docs.Overwrite = $true`
+- Clean up some failing Script Analyzer settings, including moving the file.
+
 ## [0.7.0] 2025-03-31
 
 ### Changed

@@ -19,7 +19,7 @@ function Build-PSBuildMarkdown {
 
         Analysis the comment-based help of the MyModule module and create markdown documents under ./docs/en-US.
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [parameter(Mandatory)]
         [string]$ModulePath,
@@ -57,12 +57,11 @@ function Build-PSBuildMarkdown {
 
         # ErrorAction set to SilentlyContinue so this command will not overwrite an existing MD file.
         $newMDParams = @{
-            Module = $ModuleName
-            Locale = $Locale
+            Module       = $ModuleName
+            Locale       = $Locale
             OutputFolder = [IO.Path]::Combine($DocsPath, $Locale)
-            ErrorAction = 'SilentlyContinue'
-            Verbose = $VerbosePreference
-            Force = $Overwrite
+            ErrorAction  = 'SilentlyContinue'
+            Verbose      = $VerbosePreference
         }
         if ($Overwrite) {
             $newMDParams.Add('Force', $true)
