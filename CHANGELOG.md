@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.2] unreleased
+
+### Added
+
+- The `$PSBPreference` variable now supports the following PlatyPS `New-MarkdownHelp` and `Update-MarkdownHelp` boolean
+  options:
+  - `$PSBPreference.Docs.AlphabeticParamsOrder`
+  - `$PSBPreference.Docs.ExcludeDontShow`
+  - `$PSBPreference.Docs.UseFullTypeName`
+
 ## [0.7.1] 2025-04-01
 
 ### Fixes
