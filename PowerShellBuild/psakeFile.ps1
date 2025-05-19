@@ -124,11 +124,14 @@ $genMarkdownPreReqs = {
 }
 Task GenerateMarkdown -depends $PSBPreference.TaskDependencies.GenerateMarkdown -precondition $genMarkdownPreReqs {
     $buildMDParams = @{
-        ModulePath = $PSBPreference.Build.ModuleOutDir
-        ModuleName = $PSBPreference.General.ModuleName
-        DocsPath   = $PSBPreference.Docs.RootDir
-        Locale     = $PSBPreference.Help.DefaultLocale
-        Overwrite  = $PSBPreference.Docs.Overwrite
+        ModulePath            = $PSBPreference.Build.ModuleOutDir
+        ModuleName            = $PSBPreference.General.ModuleName
+        DocsPath              = $PSBPreference.Docs.RootDir
+        Locale                = $PSBPreference.Help.DefaultLocale
+        Overwrite             = $PSBPreference.Docs.Overwrite
+        AlphabeticParamsOrder = $PSBPreference.Docs.AlphabeticParamsOrder
+        ExcludeDontShow       = $PSBPreference.Docs.ExcludeDontShow
+        UseFullTypeName       = $PSBPreference.Docs.UseFullTypeName
     }
     Build-PSBuildMarkdown @buildMDParams
 } -description 'Generates PlatyPS markdown files from module help'

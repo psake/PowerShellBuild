@@ -115,6 +115,18 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # Whether to overwrite existing markdown files and use comment based help as the source of truth
         Overwrite = $false
+
+        # Whether to order parameters alphabetically by name in PARAMETERS section.
+        # Value passed to New-MarkdownHelp and Update-MarkdownHelp.
+        AlphabeticParamsOrder = $false
+
+        # Exclude the parameters marked with `DontShow` in the parameter attribute from the help content.
+        # Value passed to New-MarkdownHelp and Update-MarkdownHelp.
+        ExcludeDontShow = $false
+
+        # Indicates that the target document will use a full type name instead of a short name for parameters.
+        # Value passed to New-MarkdownHelp and Update-MarkdownHelp.
+        UseFullTypeName = $false
     }
     Publish = @{
         # PowerShell repository name to publish modules to
