@@ -99,6 +99,8 @@ task Pester -If (. $pesterPreReqs) Build,{
         CodeCoverageOutputFile       = $PSBPreference.Test.CodeCoverage.OutputFile
         CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFormat
         ImportModule                 = $PSBPreference.Test.ImportModule
+        SkipRemainingOnFailure       = $PSBPreference.Test.SkipRemainingOnFailure
+        OutputVerbosity              = $PSBPreference.Test.OutputVerbosity
     }
     Test-PSBuildPester @pesterParams
 }
