@@ -14,6 +14,12 @@ function Build-PSBuildMarkdown {
         The locale to save the markdown docs.
     .PARAMETER Overwrite
         Overwrite existing markdown files and use comment based help as the source of truth.
+    .PARAMETER AlphabeticParamsOrder
+        Order parameters alphabetically by name in PARAMETERS section. There are 5 exceptions: -Confirm, -WhatIf, -IncludeTotalCount, -Skip, and -First parameters will be the last.
+    .PARAMETER ExcludeDontShow
+        Exclude the parameters marked with `DontShow` in the parameter attribute from the help content.
+    .PARAMETER UseFullTypeName
+        Indicates that the target document will use a full type name instead of a short name for parameters.
     .EXAMPLE
         PS> Build-PSBuildMarkdown -ModulePath ./output/MyModule/0.1.0 -ModuleName MyModule -DocsPath ./docs -Locale en-US
 
@@ -34,7 +40,16 @@ function Build-PSBuildMarkdown {
         [string]$Locale,
 
         [parameter(Mandatory)]
-        [bool]$Overwrite
+        [bool]$Overwrite,
+
+        [parameter(Mandatory)]
+        [bool]$AlphabeticParamsOrder,
+
+        [parameter(Mandatory)]
+        [bool]$ExcludeDontShow,
+
+        [parameter(Mandatory)]
+        [bool]$UseFullTypeName
     )
 
     $moduleInfo = Import-Module "$ModulePath/$ModuleName.psd1" -Global -Force -PassThru
@@ -50,18 +65,27 @@ function Build-PSBuildMarkdown {
         }
 
         if (Get-ChildItem -LiteralPath $DocsPath -Filter *.md -Recurse) {
+            $updateMDParams = @{
+                AlphabeticParamsOrder = $AlphabeticParamsOrder
+                ExcludeDontShow       = $ExcludeDontShow
+                UseFullTypeName       = $UseFullTypeName
+                Verbose               = $VerbosePreference
+            }
             Get-ChildItem -LiteralPath $DocsPath -Directory | ForEach-Object {
-                Update-MarkdownHelp -Path $_.FullName -Verbose:$VerbosePreference > $null
+                Update-MarkdownHelp -Path $_.FullName @updateMDParams > $null
             }
         }
 
         # ErrorAction set to SilentlyContinue so this command will not overwrite an existing MD file.
         $newMDParams = @{
-            Module       = $ModuleName
-            Locale       = $Locale
-            OutputFolder = [IO.Path]::Combine($DocsPath, $Locale)
-            ErrorAction  = 'SilentlyContinue'
-            Verbose      = $VerbosePreference
+            Module                = $ModuleName
+            Locale                = $Locale
+            OutputFolder          = [IO.Path]::Combine($DocsPath, $Locale)
+            AlphabeticParamsOrder = $AlphabeticParamsOrder
+            ExcludeDontShow       = $ExcludeDontShow
+            UseFullTypeName       = $UseFullTypeName
+            ErrorAction           = 'SilentlyContinue'
+            Verbose               = $VerbosePreference
         }
         if ($Overwrite) {
             $newMDParams.Add('Force', $true)
