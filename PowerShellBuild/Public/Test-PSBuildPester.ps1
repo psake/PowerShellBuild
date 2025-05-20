@@ -61,7 +61,7 @@ function Test-PSBuildPester {
         [switch]$ImportModule,
 
         [ValidateSet('None', 'Run', 'Container', 'Block')]
-        [string]$SkipRemainingOnFailure = 'None'
+        [string]$SkipRemainingOnFailure = 'None',
 
         [ValidateSet('None', 'Normal', 'Detailed', 'Diagnostic')]
         [string]$OutputVerbosity = 'Detailed'
@@ -86,9 +86,9 @@ function Test-PSBuildPester {
 
         Import-Module Pester -MinimumVersion 5.0.0
         $configuration = [PesterConfiguration]::Default
-        $configuration.Output.Verbosity        = 'Detailed'
+        $configuration.Output.Verbosity        = $OutputVerbosity
         $configuration.Run.PassThru            = $true
-        $configuration.Run.SkipRemainingOnFailure = $FailFast.toboo
+        $configuration.Run.SkipRemainingOnFailure = $SkipRemainingOnFailure
         $configuration.TestResult.Enabled      = -not [string]::IsNullOrEmpty($OutputPath)
         $configuration.TestResult.OutputPath   = $OutputPath
         $configuration.TestResult.OutputFormat = $OutputFormat
