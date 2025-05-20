@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `$PSBPreference.Docs.AlphabeticParamsOrder`
   - `$PSBPreference.Docs.ExcludeDontShow`
   - `$PSBPreference.Docs.UseFullTypeName`
+- The `$PSBPreference` variable now supports the following Pester test
+  configuration options:
+  - `$PSBPreference.Test.SkipRemainingOnFailure` can be set to **None**,
+    **Run**, **Container** and **Block**. The default value is **None**.
+  - `$PSBPreference.Test.OutputVerbosity` can be set to **None**, **Normal**,
+    **Detailed**, and **Diagnostic**. The default value is **Detailed**.
 
 ## [0.7.1] 2025-04-01
 
