@@ -97,6 +97,12 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             # The code coverage output format to use
             OutputFileFormat = 'JaCoCo'
         }
+
+        # Skip remaining tests after failure for selected scope. Options are None, Run, Container and Block. Default: None.
+        SkipRemainingOnFailure = 'None'
+
+        # Set verbosity of output. Options are None, Normal, Detailed and Diagnostic. Default: Detailed.
+        OutputVerbosity = 'Detailed'
     }
     Help = @{
         # Path to updatable help CAB

@@ -26,6 +26,10 @@ function Test-PSBuildPester {
         Code coverage result output format. Currently, only 'JaCoCo' is supported by Pester.
     .PARAMETER ImportModule
         Import module from OutDir prior to running Pester tests.
+    .PARAMETER SkipRemainingOnFailure
+        Skip remaining tests after failure for selected scope. Options are None, Run, Container and Block. Default: None.
+    .PARAMETER OutputVerbosity
+        The verbosity of output, options are None, Normal, Detailed and Diagnostic. Default is Detailed.
     .EXAMPLE
         PS> Test-PSBuildPester -Path ./tests -ModuleName Mymodule -OutputPath ./out/testResults.xml
 
@@ -54,7 +58,13 @@ function Test-PSBuildPester {
 
         [string]$CodeCoverageOutputFileFormat = 'JaCoCo',
 
-        [switch]$ImportModule
+        [switch]$ImportModule,
+
+        [ValidateSet('None', 'Run', 'Container', 'Block')]
+        [string]$SkipRemainingOnFailure = 'None',
+
+        [ValidateSet('None', 'Normal', 'Detailed', 'Diagnostic')]
+        [string]$OutputVerbosity = 'Detailed'
     )
 
     if (-not (Get-Module -Name Pester)) {
@@ -76,8 +86,9 @@ function Test-PSBuildPester {
 
         Import-Module Pester -MinimumVersion 5.0.0
         $configuration = [PesterConfiguration]::Default
-        $configuration.Output.Verbosity        = 'Detailed'
+        $configuration.Output.Verbosity        = $OutputVerbosity
         $configuration.Run.PassThru            = $true
+        $configuration.Run.SkipRemainingOnFailure = $SkipRemainingOnFailure
         $configuration.TestResult.Enabled      = -not [string]::IsNullOrEmpty($OutputPath)
         $configuration.TestResult.OutputPath   = $OutputPath
         $configuration.TestResult.OutputFormat = $OutputFormat

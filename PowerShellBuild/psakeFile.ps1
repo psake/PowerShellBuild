@@ -105,6 +105,8 @@ Task Pester -depends $PSBPreference.TaskDependencies.Pester -precondition $peste
         CodeCoverageOutputFile       = $PSBPreference.Test.CodeCoverage.OutputFile
         CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFileFormat
         ImportModule                 = $PSBPreference.Test.ImportModule
+        SkipRemainingOnFailure       = $PSBPreference.Test.SkipRemainingOnFailure
+        OutputVerbosity              = $PSBPreference.Test.OutputVerbosity
     }
     Test-PSBuildPester @pesterParams
 } -description 'Execute Pester tests'
