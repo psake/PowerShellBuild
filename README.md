@@ -131,8 +131,9 @@ match your environment.
 
 ## Modifying Task Dependencies
 
-If you need to modify what dependencies are run you will need to set a variable
-in your `psakeFile.ps1`.
+To change which tasks depend on each other, set the variables below in your
+`psakeFile.ps1`. Unlike `$PSBPreference` settings, these variables should be set
+outside the `properties` block, before you reference any PowerShellBuild tasks.
 
 | Setting                             | Default value                      | Description                                        |
 |-------------------------------------|------------------------------------|----------------------------------------------------|
