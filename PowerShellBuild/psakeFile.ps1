@@ -11,19 +11,55 @@ FormatTaskName {
     Write-Host $taskName.ToUpper() -ForegroundColor Blue
 }
 
+#region Task Dependencies
+if ($null -eq $PSBCleanDependency) {
+    $PSBCleanDependency = @('Init')
+}
+if ($null -eq $PSBStageFilesDependency) {
+    $PSBStageFilesDependency = @('Clean')
+}
+if ($null -eq $PSBBuildDependency) {
+    $PSBBuildDependency = @('StageFiles', 'BuildHelp')
+}
+if ($null -eq $PSBAnalyzeDependency) {
+    $PSBAnalyzeDependency = @('Build')
+}
+if ($null -eq $PSBPesterDependency) {
+    $PSBPesterDependency = @('Build')
+}
+if ($null -eq $PSBTestDependency) {
+    $PSBTestDependency = @('Pester', 'Analyze')
+}
+if ($null -eq $PSBBuildHelpDependency) {
+    $PSBBuildHelpDependency = @('GenerateMarkdown', 'GenerateMAML')
+}
+if ($null -eq $PSBGenerateMarkdownDependency) {
+    $PSBGenerateMarkdownDependency = @('StageFiles')
+}
+if ($null -eq $PSBGenerateMAMLDependency) {
+    $PSBGenerateMAMLDependency = @('GenerateMarkdown')
+}
+if ($null -eq $PSBGenerateUpdatableHelpDependency) {
+    $PSBGenerateUpdatableHelpDependency = @('BuildHelp')
+}
+if ($null -eq $PSBPublishDependency) {
+    $PSBPublishDependency = @('Test')
+}
+#endregion Task Dependencies
+
 # This psake file is meant to be referenced from another
 # Can't have two 'default' tasks
 # Task default -depends Test
 
 Task Init {
     Initialize-PSBuild -UseBuildHelpers -BuildEnvironment $PSBPreference
-} -description 'Initialize build environment variables'
+} -Description 'Initialize build environment variables'
 
-Task Clean -depends $PSBPreference.TaskDependencies.Clean {
+Task Clean -Depends $PSBCleanDependency {
     Clear-PSBuildOutputFolder -Path $PSBPreference.Build.ModuleOutDir
-} -description 'Clears module output directory'
+} -Description 'Clears module output directory'
 
-Task StageFiles -depends $PSBPreference.TaskDependencies.StageFiles {
+Task StageFiles -Depends $PSBStageFilesDependency {
     $buildParams = @{
         Path               = $PSBPreference.General.SrcRootDir
         ModuleName         = $PSBPreference.General.ModuleName
@@ -51,9 +87,9 @@ Task StageFiles -depends $PSBPreference.TaskDependencies.StageFiles {
     }
 
     Build-PSBuildModule @buildParams
-} -description 'Builds module based on source directory'
+} -Description 'Builds module based on source directory'
 
-Task Build -depends $PSBPreference.TaskDependencies.Build -description 'Builds module and generate help documentation'
+Task Build -Depends $PSBBuildDependency -Description 'Builds module and generate help documentation'
 
 $analyzePreReqs = {
     $result = $true
@@ -67,14 +103,14 @@ $analyzePreReqs = {
     }
     $result
 }
-Task Analyze -depends $PSBPreference.TaskDependencies.Analyze -precondition $analyzePreReqs {
+Task Analyze -Depends $PSBAnalyzeDependency -PreCondition $analyzePreReqs {
     $analyzeParams = @{
         Path              = $PSBPreference.Build.ModuleOutDir
         SeverityThreshold = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
         SettingsPath      = $PSBPreference.Test.ScriptAnalysis.SettingsPath
     }
     Test-PSBuildScriptAnalysis @analyzeParams
-} -description 'Execute PSScriptAnalyzer tests'
+} -Description 'Execute PSScriptAnalyzer tests'
 
 $pesterPreReqs = {
     $result = $true
@@ -92,7 +128,7 @@ $pesterPreReqs = {
     }
     return $result
 }
-Task Pester -depends $PSBPreference.TaskDependencies.Pester -precondition $pesterPreReqs {
+Task Pester -Depends $PSBPesterDependency -PreCondition $pesterPreReqs {
     $pesterParams = @{
         Path                         = $PSBPreference.Test.RootDir
         ModuleName                   = $PSBPreference.General.ModuleName
@@ -109,12 +145,12 @@ Task Pester -depends $PSBPreference.TaskDependencies.Pester -precondition $peste
         OutputVerbosity              = $PSBPreference.Test.OutputVerbosity
     }
     Test-PSBuildPester @pesterParams
-} -description 'Execute Pester tests'
+} -Description 'Execute Pester tests'
 
-Task Test -depends $PSBPreference.TaskDependencies.Test {
-} -description 'Execute Pester and ScriptAnalyzer tests'
+Task Test -Depends $PSBTestDependency {
+} -Description 'Execute Pester and ScriptAnalyzer tests'
 
-Task BuildHelp -depends $PSBPreference.TaskDependencies.BuildHelp {} -description 'Builds help documentation'
+Task BuildHelp -Depends $PSBBuildHelpDependency {} -Description 'Builds help documentation'
 
 $genMarkdownPreReqs = {
     $result = $true
@@ -124,7 +160,7 @@ $genMarkdownPreReqs = {
     }
     $result
 }
-Task GenerateMarkdown -depends $PSBPreference.TaskDependencies.GenerateMarkdown -precondition $genMarkdownPreReqs {
+Task GenerateMarkdown -Depends $PSBGenerateMarkdownDependency -PreCondition $genMarkdownPreReqs {
     $buildMDParams = @{
         ModulePath            = $PSBPreference.Build.ModuleOutDir
         ModuleName            = $PSBPreference.General.ModuleName
@@ -136,7 +172,7 @@ Task GenerateMarkdown -depends $PSBPreference.TaskDependencies.GenerateMarkdown 
         UseFullTypeName       = $PSBPreference.Docs.UseFullTypeName
     }
     Build-PSBuildMarkdown @buildMDParams
-} -description 'Generates PlatyPS markdown files from module help'
+} -Description 'Generates PlatyPS markdown files from module help'
 
 $genHelpFilesPreReqs = {
     $result = $true
@@ -146,9 +182,9 @@ $genHelpFilesPreReqs = {
     }
     $result
 }
-Task GenerateMAML -depends $PSBPreference.TaskDependencies.GenerateMAML -precondition $genHelpFilesPreReqs {
+Task GenerateMAML -Depends $PSBGenerateMAMLDependency -PreCondition $genHelpFilesPreReqs {
     Build-PSBuildMAMLHelp -Path $PSBPreference.Docs.RootDir -DestinationPath $PSBPreference.Build.ModuleOutDir
-} -description 'Generates MAML-based help from PlatyPS markdown files'
+} -Description 'Generates MAML-based help from PlatyPS markdown files'
 
 $genUpdatableHelpPreReqs = {
     $result = $true
@@ -158,12 +194,12 @@ $genUpdatableHelpPreReqs = {
     }
     $result
 }
-Task GenerateUpdatableHelp -depends $PSBPreference.TaskDependencies.GenerateUpdatableHelp -precondition $genUpdatableHelpPreReqs {
+Task GenerateUpdatableHelp -Depends $PSBGenerateUpdatableHelpDependency -PreCondition $genUpdatableHelpPreReqs {
     Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
-} -description 'Create updatable help .cab file based on PlatyPS markdown help'
+} -Description 'Create updatable help .cab file based on PlatyPS markdown help'
 
-Task Publish -depends $PSBPreference.TaskDependencies.Publish {
-    Assert -conditionToCheck ($PSBPreference.Publish.PSRepositoryApiKey -or $PSBPreference.Publish.PSRepositoryCredential) -failureMessage "API key or credential not defined to authenticate with [$($PSBPreference.Publish.PSRepository)] with."
+Task Publish -Depends $PSBPublishDependency {
+    Assert -ConditionToCheck ($PSBPreference.Publish.PSRepositoryApiKey -or $PSBPreference.Publish.PSRepositoryCredential) -FailureMessage "API key or credential not defined to authenticate with [$($PSBPreference.Publish.PSRepository)] with."
 
     $publishParams = @{
         Path       = $PSBPreference.Build.ModuleOutDir
@@ -180,9 +216,9 @@ Task Publish -depends $PSBPreference.TaskDependencies.Publish {
     }
 
     Publish-PSBuildModule @publishParams
-} -description 'Publish module to the defined PowerShell repository'
+} -Description 'Publish module to the defined PowerShell repository'
 
-Task ? -description 'Lists the available tasks' {
+Task ? -Description 'Lists the available tasks' {
     'Available tasks:'
     $psake.context.Peek().Tasks.Keys | Sort-Object
 }
