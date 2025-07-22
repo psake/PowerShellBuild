@@ -1,6 +1,6 @@
 # Dot source public functions
 $private = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Private/*.ps1')) -Recurse)
-$public  = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Public/*.ps1')) -Recurse)
+$public = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Public/*.ps1')) -Recurse)
 foreach ($import in $public + $private) {
     try {
         . $import.FullName
@@ -8,6 +8,14 @@ foreach ($import in $public + $private) {
         throw "Unable to dot source [$($import.FullName)]"
     }
 }
+
+$importLocalizedDataSplat = @{
+    BindingVariable = 'LocalizedData'
+    FileName        = 'Messages.psd1'
+    ErrorAction     = 'SilentlyContinue'
+}
+Import-LocalizedData @importLocalizedDataSplat
+
 
 Export-ModuleMember -Function $public.Basename
 

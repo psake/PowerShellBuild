@@ -25,7 +25,7 @@ function Build-PSBuildMarkdown {
 
         Analysis the comment-based help of the MyModule module and create markdown documents under ./docs/en-US.
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [parameter(Mandatory)]
         [string]$ModulePath,
@@ -56,7 +56,7 @@ function Build-PSBuildMarkdown {
 
     try {
         if ($moduleInfo.ExportedCommands.Count -eq 0) {
-            Write-Warning 'No commands have been exported. Skipping markdown generation.'
+            Write-Warning $LocalizedData.NoCommandsExported
             return
         }
 
@@ -93,7 +93,7 @@ function Build-PSBuildMarkdown {
         }
         New-MarkdownHelp @newMDParams > $null
     } catch {
-        Write-Error "Failed to generate markdown help. : $_"
+        Write-Error ($LocalizedData.FailedToGenerateMarkdownHelp -f $_)
     } finally {
         Remove-Module $moduleName
     }

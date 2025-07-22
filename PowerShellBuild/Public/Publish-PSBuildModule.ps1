@@ -27,18 +27,18 @@ function Publish-PSBuildModule {
 
         Publish version 0.1.0 of the module at path .\Output\0.1.0\MyModule to the PSGallery repository using an API key and a PowerShell credential.
     #>
-    [cmdletbinding(DefaultParameterSetName = 'ApiKey')]
+    [CmdletBinding(DefaultParameterSetName = 'ApiKey')]
     param(
         [parameter(Mandatory)]
         [ValidateScript({
-            if (-not (Test-Path -Path $_ )) {
-                throw 'Folder does not exist'
-            }
-            if (-not (Test-Path -Path $_ -PathType Container)) {
-                throw 'The Path argument must be a folder. File paths are not allowed.'
-            }
-            $true
-        })]
+                if (-not (Test-Path -Path $_ )) {
+                    throw ($LocalizedData.PathDoesNotExist -f $_)
+                }
+                if (-not (Test-Path -Path $_ -PathType Container)) {
+                    throw $LocalizedData.PathArgumentMustBeAFolder
+                }
+                $true
+            })]
         [System.IO.FileInfo]$Path,
 
         [parameter(Mandatory)]
@@ -50,10 +50,10 @@ function Publish-PSBuildModule {
         [Alias('ApiKey')]
         [string]$NuGetApiKey,
 
-        [pscredential]$Credential
+        [PSCredential]$Credential
     )
 
-    Write-Verbose "Publishing version [$Version] to repository [$Repository]..."
+    Write-Verbose ($LocalizedData.PublishingVersionToRepository -f $Version, $Repository)
 
     $publishParams = @{
         Path       = $Path

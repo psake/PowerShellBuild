@@ -7,13 +7,14 @@ function Initialize-PSBuild {
     .PARAMETER BuildEnvironment
         Contains the PowerShellBuild settings (known as $PSBPreference).
     .PARAMETER UseBuildHelpers
-        Use BuildHelpers module to populate common environment variables based on current build system context.
+        Use BuildHelpers module to populate common environment variables based
+        on current build system context.
     .EXAMPLE
         PS> Initialize-PSBuild -UseBuildHelpers
 
         Populate build system environment variables.
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [Hashtable]
@@ -22,10 +23,24 @@ function Initialize-PSBuild {
         [switch]$UseBuildHelpers
     )
 
-    if ($BuildEnvironment.Build.OutDir.StartsWith($env:BHProjectPath, [StringComparison]::OrdinalIgnoreCase)) {
-        $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine($BuildEnvironment.Build.OutDir, $env:BHProjectName, $BuildEnvironment.General.ModuleVersion)
+    if (
+        $BuildEnvironment.Build.OutDir.StartsWith(
+            $env:BHProjectPath,
+            [StringComparison]::OrdinalIgnoreCase
+        )
+    ) {
+        $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine(
+            $BuildEnvironment.Build.OutDir,
+            $env:BHProjectName,
+            $BuildEnvironment.General.ModuleVersion
+        )
     } else {
-        $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine($env:BHProjectPath, $BuildEnvironment.Build.OutDir, $env:BHProjectName, $BuildEnvironment.General.ModuleVersion)
+        $BuildEnvironment.Build.ModuleOutDir = [IO.Path]::Combine(
+            $env:BHProjectPath,
+            $BuildEnvironment.Build.OutDir,
+            $env:BHProjectName,
+            $BuildEnvironment.General.ModuleVersion
+        )
     }
 
     $params = @{
@@ -33,19 +48,19 @@ function Initialize-PSBuild {
     }
     Set-BuildEnvironment @params -Force
 
-    Write-Host 'Build System Details:' -ForegroundColor Yellow
-    $psVersion          = $PSVersionTable.PSVersion.ToString()
-    $buildModuleName    = $MyInvocation.MyCommand.Module.Name
+    Write-Host $LocalizedData.BuildSystemDetails -ForegroundColor 'Yellow'
+    $psVersion = $PSVersionTable.PSVersion.ToString()
+    $buildModuleName = $MyInvocation.MyCommand.Module.Name
     $buildModuleVersion = $MyInvocation.MyCommand.Module.Version
-    "Build Module:       $buildModuleName`:$buildModuleVersion"
-    "PowerShell Version: $psVersion"
+    $LocalizedData.BuildModule -f $buildModuleName, $buildModuleVersion
+    $LocalizedData.PowerShellVersion -f $psVersion
 
     if ($UseBuildHelpers.IsPresent) {
         $nl = [System.Environment]::NewLine
 
-        Write-Host "$nl`Environment variables:" -ForegroundColor Yellow
+        Write-Host ($LocalizedData.EnvironmentVariables -f $nl) -ForegroundColor 'Yellow'
         (Get-Item ENV:BH*).Foreach({
-            '{0,-20}{1}' -f $_.name, $_.value
-        })
+                '{0,-20}{1}' -f $_.name, $_.value
+            })
     }
 }

@@ -31,11 +31,11 @@ function Test-PSBuildPester {
     .PARAMETER OutputVerbosity
         The verbosity of output, options are None, Normal, Detailed and Diagnostic. Default is Detailed.
     .EXAMPLE
-        PS> Test-PSBuildPester -Path ./tests -ModuleName Mymodule -OutputPath ./out/testResults.xml
+        PS> Test-PSBuildPester -Path ./tests -ModuleName MyModule -OutputPath ./out/testResults.xml
 
         Run Pester tests in ./tests and save results to ./out/testResults.xml
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [parameter(Mandatory)]
         [string]$Path,
@@ -74,7 +74,7 @@ function Test-PSBuildPester {
     try {
         if ($ImportModule) {
             if (-not (Test-Path $ModuleManifest)) {
-                Write-Error "Unable to find module manifest [$ModuleManifest]. Can't import module"
+                Write-Error ($LocalizedData.UnableToFindModuleManifest -f $ModuleManifest)
             } else {
                 # Remove any previously imported project modules and import from the output dir
                 Get-Module $ModuleName | Remove-Module -Force -ErrorAction SilentlyContinue
@@ -86,11 +86,11 @@ function Test-PSBuildPester {
 
         Import-Module Pester -MinimumVersion 5.0.0
         $configuration = [PesterConfiguration]::Default
-        $configuration.Output.Verbosity        = $OutputVerbosity
-        $configuration.Run.PassThru            = $true
+        $configuration.Output.Verbosity = $OutputVerbosity
+        $configuration.Run.PassThru = $true
         $configuration.Run.SkipRemainingOnFailure = $SkipRemainingOnFailure
-        $configuration.TestResult.Enabled      = -not [string]::IsNullOrEmpty($OutputPath)
-        $configuration.TestResult.OutputPath   = $OutputPath
+        $configuration.TestResult.Enabled = -not [string]::IsNullOrEmpty($OutputPath)
+        $configuration.TestResult.OutputPath = $OutputPath
         $configuration.TestResult.OutputFormat = $OutputFormat
 
         if ($CodeCoverage.IsPresent) {
@@ -98,43 +98,43 @@ function Test-PSBuildPester {
             if ($CodeCoverageFiles.Count -gt 0) {
                 $configuration.CodeCoverage.Path = $CodeCoverageFiles
             }
-            $configuration.CodeCoverage.OutputPath   = $CodeCoverageOutputFile
+            $configuration.CodeCoverage.OutputPath = $CodeCoverageOutputFile
             $configuration.CodeCoverage.OutputFormat = $CodeCoverageOutputFileFormat
         }
 
         $testResult = Invoke-Pester -Configuration $configuration -Verbose:$VerbosePreference
 
         if ($testResult.FailedCount -gt 0) {
-            throw 'One or more Pester tests failed'
+            throw $LocalizedData.PesterTestsFailed
         }
 
         if ($CodeCoverage.IsPresent) {
-            Write-Host "`nCode Coverage:`n" -ForegroundColor Yellow
+            Write-Host ("`n{0}:`n" -f $LocalizedData.CodeCoverage) -ForegroundColor Yellow
             if (Test-Path $CodeCoverageOutputFile) {
                 $textInfo = (Get-Culture).TextInfo
                 [xml]$testCoverage = Get-Content $CodeCoverageOutputFile
                 $ccReport = $testCoverage.report.counter.ForEach({
-                    $total = [int]$_.missed + [int]$_.covered
-                    $perc  = [Math]::Truncate([int]$_.covered / $total)
-                    [pscustomobject]@{
-                        name    = $textInfo.ToTitleCase($_.Type.ToLower())
-                        percent = $perc
-                    }
-                })
+                        $total = [int]$_.missed + [int]$_.covered
+                        $percent = [Math]::Truncate([int]$_.covered / $total)
+                        [PSCustomObject]@{
+                            name    = $textInfo.ToTitleCase($_.Type.ToLower())
+                            percent = $percent
+                        }
+                    })
 
                 $ccFailMsgs = @()
                 $ccReport.ForEach({
-                    'Type: [{0}]: {1:p}' -f $_.name, $_.percent
-                    if ($_.percent -lt $CodeCoverageThreshold) {
-                        $ccFailMsgs += ('Code coverage: [{0}] is [{1:p}], which is less than the threshold of [{2:p}]' -f $_.name, $_.percent, $CodeCoverageThreshold)
-                    }
-                })
+                        '{0}: [{1}]: {2:p}' -f $LocalizedData.Type, $_.name, $_.percent
+                        if ($_.percent -lt $CodeCoverageThreshold) {
+                            $ccFailMsgs += ($LocalizedData.CodeCoverageLessThanThreshold -f $_.name, $_.percent, $CodeCoverageThreshold)
+                        }
+                    })
                 Write-Host "`n"
                 $ccFailMsgs.Foreach({
-                    Write-Error $_
-                })
+                        Write-Error $_
+                    })
             } else {
-                Write-Error "Code coverage file [$CodeCoverageOutputFile] not found."
+                Write-Error ($LocalizedData.CodeCoverageCodeCoverageFileNotFound -f $CodeCoverageOutputFile)
             }
         }
     } finally {

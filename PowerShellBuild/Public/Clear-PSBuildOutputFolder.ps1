@@ -16,11 +16,11 @@ function Clear-PSBuildOutputFolder {
         # Maybe a bit paranoid but this task nuked \ on my laptop. Good thing I was not running as admin.
         [parameter(Mandatory)]
         [ValidateScript({
-            if ($_.Length -le 3) {
-                throw "`$Path [$_] must be longer than 3 characters."
-            }
-            $true
-        })]
+                if ($_.Length -le 3) {
+                    throw ($LocalizedData.PathLongerThan3Chars -f $_)
+                }
+                $true
+            })]
         [string]$Path
     )
 
