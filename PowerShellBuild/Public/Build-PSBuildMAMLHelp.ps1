@@ -23,7 +23,7 @@ function Build-PSBuildMAMLHelp {
         [string]$DestinationPath
     )
 
-    $helpLoc2ales = (Get-ChildItem -Path $Path -Directory).Name
+    $helpLocales = (Get-ChildItem -Path $Path -Directory).Name
 
     # Generate the module's primary MAML help file
     foreach ($locale in $helpLocales) {
