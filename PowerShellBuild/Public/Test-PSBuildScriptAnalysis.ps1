@@ -5,17 +5,17 @@ function Test-PSBuildScriptAnalysis {
     .DESCRIPTION
         Run PSScriptAnalyzer tests against a module.
     .PARAMETER Path
-        Path to PowerShell module directory to run ScriptAnalyser on.
+        Path to PowerShell module directory to run ScriptAnalyzer on.
     .PARAMETER SeverityThreshold
-        Fail ScriptAnalyser test if any issues are found with this threshold or higher.
+        Fail ScriptAnalyzer test if any issues are found with this threshold or higher.
     .PARAMETER SettingsPath
-        Path to ScriptAnalyser settings to use.
+        Path to ScriptAnalyzer settings to use.
     .EXAMPLE
-        PS> Test-PSBuildScriptAnalysis -Path ./Output/Mymodule/0.1.0 -SeverityThreshold Error
+        PS> Test-PSBuildScriptAnalysis -Path ./Output/MyModule/0.1.0 -SeverityThreshold Error
 
-        Run ScriptAnalyzer on built module in ./Output/Mymodule/0.1.0. Throw error if any errors are found.
+        Run ScriptAnalyzer on built module in ./Output/MyModule/0.1.0. Throw error if any errors are found.
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [parameter(Mandatory)]
         [string]$Path,
@@ -26,15 +26,15 @@ function Test-PSBuildScriptAnalysis {
         [string]$SettingsPath
     )
 
-    Write-Verbose "SeverityThreshold set to: $SeverityThreshold"
+    Write-Verbose ($LocalizedData.SeverityThresholdSetTo -f $SeverityThreshold)
 
     $analysisResult = Invoke-ScriptAnalyzer -Path $Path -Settings $SettingsPath -Recurse -Verbose:$VerbosePreference
-    $errors   = ($analysisResult.where({$_Severity -eq 'Error'})).Count
-    $warnings = ($analysisResult.where({$_Severity -eq 'Warning'})).Count
-    $infos    = ($analysisResult.where({$_Severity -eq 'Information'})).Count
+    $errors = ($analysisResult.where({ $_Severity -eq 'Error' })).Count
+    $warnings = ($analysisResult.where({ $_Severity -eq 'Warning' })).Count
+    $infos = ($analysisResult.where({ $_Severity -eq 'Information' })).Count
 
     if ($analysisResult) {
-        Write-Host 'PSScriptAnalyzer results:' -ForegroundColor Yellow
+        Write-Host $LocalizedData.PSScriptAnalyzerResults -ForegroundColor Yellow
         $analysisResult | Format-Table -AutoSize
     }
 
@@ -44,22 +44,22 @@ function Test-PSBuildScriptAnalysis {
         }
         'Error' {
             if ($errors -gt 0) {
-                throw 'One or more ScriptAnalyzer errors were found!'
+                throw $LocalizedData.ScriptAnalyzerErrors
             }
         }
         'Warning' {
             if ($errors -gt 0 -or $warnings -gt 0) {
-                throw 'One or more ScriptAnalyzer warnings were found!'
+                throw $LocalizedData.ScriptAnalyzerWarnings
             }
         }
         'Information' {
             if ($errors -gt 0 -or $warnings -gt 0 -or $infos -gt 0) {
-                throw 'One or more ScriptAnalyzer warnings were found!'
+                throw $LocalizedData.ScriptAnalyzerWarnings
             }
         }
         default {
             if ($analysisResult.Count -ne 0) {
-                throw 'One or more ScriptAnalyzer issues were found!'
+                throw $LocalizedData.ScriptAnalyzerIssues
             }
         }
     }

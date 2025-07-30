@@ -1,17 +1,4 @@
-# Dot source public functions
-$private = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Private/*.ps1')) -Recurse)
-$public = @(Get-ChildItem -Path ([IO.Path]::Combine($PSScriptRoot, 'Public/*.ps1')) -Recurse)
-foreach ($import in $public + $private) {
-    try {
-        . $import.FullName
-    } catch {
-        throw "Unable to dot source [$($import.FullName)]"
-    }
-}
-
-data LocalizedData  {
-    # Load here in case Import-LocalizedData is not available
-    ConvertFrom-StringData @'
+ConvertFrom-StringData @'
 NoCommandsExported=No commands have been exported. Skipping markdown generation.
 FailedToGenerateMarkdownHelp=Failed to generate markdown help. : {0}
 AddingFileToPsm1=Adding [{0}] to PSM1
@@ -37,22 +24,3 @@ ScriptAnalyzerErrors=One or more ScriptAnalyzer errors were found!
 ScriptAnalyzerWarnings=One or more ScriptAnalyzer warnings were found!
 ScriptAnalyzerIssues=One or more ScriptAnalyzer issues were found!
 '@
-}
-$importLocalizedDataSplat = @{
-    BindingVariable = 'LocalizedData'
-    FileName        = 'Messages.psd1'
-    ErrorAction     = 'SilentlyContinue'
-}
-Import-LocalizedData @importLocalizedDataSplat
-
-
-Export-ModuleMember -Function $public.Basename
-
-# $psakeTaskAlias = 'PowerShellBuild.psake.tasks'
-# Set-Alias -Name $psakeTaskAlias -Value $PSScriptRoot/psakeFile.ps1
-# Export-ModuleMember -Alias $psakeTaskAlias
-
-# Invoke-Build task aliases
-$ibAlias = 'PowerShellBuild.IB.Tasks'
-Set-Alias -Name $ibAlias -Value $PSScriptRoot/IB.tasks.ps1
-Export-ModuleMember -Alias $ibAlias

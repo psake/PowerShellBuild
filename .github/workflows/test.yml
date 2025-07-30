@@ -16,4 +16,10 @@ jobs:
     - uses: actions/checkout@v4
     - name: Test
       shell: pwsh
-      run: ./build.ps1 -Task Test -Bootstrap
+      env:
+        DEBUG: ${{ runner.debug == '1' }}
+      run: |
+        if($env:DEBUG -eq 'true' -or $env:DEBUG -eq '1') {
+          $DebugPreference = 'Continue'
+        }
+        ./build.ps1 -Task Test -Bootstrap

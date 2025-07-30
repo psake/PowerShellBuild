@@ -14,7 +14,7 @@ function Build-PSBuildMAMLHelp {
         Uses PlatyPS to generate MAML XML help from markdown files in ./docs
         and saves the XML file to a directory under ./output/MyModule
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [parameter(Mandatory)]
         [string]$Path,

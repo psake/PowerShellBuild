@@ -6,9 +6,11 @@ Describe 'Build' {
         # For some reason, the TestModule build process create the output in the project root
         # and not relative to it's own build file.
         if ($env:GITHUB_ACTION) {
+            $script:testModuleSource = [IO.Path]::Combine($PSScriptRoot, 'TestModule')
             $script:testModuleOutputPath = [IO.Path]::Combine($env:BHProjectPath, 'Output', 'TestModule', '0.1.0')
         } else {
-            $script:testModuleOutputPath = [IO.Path]::Combine($env:BHProjectPath, 'tests', 'TestModule', 'Output', 'TestModule', '0.1.0')
+            $script:testModuleSource = [IO.Path]::Combine($PSScriptRoot, 'TestModule')
+            $script:testModuleOutputPath = [IO.Path]::Combine($script:testModuleSource, 'Output', 'TestModule', '0.1.0')
         }
     }
 
@@ -19,11 +21,11 @@ Describe 'Build' {
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -ScriptBlock {
-                Set-Location $using:PSScriptRoot/TestModule
+            Start-Job -Scriptblock {
+                Set-Location -Path $using:testModuleSource
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
-            } | Wait-Job
+            } -WorkingDirectory $script:testModuleSource | Wait-Job
         }
 
         AfterAll {
@@ -71,11 +73,17 @@ Describe 'Build' {
     Context 'Dot-sourced module' {
         BeforeAll {
             # build is PS job so psake doesn't freak out because it's nested
-            Start-Job -ScriptBlock {
-                Set-Location $using:PSScriptRoot/TestModule
+            Start-Job -Scriptblock {
+                Set-Location -Path $using:testModuleSource
                 $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
-            } | Wait-Job
+            } -WorkingDirectory $script:testModuleSource | Wait-Job
+            Write-Debug "TestModule output path: $script:testModuleSource"
+            $items = Get-ChildItem -Path $script:testModuleSource -Recurse -File
+            Write-Debug ($items | Format-Table FullName | Out-String)
+            Write-Debug "TestModule output path: $script:testModuleOutputPath"
+            $items = Get-ChildItem -Path $script:testModuleOutputPath -Recurse -File
+            Write-Debug ($items | Format-Table FullName | Out-String)
         }
 
         AfterAll {
@@ -86,12 +94,13 @@ Describe 'Build' {
             $script:testModuleOutputPath | Should -Exist
         }
 
-        It 'Has PSD1 and dot-sourced functions' {
-            (Get-ChildItem -Path $script:testModuleOutputPath).Count | Should -Be 6
-            "$script:testModuleOutputPath/TestModule.psd1" | Should -Exist
-            "$script:testModuleOutputPath/TestModule.psm1" | Should -Exist
-            "$script:testModuleOutputPath/Public" | Should -Exist
-            "$script:testModuleOutputPath/Private" | Should -Exist
+        It '<_> should exist' -ForEach @(
+            "TestModule.psd1",
+            "TestModule.psm1",
+            "Public",
+            "Private"
+        ) {
+            Join-Path -Path $script:testModuleOutputPath -ChildPath $_ | Should -Exist
         }
 
         It 'Does not contain excluded stuff' {

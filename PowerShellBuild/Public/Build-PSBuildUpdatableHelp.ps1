@@ -9,13 +9,14 @@ function Build-PSBuildUpdatableHelp {
     .PARAMETER OutputPath
         Path to create updatable help .cab file in.
     .PARAMETER Module
-        Name of the module to create a .cab file for. Defaults to the $ModuleName variable from the parent scope.
+        Name of the module to create a .cab file for. Defaults to the
+        $ModuleName variable from the parent scope.
     .EXAMPLE
         PS> Build-PSBuildUpdatableHelp -DocsPath ./docs -OutputPath ./Output/UpdatableHelp
 
         Create help .cab file based on PlatyPS markdown help.
     #>
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
         [parameter(Mandatory)]
         [string]$DocsPath,
@@ -27,7 +28,7 @@ function Build-PSBuildUpdatableHelp {
     )
 
     if ($null -ne $IsWindows -and -not $IsWindows) {
-        Write-Warning 'MakeCab.exe is only available on Windows. Cannot create help cab.'
+        Write-Warning $LocalizedData.MakeCabNotAvailable
         return
     }
 
@@ -35,18 +36,32 @@ function Build-PSBuildUpdatableHelp {
 
     # Create updatable help output directory
     if (-not (Test-Path -LiteralPath $OutputPath)) {
-        New-Item $OutputPath -ItemType Directory -Verbose:$VerbosePreference > $null
+        $newItemSplat = @{
+            ItemType = 'Directory'
+            Verbose  = $VerbosePreference
+            Path     = $OutputPath
+        }
+        New-Item @newItemSplat > $null
     } else {
-        Write-Verbose "Directory already exists [$OutputPath]."
-        Get-ChildItem $OutputPath | Remove-Item -Recurse -Force -Verbose:$VerbosePreference
+        Write-Verbose ($LocalizedData.DirectoryAlreadyExists -f $OutputPath)
+        $removeItemSplat = @{
+            Recurse = $true
+            Force   = $true
+            Verbose = $VerbosePreference
+        }
+        Get-ChildItem $OutputPath | Remove-Item @removeItemSplat
     }
 
-    # Generate updatable help files.  Note: this will currently update the version number in the module's MD
-    # file in the metadata.
+    # Generate updatable help files. Note: this will currently update the
+    # version number in the module's MD file in the metadata.
     foreach ($locale in $helpLocales) {
         $cabParams = @{
             CabFilesFolder  = [IO.Path]::Combine($moduleOutDir, $locale)
-            LandingPagePath = [IO.Path]::Combine($DocsPath, $locale, "$Module.md")
+            LandingPagePath = [IO.Path]::Combine(
+                $DocsPath,
+                $locale,
+                "$Module.md"
+            )
             OutputFolder    = $OutputPath
             Verbose         = $VerbosePreference
         }
