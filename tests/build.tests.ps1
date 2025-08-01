@@ -1,39 +1,67 @@
 # spell-checker:ignore excludeme
-Describe 'Build' {
+BeforeDiscovery {
+    if ($null -eq $env:BHProjectPath) {
+        $path = Join-Path -Path $PSScriptRoot -ChildPath '..\build.ps1'
+        . $path -Task Build
+    }
+    $manifest = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
+    $outputDir = Join-Path -Path $env:BHProjectPath -ChildPath 'Output'
+    $outputModDir = Join-Path -Path $outputDir -ChildPath $env:BHProjectName
+    $outputModVerDir = Join-Path -Path $outputModDir -ChildPath $manifest.ModuleVersion
+    $global:outputModVerManifest = Join-Path -Path $outputModVerDir -ChildPath "$($env:BHProjectName).psd1"
 
+    # Get module commands
+    # Remove all versions of the module from the session. Pester can't handle multiple versions.
+    Get-Module $env:BHProjectName | Remove-Module -Force -ErrorAction Ignore
+    Import-Module -Name $outputModVerManifest -Verbose:$false -ErrorAction Stop
+}
+Describe 'Build' {
     BeforeAll {
-        $tempDir = Join-Path $TestDrive 'TestModule'
-        Copy-Item $PSScriptRoot/fixtures/TestModule $tempDir -Recurse
-        Push-Location $tempDir
+        <#
+        We prepare the tests by copying the TestModule to a temporary location
+        and setting the output path to a known location.
+        #>
+
+        $script:testModuleSource = Join-Path $TestDrive 'TestModule'
+        Copy-Item $PSScriptRoot/fixtures/TestModule $script:testModuleSource -Recurse
+        Set-Location $script:testModuleSource
+        # Hack for GH Actions
+        # For some reason, the TestModule build process create the output in the project root
+        # and not relative to it's own build file.
+        if ($env:GITHUB_ACTION) {
+            $script:testModuleOutputPath = [IO.Path]::Combine($env:BHProjectPath, 'Output', 'TestModule', '0.1.0')
+        } else {
+            $script:testModuleOutputPath = [IO.Path]::Combine($script:testModuleSource, 'Output', 'TestModule', '0.1.0')
+        }
 
         # Capture any of the jobs for cleanup later
         [array]$script:jobs = @()
-
-        $path = 'Output/TestModule/0.1.0'
-        $script:testModuleOutputPath = Join-Path $tempDir $path
     }
 
     AfterAll {
-        Pop-Location
-        $jobs | Stop-Job -ErrorAction Ignore
-        $jobs | Remove-Job -ErrorAction Ignore
+        Set-Location $PSScriptRoot
     }
 
     Context 'Compile module' {
         BeforeAll {
-            Write-Host "PSScriptRoot: $tempDir"
+            Write-Host "PSScriptRoot: $script:testModuleSource"
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
             $script:jobs += Start-Job -Scriptblock {
-                Set-Location $using:tempDir
+                param($testModuleSource, $outputModVerManifest)
+                Set-Location -Path $using:testModuleSource
+                # We want to load the current build of PowerShellBuild so we use a
+                # global variable to store the output path.
+                $global:PSBOutput = $outputModVerManifest
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
-            } -WorkingDirectory $script:testModuleSource | Wait-Job
+            } -WorkingDirectory $script:testModuleSource -ArgumentList $testModuleSource, $outputModVerManifest | Wait-Job
         }
-
         AfterAll {
             Remove-Item $script:testModuleOutputPath -Recurse -Force
+            $jobs | Stop-Job -ErrorAction Ignore
+            $jobs | Remove-Job -ErrorAction Ignore
         }
 
         It 'Creates module' {
@@ -76,22 +104,28 @@ Describe 'Build' {
 
     Context 'Dot-sourced module' {
         BeforeAll {
+            $copyItemSplat = @{
+                Path        = "$PSScriptRoot/fixtures/DotSource.psm1"
+                Destination = "$script:testModuleSource/TestModule/TestModule.psm1"
+                Force       = $true
+            }
+            # Overwrite the existing PSM1 with the dot-sourced version
+            Copy-Item @copyItemSplat
             # build is PS job so psake doesn't freak out because it's nested
             $script:jobs += Start-Job -Scriptblock {
-                Set-Location $using:tempDir
+                param($testModuleSource, $outputModVerManifest)
+                Set-Location -Path $testModuleSource
+                # We want to load the current build of PowerShellBuild so we use a
+                # global variable to store the output path.
+                $global:PSBOutput = $outputModVerManifest
                 $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
-            } -WorkingDirectory $script:testModuleSource | Wait-Job
-            Write-Debug "TestModule output path: $script:testModuleSource"
-            $items = Get-ChildItem -Path $script:testModuleSource -Recurse -File
-            Write-Debug ($items | Format-Table FullName | Out-String)
-            Write-Debug "TestModule output path: $script:testModuleOutputPath"
-            $items = Get-ChildItem -Path $script:testModuleOutputPath -Recurse -File
-            Write-Debug ($items | Format-Table FullName | Out-String)
+            } -WorkingDirectory $script:testModuleSource -ArgumentList $testModuleSource, $outputModVerManifest | Wait-Job
         }
-
         AfterAll {
             Remove-Item $script:testModuleOutputPath -Recurse -Force
+            $jobs | Stop-Job -ErrorAction Ignore
+            $jobs | Remove-Job -ErrorAction Ignore
         }
 
         It 'Creates module' {
@@ -112,38 +146,63 @@ Describe 'Build' {
         }
 
         It 'Has MAML help XML' {
-            "$script:testModuleOutputPath/en-US/TestModule-help.xml" | Should -Exist
+            [IO.Path]::Combine($script:testModuleOutputPath, "en-US", "TestModule-help.xml") | Should -Exist
         }
     }
     Context 'Overwrite Docs' {
         BeforeAll {
 
-            Write-Host "PSScriptRoot: $tempDir"
+            Write-Host "PSScriptRoot: $script:testModuleSource"
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
+            $copyItemSplat = @{
+                Path        = "$PSScriptRoot/fixtures/DotSource.psm1"
+                Destination = "$script:testModuleSource/TestModule/TestModule.psm1"
+                Force       = $true
+            }
+            # Overwrite the existing PSM1 with the dot-sourced version
+            Copy-Item @copyItemSplat
+            # Build once, and then we'll modify
+            $script:jobs += Start-Job -Scriptblock {
+                param($testModuleSource, $outputModVerManifest)
+                Set-Location -Path $using:testModuleSource
+                # We want to load the current build of PowerShellBuild so we use a
+                # global variable to store the output path.
+                $global:PSBOutput = $global:outputModVerManifest
+                $global:PSBuildCompile = $false
+                ./build.ps1 -Task Build
+            } -WorkingDirectory $script:testModuleSource -ArgumentList $testModuleSource, $outputModVerManifest | Wait-Job
+
             # Replace with a different string to test the overwrite
-            $script:docPath = "$tempDir/docs/en-US/Get-HelloWorld.md"
+            $script:docPath = [IO.Path]::Combine($script:testModuleSource, "docs", "en-US", "Get-HelloWorld.md")
             $script:original = Get-Content $docPath -Raw
             $new = $original -replace 'Hello World', 'Hello Universe'
             Set-Content $docPath -Value $new -Force
 
             # Update the psake file
-            $psakeFile = "$tempDir/psakeFile.ps1"
+            $psakeFile = [IO.Path]::Combine($script:testModuleSource, "psakeFile.ps1")
             $psakeFileContent = Get-Content $psakeFile -Raw
             $psakeFileContent = $psakeFileContent -replace '\$PSBPreference.Docs.Overwrite = \$false', '$PSBPreference.Docs.Overwrite = $true'
             Set-Content $psakeFile -Value $psakeFileContent -Force
 
             # build is PS job so psake doesn't freak out because it's nested
             $script:jobs += Start-Job -Scriptblock {
-                Set-Location $using:tempDir
-                $global:PSBuildCompile = $true
+                param($testModuleSource, $outputModVerManifest)
+                Set-Location -Path $using:testModuleSource
+                # We want to load the current build of PowerShellBuild so we use a
+                # global variable to store the output path.
+                $global:PSBOutput = $global:outputModVerManifest
+                $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
-            } | Wait-Job
+            } -WorkingDirectory $script:testModuleSource -ArgumentList $testModuleSource, $outputModVerManifest | Wait-Job
         }
 
         AfterAll {
             Remove-Item $script:testModuleOutputPath -Recurse -Force
+            $jobs | Stop-Job -ErrorAction Ignore
+            $jobs | Remove-Job -ErrorAction Ignore
         }
+
         It 'Can Overwrite the Docs' {
             # Test that the file reset as expected
             Get-Content $script:docPath -Raw | Should -BeExactly $script:original
