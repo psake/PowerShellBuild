@@ -25,14 +25,7 @@ Describe 'Build' {
         $script:testModuleSource = Join-Path $TestDrive 'TestModule'
         Copy-Item $PSScriptRoot/fixtures/TestModule $script:testModuleSource -Recurse
         Set-Location $script:testModuleSource
-        # Hack for GH Actions
-        # For some reason, the TestModule build process create the output in the project root
-        # and not relative to it's own build file.
-        if ($env:GITHUB_ACTION) {
-            $script:testModuleOutputPath = [IO.Path]::Combine($env:BHProjectPath, 'Output', 'TestModule', '0.1.0')
-        } else {
-            $script:testModuleOutputPath = [IO.Path]::Combine($script:testModuleSource, 'Output', 'TestModule', '0.1.0')
-        }
+        $script:testModuleOutputPath = [IO.Path]::Combine($script:testModuleSource, 'Output', 'TestModule', '0.1.0')
 
         # Capture any of the jobs for cleanup later
         [array]$script:jobs = @()
@@ -48,7 +41,7 @@ Describe 'Build' {
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
-            $script:jobs += Start-Job -Scriptblock {
+            $script:jobs += Start-Job -ScriptBlock {
                 param($testModuleSource, $outputModVerManifest)
                 Set-Location -Path $using:testModuleSource
                 # We want to load the current build of PowerShellBuild so we use a
@@ -112,7 +105,7 @@ Describe 'Build' {
             # Overwrite the existing PSM1 with the dot-sourced version
             Copy-Item @copyItemSplat
             # build is PS job so psake doesn't freak out because it's nested
-            $script:jobs += Start-Job -Scriptblock {
+            $script:jobs += Start-Job -ScriptBlock {
                 param($testModuleSource, $outputModVerManifest)
                 Set-Location -Path $testModuleSource
                 # We want to load the current build of PowerShellBuild so we use a
@@ -163,7 +156,7 @@ Describe 'Build' {
             # Overwrite the existing PSM1 with the dot-sourced version
             Copy-Item @copyItemSplat
             # Build once, and then we'll modify
-            $script:jobs += Start-Job -Scriptblock {
+            $script:jobs += Start-Job -ScriptBlock {
                 param($testModuleSource, $outputModVerManifest)
                 Set-Location -Path $using:testModuleSource
                 # We want to load the current build of PowerShellBuild so we use a
@@ -186,7 +179,7 @@ Describe 'Build' {
             Set-Content $psakeFile -Value $psakeFileContent -Force
 
             # build is PS job so psake doesn't freak out because it's nested
-            $script:jobs += Start-Job -Scriptblock {
+            $script:jobs += Start-Job -ScriptBlock {
                 param($testModuleSource, $outputModVerManifest)
                 Set-Location -Path $using:testModuleSource
                 # We want to load the current build of PowerShellBuild so we use a
