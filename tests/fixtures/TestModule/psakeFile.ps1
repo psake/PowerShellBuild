@@ -1,4 +1,4 @@
-Import-Module ../../Output/PowerShellBuild -Force
+Import-Module $global:PSBOutput -Force
 
 Properties {
     # Pester can build the module using both scenarios
@@ -33,17 +33,6 @@ Properties {
     $PSBPreference.Docs.Overwrite = $false
 }
 
-Task default -depends Build
+Task default -Depends Build
 
-Task Build -FromModule PowerShellBuild -minimumVersion 0.5.0
-
-
-
-
-
-
-
-
-
-
-
+Task Build -FromModule PowerShellBuild -MinimumVersion 0.5.0

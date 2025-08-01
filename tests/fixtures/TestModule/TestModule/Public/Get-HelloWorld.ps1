@@ -1,4 +1,4 @@
-Function Get-HelloWorld {
+function Get-HelloWorld {
     <#
     .SYNOPSIS
         Returns Hello world
