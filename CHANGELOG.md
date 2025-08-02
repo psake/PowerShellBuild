@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.7.3] 2025-08-01
 
+### Added
+
 - Add new dependencies variables to allow end user to modify which tasks are
   run.
 - Add localization support.
