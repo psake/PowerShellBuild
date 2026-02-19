@@ -37,7 +37,7 @@ Describe 'Code Signing Functions' {
         }
       }
 
-      It 'Resolves to Store mode when SIGNCERTIFICATE environment variable is not set' {
+      It 'Resolves to Store mode when SIGNCERTIFICATE environment variable is not set' -Skip:(-not $IsWindows) {
         Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
         Mock Get-ChildItem {}
         $VerboseOutput = Get-PSBuildCertificate -Verbose 4>&1
@@ -46,7 +46,7 @@ Describe 'Code Signing Functions' {
     }
 
     # Store mode only works on Windows
-    Context 'Store mode' -Skip:(-not $IsWindows) {
+    Context 'Store mode' {
       It 'Searches the certificate store for a valid code-signing certificate' -Skip:(-not $IsWindows) {
         # On Windows, we can test the actual logic without mocking the cert store itself
         # Instead, just verify the function accepts the parameter and attempts the search
@@ -57,7 +57,7 @@ Describe 'Code Signing Functions' {
         { Get-PSBuildCertificate -CertificateSource Store -ErrorAction SilentlyContinue } | Should -Not -Throw
       }
 
-      It 'Returns $null when no valid certificate is found' {
+      It 'Returns $null when no valid certificate is found' -Skip:(-not $IsWindows) {
         Mock Get-ChildItem { }
         $cert = Get-PSBuildCertificate -CertificateSource Store
         $cert | Should -BeNullOrEmpty
