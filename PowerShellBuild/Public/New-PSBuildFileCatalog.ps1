@@ -65,7 +65,6 @@ function New-PSBuildFileCatalog {
         Path            = $ModulePath
         CatalogFilePath = $CatalogFilePath
         CatalogVersion  = $CatalogVersion
-        Verbose         = $VerbosePreference
     }
 
     Microsoft.PowerShell.Security\New-FileCatalog @catalogParams

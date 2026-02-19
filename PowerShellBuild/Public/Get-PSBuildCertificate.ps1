@@ -50,6 +50,10 @@ function Get-PSBuildCertificate {
         File system path to a PFX/P12 certificate file. Required when CertificateSource is PfxFile.
     .PARAMETER PfxFilePassword
         Password for the PFX file as a SecureString. Used by PfxFile source.
+    .PARAMETER SkipValidation
+        Skip validation checks (private key presence, expiration, Code Signing EKU) for certificates
+        loaded from EnvVar or PfxFile sources. Use with caution; invalid certificates will fail during
+        actual signing operations with less descriptive errors.
     .OUTPUTS
         System.Security.Cryptography.X509Certificates.X509Certificate2
         Returns the resolved certificate, or $null if none was found (Store/Thumbprint sources).
@@ -79,6 +83,11 @@ function Get-PSBuildCertificate {
     #>
     [CmdletBinding()]
     [OutputType([System.Security.Cryptography.X509Certificates.X509Certificate2])]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingPlainTextForPassword',
+        'CertificatePasswordEnvVar',
+        Justification = 'This is not a password in plain text. It is the name of an environment variable that contains the password, which is a common pattern for CI/CD pipelines and secrets management.'
+    )]
     param(
         [ValidateSet('Auto', 'Store', 'Thumbprint', 'EnvVar', 'PfxFile')]
         [string]$CertificateSource = 'Auto',
@@ -93,7 +102,9 @@ function Get-PSBuildCertificate {
 
         [string]$PfxFilePath,
 
-        [securestring]$PfxFilePassword
+        [securestring]$PfxFilePassword,
+
+        [switch]$SkipValidation
     )
 
     # Resolve 'Auto' to the actual source based on environment variable presence
@@ -104,7 +115,7 @@ function Get-PSBuildCertificate {
         } else {
             'Store'
         }
-        Write-Verbose "CertificateSource is 'Auto'. Resolved to '$resolvedSource'."
+        Write-Verbose ($LocalizedData.CertificateSourceAutoResolved -f $resolvedSource)
     }
 
     $cert = $null
@@ -119,8 +130,19 @@ function Get-PSBuildCertificate {
             }
         }
         'Thumbprint' {
-            $cert = Get-ChildItem -Path $CertStoreLocation |
-                Where-Object { $_.Thumbprint -eq $Thumbprint -and $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) } |
+            if ([string]::IsNullOrWhiteSpace($Thumbprint)) {
+                throw "CertificateSource 'Thumbprint' requires a non-empty Thumbprint value."
+            }
+
+            # Normalize thumbprint input by removing whitespace for robust matching
+            $normalizedThumbprint = ($Thumbprint -replace '\s', '')
+
+            $cert = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert |
+                Where-Object {
+                    ($_.Thumbprint -replace '\s', '') -ieq $normalizedThumbprint -and
+                    $_.HasPrivateKey -and
+                    $_.NotAfter -gt (Get-Date)
+                } |
                 Select-Object -First 1
             if ($cert) {
                 Write-Verbose ($LocalizedData.CertificateResolvedFromThumbprint -f $Thumbprint, $cert.Subject)
@@ -128,15 +150,45 @@ function Get-PSBuildCertificate {
         }
         'EnvVar' {
             $b64Value = [System.Environment]::GetEnvironmentVariable($CertificateEnvVar)
-            $buffer   = [System.Convert]::FromBase64String($b64Value)
+            if ([string]::IsNullOrWhiteSpace($b64Value)) {
+                throw "Environment variable '$CertificateEnvVar' is not set or is empty. When using CertificateSource='EnvVar', you must provide a Base64-encoded PFX in this variable."
+            }
+
+            try {
+                $buffer = [System.Convert]::FromBase64String($b64Value)
+            } catch [System.FormatException] {
+                throw "Environment variable '$CertificateEnvVar' does not contain a valid Base64-encoded PFX value."
+            }
             $password = [System.Environment]::GetEnvironmentVariable($CertificatePasswordEnvVar)
-            $cert     = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($buffer, $password)
+            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($buffer, $password)
             Write-Verbose ($LocalizedData.CertificateResolvedFromEnvVar -f $CertificateEnvVar)
         }
         'PfxFile' {
             $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($PfxFilePath, $PfxFilePassword)
             Write-Verbose ($LocalizedData.CertificateResolvedFromPfxFile -f $PfxFilePath)
         }
+    }
+
+    # Validate certificates loaded from EnvVar or PfxFile sources unless -SkipValidation is specified
+    if ($cert -and -not $SkipValidation -and ($resolvedSource -eq 'EnvVar' -or $resolvedSource -eq 'PfxFile')) {
+        # Check for private key
+        if (-not $cert.HasPrivateKey) {
+            throw ($LocalizedData.CertificateMissingPrivateKey -f $cert.Subject)
+        }
+
+        # Check expiration
+        if ($cert.NotAfter -le (Get-Date)) {
+            throw ($LocalizedData.CertificateExpired -f $cert.NotAfter, $cert.Subject)
+        }
+
+        # Check for Code Signing EKU (1.3.6.1.5.5.7.3.3)
+        $codeSigningOid = '1.3.6.1.5.5.7.3.3'
+        $hasCodeSigningEku = $cert.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq $codeSigningOid }
+        if (-not $hasCodeSigningEku) {
+            throw ($LocalizedData.CertificateMissingCodeSigningEku -f $cert.Subject)
+        }
+
+        Write-Verbose "Certificate validation passed: HasPrivateKey=$($cert.HasPrivateKey), NotAfter=$($cert.NotAfter), CodeSigningEKU=Present"
     }
 
     $cert

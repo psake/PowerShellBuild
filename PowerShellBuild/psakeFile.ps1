@@ -312,7 +312,7 @@ $signCatalogPreReqs = {
         $result = $false
     }
     if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
-        Write-Warning 'Set-AuthenticodeSignature is not available. Module signing requires Windows.'
+        Write-Warning 'Set-AuthenticodeSignature is not available. Catalog signing requires Windows.'
         $result = $false
     }
     $result

@@ -31,4 +31,8 @@ CertificateResolvedFromPfxFile=Resolved code signing certificate from PFX file [
 SigningModuleFiles=Signing [{0}] file(s) matching [{1}] in [{2}]...
 CreatingFileCatalog=Creating file catalog [{0}] (version {1})...
 FileCatalogCreated=File catalog created: [{0}]
+CertificateSourceAutoResolved=CertificateSource is 'Auto'. Resolved to '{0}'.
+CertificateMissingPrivateKey=The resolved certificate does not have an accessible private key. Code signing requires a certificate with a private key. Subject=[{0}]
+CertificateExpired=The resolved certificate has expired (NotAfter: {0}). Code signing requires a valid, unexpired certificate. Subject=[{1}]
+CertificateMissingCodeSigningEku=The resolved certificate does not have the Code Signing Enhanced Key Usage (EKU: 1.3.6.1.5.5.7.3.3). Subject=[{0}]
 '@
