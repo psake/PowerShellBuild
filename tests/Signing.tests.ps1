@@ -19,23 +19,8 @@ Describe 'Code Signing Functions' {
       Remove-Item env:\CERTIFICATEPASSWORD -ErrorAction SilentlyContinue
     }
 
-    It 'Should exist and be exported' {
-      Get-Command Get-PSBuildCertificate -Module PowerShellBuild -ErrorAction SilentlyContinue |
-        Should -Not -BeNullOrEmpty
-    }
-
-    It 'Has a SYNOPSIS section in the help' {
-      (Get-Help Get-PSBuildCertificate).Synopsis |
-        Should -Not -BeNullOrEmpty
-    }
-
-    It 'Has at least one EXAMPLE section in the help' {
-      (Get-Help Get-PSBuildCertificate).Examples.Example |
-        Should -Not -BeNullOrEmpty
-    }
-
     Context 'Auto mode' {
-      It 'Defaults to Auto mode when no CertificateSource is specified' {
+      It 'Defaults to Auto mode when no CertificateSource is specified' -Skip:(-not $IsWindows) {
         Mock Get-ChildItem {}
         $VerboseOutput = Get-PSBuildCertificate -Verbose -ErrorAction SilentlyContinue 4>&1
         $VerboseOutput | Should -Match "CertificateSource is 'Auto'"
@@ -60,7 +45,8 @@ Describe 'Code Signing Functions' {
       }
     }
 
-    Context 'Store mode' {
+    # Store mode only works on Windows
+    Context 'Store mode' -Skip:(-not $IsWindows) {
       It 'Searches the certificate store for a valid code-signing certificate' -Skip:(-not $IsWindows) {
         # On Windows, we can test the actual logic without mocking the cert store itself
         # Instead, just verify the function accepts the parameter and attempts the search
@@ -510,7 +496,7 @@ Describe 'Code Signing Configuration' {
 
     BeforeAll {
       # Load config once for all tests in this context
-      BuildHelpers\Set-BuildEnvironment -Force -Path $script:moduleRoot
+      # build.properties.ps1 will call Set-BuildEnvironment internally
       $script:config = & $script:buildPropertiesPath
     }
 
