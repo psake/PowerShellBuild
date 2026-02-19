@@ -122,6 +122,10 @@ function Get-PSBuildCertificate {
 
     switch ($resolvedSource) {
         'Store' {
+            # Throw if running on a non-Windows platform since the certificate store is not supported
+            if (-not $IsWindows) {
+                throw $LocalizedData.CertificateSourceStoreNotSupported
+            }
             $cert = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert |
                 Where-Object { $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) } |
                 Select-Object -First 1

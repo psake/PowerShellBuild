@@ -37,7 +37,7 @@ Describe 'Code Signing Functions' {
     Context 'Auto mode' {
       It 'Defaults to Auto mode when no CertificateSource is specified' {
         Mock Get-ChildItem {}
-        $VerboseOutput = Get-PSBuildCertificate -Verbose 4>&1
+        $VerboseOutput = Get-PSBuildCertificate -Verbose -ErrorAction SilentlyContinue 4>&1
         $VerboseOutput | Should -Match "CertificateSource is 'Auto'"
       }
 

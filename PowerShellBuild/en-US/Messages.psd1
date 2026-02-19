@@ -35,4 +35,5 @@ CertificateSourceAutoResolved=CertificateSource is 'Auto'. Resolved to '{0}'.
 CertificateMissingPrivateKey=The resolved certificate does not have an accessible private key. Code signing requires a certificate with a private key. Subject=[{0}]
 CertificateExpired=The resolved certificate has expired (NotAfter: {0}). Code signing requires a valid, unexpired certificate. Subject=[{1}]
 CertificateMissingCodeSigningEku=The resolved certificate does not have the Code Signing Enhanced Key Usage (EKU: 1.3.6.1.5.5.7.3.3). Subject=[{0}]
+CertificateSourceStoreNotSupported=CertificateSource 'Store' is only supported on Windows platforms.
 '@
