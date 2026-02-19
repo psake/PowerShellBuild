@@ -23,4 +23,12 @@ PSScriptAnalyzerResults=PSScriptAnalyzer results:
 ScriptAnalyzerErrors=One or more ScriptAnalyzer errors were found!
 ScriptAnalyzerWarnings=One or more ScriptAnalyzer warnings were found!
 ScriptAnalyzerIssues=One or more ScriptAnalyzer issues were found!
+NoCertificateFound=No valid code signing certificate was found. Verify the configured CertificateSource and that a certificate with a private key is available.
+CertificateResolvedFromStore=Resolved code signing certificate from store [{0}]: Subject=[{1}]
+CertificateResolvedFromThumbprint=Resolved code signing certificate by thumbprint [{0}]: Subject=[{1}]
+CertificateResolvedFromEnvVar=Resolved code signing certificate from environment variable [{0}]
+CertificateResolvedFromPfxFile=Resolved code signing certificate from PFX file [{0}]
+SigningModuleFiles=Signing [{0}] file(s) matching [{1}] in [{2}]...
+CreatingFileCatalog=Creating file catalog [{0}] (version {1})...
+FileCatalogCreated=File catalog created: [{0}]
 '@

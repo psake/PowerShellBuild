@@ -45,6 +45,18 @@ if ($null -eq $PSBGenerateUpdatableHelpDependency) {
 if ($null -eq $PSBPublishDependency) {
     $PSBPublishDependency = @('Test')
 }
+if ($null -eq $PSBSignModuleDependency) {
+    $PSBSignModuleDependency = @('Build')
+}
+if ($null -eq $PSBBuildCatalogDependency) {
+    $PSBBuildCatalogDependency = @('SignModule')
+}
+if ($null -eq $PSBSignCatalogDependency) {
+    $PSBSignCatalogDependency = @('BuildCatalog')
+}
+if ($null -eq $PSBSignDependency) {
+    $PSBSignDependency = @('SignCatalog')
+}
 #endregion Task Dependencies
 
 # This psake file is meant to be referenced from another
@@ -217,6 +229,136 @@ Task Publish -Depends $PSBPublishDependency {
 
     Publish-PSBuildModule @publishParams
 } -Description 'Publish module to the defined PowerShell repository'
+
+$signModulePreReqs = {
+    $result = $true
+    if (-not $PSBPreference.Sign.Enabled) {
+        Write-Warning 'Module signing is not enabled.'
+        $result = $false
+    }
+    if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
+        Write-Warning 'Set-AuthenticodeSignature is not available. Module signing requires Windows.'
+        $result = $false
+    }
+    $result
+}
+Task SignModule -Depends $PSBSignModuleDependency -PreCondition $signModulePreReqs {
+    $certParams = @{
+        CertificateSource         = $PSBPreference.Sign.CertificateSource
+        CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
+        CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
+        CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+    }
+    if ($PSBPreference.Sign.Thumbprint) {
+        $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
+    }
+    if ($PSBPreference.Sign.PfxFilePath) {
+        $certParams.PfxFilePath = $PSBPreference.Sign.PfxFilePath
+    }
+    if ($PSBPreference.Sign.PfxFilePassword) {
+        $certParams.PfxFilePassword = $PSBPreference.Sign.PfxFilePassword
+    }
+
+    $certificate = if ($PSBPreference.Sign.Certificate) {
+        $PSBPreference.Sign.Certificate
+    } else {
+        Get-PSBuildCertificate @certParams
+    }
+
+    Assert ($null -ne $certificate) $LocalizedData.NoCertificateFound
+
+    $signingParams = @{
+        Path            = $PSBPreference.Build.ModuleOutDir
+        Certificate     = $certificate
+        TimestampServer = $PSBPreference.Sign.TimestampServer
+        HashAlgorithm   = $PSBPreference.Sign.HashAlgorithm
+        Include         = $PSBPreference.Sign.FilesToSign
+    }
+    Invoke-PSBuildModuleSigning @signingParams
+} -Description 'Signs module files (*.psd1, *.psm1, *.ps1) with an Authenticode signature'
+
+$buildCatalogPreReqs = {
+    $result = $true
+    if (-not ($PSBPreference.Sign.Enabled -and $PSBPreference.Sign.Catalog.Enabled)) {
+        Write-Warning 'Catalog generation is not enabled.'
+        $result = $false
+    }
+    if (-not (Get-Command -Name 'New-FileCatalog' -ErrorAction Ignore)) {
+        Write-Warning 'New-FileCatalog is not available. Catalog generation requires Windows.'
+        $result = $false
+    }
+    $result
+}
+Task BuildCatalog -Depends $PSBBuildCatalogDependency -PreCondition $buildCatalogPreReqs {
+    $catalogFileName = if ($PSBPreference.Sign.Catalog.FileName) {
+        $PSBPreference.Sign.Catalog.FileName
+    } else {
+        "$($PSBPreference.General.ModuleName).cat"
+    }
+    $catalogFilePath = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath $catalogFileName
+
+    $catalogParams = @{
+        ModulePath      = $PSBPreference.Build.ModuleOutDir
+        CatalogFilePath = $catalogFilePath
+        CatalogVersion  = $PSBPreference.Sign.Catalog.Version
+    }
+    New-PSBuildFileCatalog @catalogParams
+} -Description 'Creates a Windows catalog (.cat) file for the built module'
+
+$signCatalogPreReqs = {
+    $result = $true
+    if (-not ($PSBPreference.Sign.Enabled -and $PSBPreference.Sign.Catalog.Enabled)) {
+        Write-Warning 'Catalog signing is not enabled.'
+        $result = $false
+    }
+    if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
+        Write-Warning 'Set-AuthenticodeSignature is not available. Module signing requires Windows.'
+        $result = $false
+    }
+    $result
+}
+Task SignCatalog -Depends $PSBSignCatalogDependency -PreCondition $signCatalogPreReqs {
+    $certParams = @{
+        CertificateSource         = $PSBPreference.Sign.CertificateSource
+        CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
+        CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
+        CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+    }
+    if ($PSBPreference.Sign.Thumbprint) {
+        $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
+    }
+    if ($PSBPreference.Sign.PfxFilePath) {
+        $certParams.PfxFilePath = $PSBPreference.Sign.PfxFilePath
+    }
+    if ($PSBPreference.Sign.PfxFilePassword) {
+        $certParams.PfxFilePassword = $PSBPreference.Sign.PfxFilePassword
+    }
+
+    $certificate = if ($PSBPreference.Sign.Certificate) {
+        $PSBPreference.Sign.Certificate
+    } else {
+        Get-PSBuildCertificate @certParams
+    }
+
+    Assert ($null -ne $certificate) $LocalizedData.NoCertificateFound
+
+    $catalogFileName = if ($PSBPreference.Sign.Catalog.FileName) {
+        $PSBPreference.Sign.Catalog.FileName
+    } else {
+        "$($PSBPreference.General.ModuleName).cat"
+    }
+
+    $signingParams = @{
+        Path            = $PSBPreference.Build.ModuleOutDir
+        Certificate     = $certificate
+        TimestampServer = $PSBPreference.Sign.TimestampServer
+        HashAlgorithm   = $PSBPreference.Sign.HashAlgorithm
+        Include         = @($catalogFileName)
+    }
+    Invoke-PSBuildModuleSigning @signingParams
+} -Description 'Signs the module catalog (.cat) file with an Authenticode signature'
+
+Task Sign -Depends $PSBSignDependency {} -Description 'Signs module files and catalog (meta task)'
 
 Task ? -Description 'Lists the available tasks' {
     'Available tasks:'

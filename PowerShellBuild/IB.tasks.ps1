@@ -1,6 +1,6 @@
 Remove-Variable -Name PSBPreference -Scope Script -Force -ErrorAction Ignore
 Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. ([IO.Path]::Combine($PSScriptRoot, 'build.properties.ps1')))
-$__DefaultBuildDependencies = $PSBPreference.Build.Dependencies
+$__DefaultBuildDependencies    = $PSBPreference.Build.Dependencies
 
 # Synopsis: Initialize build environment variables
 task Init {
@@ -196,5 +196,137 @@ Task Build {
 task Test Analyze,Pester
 
 task . Build,Test
+
+# Synopsis: Signs module files (*.psd1, *.psm1, *.ps1) with an Authenticode signature
+task SignModule -If {
+    if (-not $PSBPreference.Sign.Enabled) {
+        Write-Warning 'Module signing is not enabled.'
+        return $false
+    }
+    if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
+        Write-Warning 'Set-AuthenticodeSignature is not available. Module signing requires Windows.'
+        return $false
+    }
+    $true
+} Build, {
+    $certParams = @{
+        CertificateSource         = $PSBPreference.Sign.CertificateSource
+        CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
+        CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
+        CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+    }
+    if ($PSBPreference.Sign.Thumbprint) {
+        $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
+    }
+    if ($PSBPreference.Sign.PfxFilePath) {
+        $certParams.PfxFilePath = $PSBPreference.Sign.PfxFilePath
+    }
+    if ($PSBPreference.Sign.PfxFilePassword) {
+        $certParams.PfxFilePassword = $PSBPreference.Sign.PfxFilePassword
+    }
+
+    $certificate = if ($PSBPreference.Sign.Certificate) {
+        $PSBPreference.Sign.Certificate
+    } else {
+        Get-PSBuildCertificate @certParams
+    }
+
+    if ($null -eq $certificate) {
+        throw $LocalizedData.NoCertificateFound
+    }
+
+    $signingParams = @{
+        Path            = $PSBPreference.Build.ModuleOutDir
+        Certificate     = $certificate
+        TimestampServer = $PSBPreference.Sign.TimestampServer
+        HashAlgorithm   = $PSBPreference.Sign.HashAlgorithm
+        Include         = $PSBPreference.Sign.FilesToSign
+    }
+    Invoke-PSBuildModuleSigning @signingParams
+}
+
+# Synopsis: Creates a Windows catalog (.cat) file for the built module
+task BuildCatalog -If {
+    if (-not ($PSBPreference.Sign.Enabled -and $PSBPreference.Sign.Catalog.Enabled)) {
+        Write-Warning 'Catalog generation is not enabled.'
+        return $false
+    }
+    if (-not (Get-Command -Name 'New-FileCatalog' -ErrorAction Ignore)) {
+        Write-Warning 'New-FileCatalog is not available. Catalog generation requires Windows.'
+        return $false
+    }
+    $true
+} SignModule, {
+    $catalogFileName = if ($PSBPreference.Sign.Catalog.FileName) {
+        $PSBPreference.Sign.Catalog.FileName
+    } else {
+        "$($PSBPreference.General.ModuleName).cat"
+    }
+    $catalogFilePath = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath $catalogFileName
+
+    $catalogParams = @{
+        ModulePath      = $PSBPreference.Build.ModuleOutDir
+        CatalogFilePath = $catalogFilePath
+        CatalogVersion  = $PSBPreference.Sign.Catalog.Version
+    }
+    New-PSBuildFileCatalog @catalogParams
+}
+
+# Synopsis: Signs the module catalog (.cat) file with an Authenticode signature
+task SignCatalog -If {
+    if (-not ($PSBPreference.Sign.Enabled -and $PSBPreference.Sign.Catalog.Enabled)) {
+        Write-Warning 'Catalog signing is not enabled.'
+        return $false
+    }
+    if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
+        Write-Warning 'Set-AuthenticodeSignature is not available. Module signing requires Windows.'
+        return $false
+    }
+    $true
+} BuildCatalog, {
+    $certParams = @{
+        CertificateSource         = $PSBPreference.Sign.CertificateSource
+        CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
+        CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
+        CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+    }
+    if ($PSBPreference.Sign.Thumbprint) {
+        $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
+    }
+    if ($PSBPreference.Sign.PfxFilePath) {
+        $certParams.PfxFilePath = $PSBPreference.Sign.PfxFilePath
+    }
+    if ($PSBPreference.Sign.PfxFilePassword) {
+        $certParams.PfxFilePassword = $PSBPreference.Sign.PfxFilePassword
+    }
+
+    $certificate = if ($PSBPreference.Sign.Certificate) {
+        $PSBPreference.Sign.Certificate
+    } else {
+        Get-PSBuildCertificate @certParams
+    }
+
+    if ($null -eq $certificate) {
+        throw $LocalizedData.NoCertificateFound
+    }
+
+    $catalogFileName = if ($PSBPreference.Sign.Catalog.FileName) {
+        $PSBPreference.Sign.Catalog.FileName
+    } else {
+        "$($PSBPreference.General.ModuleName).cat"
+    }
+
+    $signingParams = @{
+        Path            = $PSBPreference.Build.ModuleOutDir
+        Certificate     = $certificate
+        TimestampServer = $PSBPreference.Sign.TimestampServer
+        HashAlgorithm   = $PSBPreference.Sign.HashAlgorithm
+        Include         = @($catalogFileName)
+    }
+    Invoke-PSBuildModuleSigning @signingParams
+}
+
+# Synopsis: Signs module files and catalog (meta task)
+task Sign SignCatalog
 
 #endregion Summary Tasks
