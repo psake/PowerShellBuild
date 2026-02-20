@@ -3,7 +3,14 @@
 Remove-Variable -Name PSBPreference -Scope Script -Force -ErrorAction Ignore
 Set-Variable -Name PSBPreference -Option ReadOnly -Scope Script -Value (. ([IO.Path]::Combine($PSScriptRoot, 'build.properties.ps1')))
 
-Properties {}
+Properties {
+    $importLocalizedDataSplat = @{
+        BindingVariable = 'LocalizedData'
+        FileName        = 'Messages.psd1'
+        ErrorAction     = 'SilentlyContinue'
+    }
+    Import-LocalizedData @importLocalizedDataSplat
+}
 
 FormatTaskName {
     param($taskName)
@@ -45,6 +52,18 @@ if ($null -eq $PSBGenerateUpdatableHelpDependency) {
 if ($null -eq $PSBPublishDependency) {
     $PSBPublishDependency = @('Test')
 }
+if ($null -eq $PSBSignModuleDependency) {
+    $PSBSignModuleDependency = @('Build')
+}
+if ($null -eq $PSBBuildCatalogDependency) {
+    $PSBBuildCatalogDependency = @('SignModule')
+}
+if ($null -eq $PSBSignCatalogDependency) {
+    $PSBSignCatalogDependency = @('BuildCatalog')
+}
+if ($null -eq $PSBSignDependency) {
+    $PSBSignDependency = @('SignCatalog')
+}
 #endregion Task Dependencies
 
 # This psake file is meant to be referenced from another
@@ -52,11 +71,11 @@ if ($null -eq $PSBPublishDependency) {
 # Task default -depends Test
 
 Task Init {
-    Initialize-PSBuild -UseBuildHelpers -BuildEnvironment $PSBPreference
+    Initialize-PSBuild -UseBuildHelpers -BuildEnvironment $PSBPreference -Verbose:($VerbosePreference -eq 'Continue')
 } -Description 'Initialize build environment variables'
 
 Task Clean -Depends $PSBCleanDependency {
-    Clear-PSBuildOutputFolder -Path $PSBPreference.Build.ModuleOutDir
+    Clear-PSBuildOutputFolder -Path $PSBPreference.Build.ModuleOutDir -Verbose:($VerbosePreference -eq 'Continue')
 } -Description 'Clears module output directory'
 
 Task StageFiles -Depends $PSBStageFilesDependency {
@@ -86,7 +105,7 @@ Task StageFiles -Depends $PSBStageFilesDependency {
         }
     }
 
-    Build-PSBuildModule @buildParams
+    Build-PSBuildModule @buildParams -Verbose:($VerbosePreference -eq 'Continue')
 } -Description 'Builds module based on source directory'
 
 Task Build -Depends $PSBBuildDependency -Description 'Builds module and generate help documentation'
@@ -109,7 +128,7 @@ Task Analyze -Depends $PSBAnalyzeDependency -PreCondition $analyzePreReqs {
         SeverityThreshold = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
         SettingsPath      = $PSBPreference.Test.ScriptAnalysis.SettingsPath
     }
-    Test-PSBuildScriptAnalysis @analyzeParams
+    Test-PSBuildScriptAnalysis @analyzeParams -Verbose:($VerbosePreference -eq 'Continue')
 } -Description 'Execute PSScriptAnalyzer tests'
 
 $pesterPreReqs = {
@@ -143,6 +162,7 @@ Task Pester -Depends $PSBPesterDependency -PreCondition $pesterPreReqs {
         ImportModule                 = $PSBPreference.Test.ImportModule
         SkipRemainingOnFailure       = $PSBPreference.Test.SkipRemainingOnFailure
         OutputVerbosity              = $PSBPreference.Test.OutputVerbosity
+        Verbose                      = $VerbosePreference -eq 'Continue'
     }
     Test-PSBuildPester @pesterParams
 } -Description 'Execute Pester tests'
@@ -170,6 +190,7 @@ Task GenerateMarkdown -Depends $PSBGenerateMarkdownDependency -PreCondition $gen
         AlphabeticParamsOrder = $PSBPreference.Docs.AlphabeticParamsOrder
         ExcludeDontShow       = $PSBPreference.Docs.ExcludeDontShow
         UseFullTypeName       = $PSBPreference.Docs.UseFullTypeName
+        Verbose               = $VerbosePreference -eq 'Continue'
     }
     Build-PSBuildMarkdown @buildMDParams
 } -Description 'Generates PlatyPS markdown files from module help'
@@ -183,7 +204,7 @@ $genHelpFilesPreReqs = {
     $result
 }
 Task GenerateMAML -Depends $PSBGenerateMAMLDependency -PreCondition $genHelpFilesPreReqs {
-    Build-PSBuildMAMLHelp -Path $PSBPreference.Docs.RootDir -DestinationPath $PSBPreference.Build.ModuleOutDir
+    Build-PSBuildMAMLHelp -Path $PSBPreference.Docs.RootDir -DestinationPath $PSBPreference.Build.ModuleOutDir -Verbose:($VerbosePreference -eq 'Continue')
 } -Description 'Generates MAML-based help from PlatyPS markdown files'
 
 $genUpdatableHelpPreReqs = {
@@ -195,7 +216,7 @@ $genUpdatableHelpPreReqs = {
     $result
 }
 Task GenerateUpdatableHelp -Depends $PSBGenerateUpdatableHelpDependency -PreCondition $genUpdatableHelpPreReqs {
-    Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
+    Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir -Verbose:($VerbosePreference -eq 'Continue')
 } -Description 'Create updatable help .cab file based on PlatyPS markdown help'
 
 Task Publish -Depends $PSBPublishDependency {
@@ -217,6 +238,143 @@ Task Publish -Depends $PSBPublishDependency {
 
     Publish-PSBuildModule @publishParams
 } -Description 'Publish module to the defined PowerShell repository'
+
+$signModulePreReqs = {
+    $result = $true
+    if (-not $PSBPreference.Sign.Enabled) {
+        Write-Warning 'Module signing is not enabled.'
+        $result = $false
+    }
+    if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
+        Write-Warning 'Set-AuthenticodeSignature is not available. Module signing requires Windows.'
+        $result = $false
+    }
+    $result
+}
+Task SignModule -Depends $PSBSignModuleDependency -PreCondition $signModulePreReqs {
+    $certParams = @{
+        CertificateSource         = $PSBPreference.Sign.CertificateSource
+        CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
+        CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
+        CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+        SkipValidation            = $PSBPreference.Sign.SkipCertificateValidation
+        Verbose                   = $VerbosePreference -eq 'Continue'
+    }
+    if ($PSBPreference.Sign.Thumbprint) {
+        $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
+    }
+    if ($PSBPreference.Sign.PfxFilePath) {
+        $certParams.PfxFilePath = $PSBPreference.Sign.PfxFilePath
+    }
+    if ($PSBPreference.Sign.PfxFilePassword) {
+        $certParams.PfxFilePassword = $PSBPreference.Sign.PfxFilePassword
+    }
+
+    $certificate = if ($PSBPreference.Sign.Certificate) {
+        $PSBPreference.Sign.Certificate
+    } else {
+        Get-PSBuildCertificate @certParams
+    }
+
+    Assert ($null -ne $certificate) $LocalizedData.NoCertificateFound
+
+    $signingParams = @{
+        Path            = $PSBPreference.Build.ModuleOutDir
+        Certificate     = $certificate
+        TimestampServer = $PSBPreference.Sign.TimestampServer
+        HashAlgorithm   = $PSBPreference.Sign.HashAlgorithm
+        Include         = $PSBPreference.Sign.FilesToSign
+        Verbose         = $VerbosePreference -eq 'Continue'
+    }
+    Invoke-PSBuildModuleSigning @signingParams
+} -Description 'Signs module files (*.psd1, *.psm1, *.ps1) with an Authenticode signature'
+
+$buildCatalogPreReqs = {
+    $result = $true
+    if (-not ($PSBPreference.Sign.Enabled -and $PSBPreference.Sign.Catalog.Enabled)) {
+        Write-Warning 'Catalog generation is not enabled.'
+        $result = $false
+    }
+    if (-not (Get-Command -Name 'New-FileCatalog' -ErrorAction Ignore)) {
+        Write-Warning 'New-FileCatalog is not available. Catalog generation requires Windows.'
+        $result = $false
+    }
+    $result
+}
+Task BuildCatalog -Depends $PSBBuildCatalogDependency -PreCondition $buildCatalogPreReqs {
+    $catalogFileName = if ($PSBPreference.Sign.Catalog.FileName) {
+        $PSBPreference.Sign.Catalog.FileName
+    } else {
+        "$($PSBPreference.General.ModuleName).cat"
+    }
+    $catalogFilePath = Join-Path -Path $PSBPreference.Build.ModuleOutDir -ChildPath $catalogFileName
+
+    $catalogParams = @{
+        ModulePath      = $PSBPreference.Build.ModuleOutDir
+        CatalogFilePath = $catalogFilePath
+        CatalogVersion  = $PSBPreference.Sign.Catalog.Version
+        Verbose         = $VerbosePreference -eq 'Continue'
+    }
+    New-PSBuildFileCatalog @catalogParams
+} -Description 'Creates a Windows catalog (.cat) file for the built module'
+
+$signCatalogPreReqs = {
+    $result = $true
+    if (-not ($PSBPreference.Sign.Enabled -and $PSBPreference.Sign.Catalog.Enabled)) {
+        Write-Warning 'Catalog signing is not enabled.'
+        $result = $false
+    }
+    if (-not (Get-Command -Name 'Set-AuthenticodeSignature' -ErrorAction Ignore)) {
+        Write-Warning 'Set-AuthenticodeSignature is not available. Catalog signing requires Windows.'
+        $result = $false
+    }
+    $result
+}
+Task SignCatalog -Depends $PSBSignCatalogDependency -PreCondition $signCatalogPreReqs {
+    $certParams = @{
+        CertificateSource         = $PSBPreference.Sign.CertificateSource
+        CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
+        CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
+        CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+        SkipValidation            = $PSBPreference.Sign.SkipCertificateValidation
+        Verbose                   = $VerbosePreference -eq 'Continue'
+    }
+    if ($PSBPreference.Sign.Thumbprint) {
+        $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
+    }
+    if ($PSBPreference.Sign.PfxFilePath) {
+        $certParams.PfxFilePath = $PSBPreference.Sign.PfxFilePath
+    }
+    if ($PSBPreference.Sign.PfxFilePassword) {
+        $certParams.PfxFilePassword = $PSBPreference.Sign.PfxFilePassword
+    }
+
+    $certificate = if ($PSBPreference.Sign.Certificate) {
+        $PSBPreference.Sign.Certificate
+    } else {
+        Get-PSBuildCertificate @certParams
+    }
+
+    Assert ($null -ne $certificate) $LocalizedData.NoCertificateFound
+
+    $catalogFileName = if ($PSBPreference.Sign.Catalog.FileName) {
+        $PSBPreference.Sign.Catalog.FileName
+    } else {
+        "$($PSBPreference.General.ModuleName).cat"
+    }
+
+    $signingParams = @{
+        Path            = $PSBPreference.Build.ModuleOutDir
+        Certificate     = $certificate
+        TimestampServer = $PSBPreference.Sign.TimestampServer
+        HashAlgorithm   = $PSBPreference.Sign.HashAlgorithm
+        Include         = @($catalogFileName)
+        Verbose         = $VerbosePreference -eq 'Continue'
+    }
+    Invoke-PSBuildModuleSigning @signingParams
+} -Description 'Signs the module catalog (.cat) file with an Authenticode signature'
+
+Task Sign -Depends $PSBSignDependency {} -Description 'Signs module files and catalog (meta task)'
 
 Task ? -Description 'Lists the available tasks' {
     'Available tasks:'

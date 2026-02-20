@@ -144,13 +144,75 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Credential to authenticate to PowerShell repository with
         PSRepositoryCredential = $null
     }
+    Sign    = @{
+        # Enable/disable Authenticode signing of module files. Must be $true for any
+        # signing or catalog tasks to execute.
+        Enabled                   = $false
+
+        # Certificate source used to resolve the code-signing certificate.
+        # Valid values:
+        #   Auto      - Uses EnvVar if CertificateEnvVar is populated, otherwise falls back to Store.
+        #               This is the recommended setting for pipelines that share a common psakeFile.
+        #   Store     - Selects the first valid, unexpired code-signing certificate with a private
+        #               key from the Windows certificate store (CertStoreLocation).
+        #   Thumbprint - Like Store, but selects a specific certificate by Thumbprint.
+        #   EnvVar    - Decodes a Base64-encoded PFX from the CertificateEnvVar environment
+        #               variable. Common in GitHub Actions, Azure DevOps, and GitLab CI.
+        #   PfxFile   - Loads a PFX/P12 file from PfxFilePath with an optional PfxFilePassword.
+        CertificateSource         = 'Auto'
+
+        # Windows certificate store path searched by Store and Thumbprint sources.
+        CertStoreLocation         = 'Cert:\CurrentUser\My'
+
+        # Specific certificate thumbprint to select (Thumbprint source only).
+        Thumbprint                = $null
+
+        # Name of the environment variable that holds the Base64-encoded PFX certificate.
+        # Used by the EnvVar source and as the presence-detection key for Auto.
+        CertificateEnvVar         = 'SIGNCERTIFICATE'
+
+        # Name of the environment variable that holds the PFX password (EnvVar source).
+        CertificatePasswordEnvVar = 'CERTIFICATEPASSWORD'
+
+        # File system path to a PFX/P12 certificate file (PfxFile source).
+        PfxFilePath               = $null
+
+        # Password for the PFX file as a SecureString (PfxFile source).
+        PfxFilePassword           = $null
+
+        # A pre-resolved [System.Security.Cryptography.X509Certificates.X509Certificate2] object.
+        # When set, CertificateSource is ignored and this certificate is used directly.
+        # Useful for Azure Key Vault, HSM, or other custom certificate providers.
+        Certificate               = $null
+
+        # When true and using the Store or Thumbprint sources, skip the
+        # certificate validity check that ensures the certificate is not expired
+        # and has a private key. This is not recommended for production use but
+        # can be useful in CI environments where certificates are frequently
+        # renewed and updated.
+        SkipCertificateValidation = $false
+
+        # RFC 3161 timestamp server URI embedded in Authenticode signatures.
+        TimestampServer           = 'http://timestamp.digicert.com'
+
+        # Authenticode hash algorithm. Valid values: SHA256, SHA384, SHA512, SHA1.
+        HashAlgorithm             = 'SHA256'
+
+        # Glob patterns of files to sign in the module output directory.
+        FilesToSign               = @('*.psd1', '*.psm1', '*.ps1')
+
+        Catalog                   = @{
+            # Enable/disable Windows catalog (.cat) file creation and signing.
+            # Requires Sign.Enabled = $true.
+            Enabled  = $false
+
+            # Catalog hash version.
+            # 1 = SHA1, compatible with Windows 7 and Windows Server 2008 R2.
+            # 2 = SHA2, required for Windows 8 / Server 2012 and newer.
+            Version  = 2
+
+            # Catalog file name. Defaults to '<ModuleName>.cat' when $null.
+            FileName = $null
+        }
+    }
 }
-
-# Enable/disable generation of a catalog (.cat) file for the module.
-# [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-# $catalogGenerationEnabled = $true
-
-# # Select the hash version to use for the catalog file: 1 for SHA1 (compat with Windows 7 and
-# # Windows Server 2008 R2), 2 for SHA2 to support only newer Windows versions.
-# [System.Diagnostics.CodeAnalysis.SuppressMessage('PSUseDeclaredVarsMoreThanAssigments', '')]
-# $catalogVersion = 2

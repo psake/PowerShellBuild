@@ -23,4 +23,17 @@ PSScriptAnalyzerResults=PSScriptAnalyzer results:
 ScriptAnalyzerErrors=One or more ScriptAnalyzer errors were found!
 ScriptAnalyzerWarnings=One or more ScriptAnalyzer warnings were found!
 ScriptAnalyzerIssues=One or more ScriptAnalyzer issues were found!
+NoCertificateFound=No valid code signing certificate was found. Verify the configured CertificateSource and that a certificate with a private key is available.
+CertificateResolvedFromStore=Resolved code signing certificate from store [{0}]: Subject=[{1}]
+CertificateResolvedFromThumbprint=Resolved code signing certificate by thumbprint [{0}]: Subject=[{1}]
+CertificateResolvedFromEnvVar=Resolved code signing certificate from environment variable [{0}]
+CertificateResolvedFromPfxFile=Resolved code signing certificate from PFX file [{0}]
+SigningModuleFiles=Signing [{0}] file(s) matching [{1}] in [{2}]...
+CreatingFileCatalog=Creating file catalog [{0}] (version {1})...
+FileCatalogCreated=File catalog created: [{0}]
+CertificateSourceAutoResolved=CertificateSource is 'Auto'. Resolved to '{0}'.
+CertificateMissingPrivateKey=The resolved certificate does not have an accessible private key. Code signing requires a certificate with a private key. Subject=[{0}]
+CertificateExpired=The resolved certificate has expired (NotAfter: {0}). Code signing requires a valid, unexpired certificate. Subject=[{1}]
+CertificateMissingCodeSigningEku=The resolved certificate does not have the Code Signing Enhanced Key Usage (EKU: 1.3.6.1.5.5.7.3.3). Subject=[{0}]
+CertificateSourceStoreNotSupported=CertificateSource 'Store' is only supported on Windows platforms.
 '@
