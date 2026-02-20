@@ -195,5 +195,6 @@ function Get-PSBuildCertificate {
         Write-Verbose "Certificate validation passed: HasPrivateKey=$($cert.HasPrivateKey), NotAfter=$($cert.NotAfter), CodeSigningEKU=Present"
     }
 
+    Write-Verbose ('Certificate resolution complete: ' + ($cert ? $cert.Subject : 'No certificate found'))
     $cert
 }

@@ -36,15 +36,23 @@ if ($Bootstrap.IsPresent) {
 }
 
 if ($BuildTool -eq 'psake') {
-    if (Get-Module InvokeBuild) {Remove-Module InvokeBuild -Force}
+    if (Get-Module InvokeBuild) { Remove-Module InvokeBuild -Force }
     # Execute psake task(s)
     $psakeFile = './psakeFile.ps1'
     if ($PSCmdlet.ParameterSetName -eq 'Help') {
-        Get-PSakeScriptTasks -buildFile $psakeFile |
+        Get-PSakeScriptTasks -BuildFile $psakeFile |
             Format-Table -Property Name, Description, Alias, DependsOn
     } else {
         Set-BuildEnvironment -Force
-        Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -properties $Properties
+        $invokepsakeSplat = @{
+            buildFile  = $psakeFile
+            taskList   = $Task
+            nologo     = $true
+            properties = $Properties
+        }
+        if ($PSBoundParameters.ContainsKey('Verbose')) { $invokepsakeSplat.Verbose = $true }
+
+        Invoke-psake @invokepsakeSplat
         exit ([int](-not $psake.build_success))
     }
 } else {
@@ -53,7 +61,7 @@ if ($BuildTool -eq 'psake') {
     } else {
         # Execute IB task(s)
         Import-Module InvokeBuild
-        if ($Task -eq 'Default') {$Task = '.'}
+        if ($Task -eq 'Default') { $Task = '.' }
         Invoke-Build -File ./.build.ps1 -Task $Task
     }
 }

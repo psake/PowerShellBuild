@@ -185,6 +185,13 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Useful for Azure Key Vault, HSM, or other custom certificate providers.
         Certificate               = $null
 
+        # When true and using the Store or Thumbprint sources, skip the
+        # certificate validity check that ensures the certificate is not expired
+        # and has a private key. This is not recommended for production use but
+        # can be useful in CI environments where certificates are frequently
+        # renewed and updated.
+        SkipCertificateValidation = $false
+
         # RFC 3161 timestamp server URI embedded in Authenticode signatures.
         TimestampServer           = 'http://timestamp.digicert.com'
 
