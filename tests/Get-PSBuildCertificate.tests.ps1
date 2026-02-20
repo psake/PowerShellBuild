@@ -20,6 +20,12 @@ Describe 'Code Signing Functions' {
     }
 
     Context 'Auto mode' {
+      It 'Defaults to Auto mode when no CertificateSource is specified' -Skip:(-not $IsWindows) {
+        Mock Get-ChildItem {}
+        $VerboseOutput = Get-PSBuildCertificate -Verbose -ErrorAction SilentlyContinue 4>&1
+        $VerboseOutput[0] | Should -Match "CertificateSource is 'Auto'"
+      }
+
       It 'Resolves to EnvVar mode when SIGNCERTIFICATE environment variable is set' {
         $env:SIGNCERTIFICATE = 'base64data'
         try {
@@ -34,8 +40,8 @@ Describe 'Code Signing Functions' {
       It 'Resolves to Store mode when SIGNCERTIFICATE environment variable is not set' -Skip:(-not $IsWindows) {
         Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
         Mock Get-ChildItem {}
-        $VerboseOutput = Get-PSBuildCertificate -ErrorAction SilentlyContinue -Verbose 4>&1
-        $VerboseOutput | Should -Match "Resolved to 'Store'"
+        $VerboseOutput = Get-PSBuildCertificate -ErrorAction SilentlyContinue -Verbose *>&1
+        $VerboseOutput[0] | Should -Match ".*Resolved to 'Store'.*"
       }
     }
 
