@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.0] 2026-02-20
+
+### Added
+
+- [**#92**](https://github.com/psake/PowerShellBuild/pull/92) Add Authenticode
+  code-signing support for PowerShell modules with three new public functions:
+  - `Get-PSBuildCertificate` - Resolves code-signing X509Certificate2 objects
+    from certificate store, PFX files, Base64-encoded environment variables,
+    or pre-resolved certificate objects
+  - `Invoke-PSBuildModuleSigning` - Signs PowerShell module files (*.psd1,
+    *.psm1, *.ps1) with Authenticode signatures supporting configurable
+    timestamp servers and hash algorithms
+  - `New-PSBuildFileCatalog` - Creates Windows catalog (.cat) files for
+    tamper detection
+- New build tasks for module signing pipeline: `SignModule`, `BuildCatalog`,
+  `SignCatalog`, `Sign` (meta-task)
+- Extended `$PSBPreference.Sign` configuration section with certificate
+  source selection, timestamp server configuration, hash algorithm options,
+  and catalog generation settings
+
+### Fixed
+
 - Remove extra backticks during localization text migration.
 
 ## [0.7.3] 2025-08-01
