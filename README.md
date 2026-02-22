@@ -2,7 +2,7 @@
 
 | GitHub Actions                                                                                                                                        | PS Gallery                                          | License                              |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|--------------------------------------|
-| [![GitHub Actions Status][github-actions-badge]][github-actions-build] [![GitHub Actions Status][github-actions-badge-publish]][github-actions-build] | [![PowerShell Gallery][psgallery-badge]][psgallery] | [![License][license-badge]][license] |
+| [![GitHub Actions Status][github-actions-badge]][github-actions-build] [![GitHub Actions Status][github-actions-badge-publish]][github-actions-build] | [![PowerShell Gallery][psgallery-badge]][psgallery] [![PowerShell Gallery][psgallery-version]][psgallery] [![PowerShell Gallery][psgallery-platforms]][psgallery] | [![License][license-badge]][license] |
 
 This project aims to provide common [psake](https://github.com/psake/psake) and
 [Invoke-Build](https://github.com/nightroman/Invoke-Build) tasks for building,
@@ -203,9 +203,11 @@ $PSBPreference.Test.CodeCoverage.Enabled  = $false
 ![Example](./media/ib_example.png)
 
 [github-actions-badge]: https://github.com/psake/PowerShellBuild/actions/workflows/test.yml/badge.svg
-[github-actions-badge-publish]: https://github.com/psake/PowerShellBuild/actions/workflows/publish.yaml/badge.svg
+[github-actions-badge-publish]: https://github.com/psake/PowerShellBuild/actions/workflows/publish.yaml/badge.svg?event=release
 [github-actions-build]: https://github.com/psake/PowerShellBuild/actions
-[psgallery-badge]: https://img.shields.io/powershellgallery/dt/powershellbuild.svg
+[psgallery-badge]: https://img.shields.io/powershellgallery/dt/powershellbuild
+[psgallery-version]: https://img.shields.io/powershellgallery/v/ChocoLogParse?label=version
+[psgallery-platforms]: https://img.shields.io/powershellgallery/p/ChocoLogParse
 [psgallery]: https://www.powershellgallery.com/packages/PowerShellBuild
 [license-badge]: https://img.shields.io/github/license/psake/PowerShellBuild.svg
 [license]: https://raw.githubusercontent.com/psake/PowerShellBuild/main/LICENSE
