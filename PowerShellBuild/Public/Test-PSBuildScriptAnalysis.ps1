@@ -29,9 +29,9 @@ function Test-PSBuildScriptAnalysis {
     Write-Verbose ($LocalizedData.SeverityThresholdSetTo -f $SeverityThreshold)
 
     $analysisResult = Invoke-ScriptAnalyzer -Path $Path -Settings $SettingsPath -Recurse -Verbose:$VerbosePreference
-    $errors = ($analysisResult.where({ $_Severity -eq 'Error' })).Count
-    $warnings = ($analysisResult.where({ $_Severity -eq 'Warning' })).Count
-    $infos = ($analysisResult.where({ $_Severity -eq 'Information' })).Count
+    $errors = ($analysisResult.where({ $_.Severity -eq 'Error' })).Count
+    $warnings = ($analysisResult.where({ $_.Severity -eq 'Warning' })).Count
+    $infos = ($analysisResult.where({ $_.Severity -eq 'Information' })).Count
 
     if ($analysisResult) {
         Write-Host $LocalizedData.PSScriptAnalyzerResults -ForegroundColor Yellow
