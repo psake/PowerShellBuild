@@ -12,10 +12,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
+        shell: [pwsh]
+        include:
+          - os: windows-latest
+            shell: powershell
+            name: 'Windows PowerShell 5.1'
     steps:
     - uses: actions/checkout@v4
     - name: Test
-      shell: pwsh
+      shell: ${{ matrix.shell }}
       env:
         DEBUG: ${{ runner.debug == '1' }}
       run: |

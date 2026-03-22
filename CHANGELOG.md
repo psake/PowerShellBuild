@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [1.0.0-alpha1] 2026-03-22
+
+### Breaking Changes
+
+- **Minimum PowerShell version raised from 3.0 to 5.1.** PowerShellBuild 1.0.0+ requires
+  PowerShell 5.1 or later.
+- **psake 5.0.0 required.** The consumer-facing `psakeFile.ps1` now uses psake 5.0.0
+  declarative task syntax with `Version 5` pinning.
+- **`Invoke-psake` now returns `PsakeBuildResult`.** Build scripts that check
+  `$psake.build_success` should migrate to inspecting the returned object's `.Success` property.
+
+### Added
+
+- **Task caching** — Cacheable tasks (`StageFiles`, `Analyze`, `Pester`, `GenerateMarkdown`,
+  `GenerateMAML`, `GenerateUpdatableHelp`) now declare `Inputs`/`Outputs` for psake 5.0.0's
+  content-addressed caching. Unchanged tasks are automatically skipped on incremental builds.
+  Disable with `$PSBPreference.Build.EnableTaskCaching = $false`.
+- **LLM-optimized test output** — New `$PSBPreference.Test.OutputMode` setting with values
+  `'Detailed'` (default, verbose human output), `'Minimal'` (failures only, compact), and
+  `'LLM'` (structured JSON with failure details, optimized for machine consumption).
+- **External PesterConfiguration support** — New `$PSBPreference.Test.PesterConfigurationPath`
+  setting to load a `.psd1` file as the base PesterConfiguration. Explicit `$PSBPreference.Test`
+  values overlay on top.
+- **`-Configuration` parameter on `Test-PSBuildPester`** — Pass a `[PesterConfiguration]` object
+  directly for full control over Pester execution.
+- **`-OutputMode` parameter on `Test-PSBuildPester`** — Control output format per-invocation.
+- **`-PesterConfigurationPath` parameter on `Test-PSBuildPester`** — Load external config files.
+- **`Format-PSBuildResult`** — New public function to format psake 5.0.0's `PsakeBuildResult`
+  for Human, JSON, or GitHubActions output.
+- **Declarative task syntax** — All tasks in `psakeFile.ps1` rewritten to use psake 5.0.0's
+  hashtable-based declarative syntax.
+- **Invoke-Build parity** — `IB.tasks.ps1` updated with matching `Inputs`/`Outputs` caching
+  and new Pester parameter passthrough.
+
+### Changed
+
+- `$PSBPreference` now includes `Build.EnableTaskCaching`, `Test.OutputMode`, and
+  `Test.PesterConfigurationPath` keys.
+- `Test-PSBuildPester` now always returns the Pester test result object for programmatic access.
+- Synchronized inline `LocalizedData` in `PowerShellBuild.psm1` with all strings from
+  `en-US/Messages.psd1` (was missing signing-related strings from 0.8.0).
+
 ## [0.8.0] 2026-02-20
 
 ### Added

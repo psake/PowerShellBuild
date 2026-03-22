@@ -13,7 +13,14 @@ Task Clean Init, {
 }
 
 # Synopsis: Builds module based on source directory
-Task StageFiles Clean, {
+Task StageFiles -Inputs {
+    Get-ChildItem -Path $PSBPreference.General.SrcRootDir -Recurse -File |
+        Where-Object { $_.Extension -in '.ps1', '.psm1', '.psd1', '.ps1xml', '.txt' }
+} -Outputs {
+    if (Test-Path $PSBPreference.Build.ModuleOutDir) {
+        Get-ChildItem -Path $PSBPreference.Build.ModuleOutDir -Recurse -File
+    }
+} Clean, {
     $buildParams = @{
         Path               = $PSBPreference.General.SrcRootDir
         ModuleName         = $PSBPreference.General.ModuleName
@@ -59,13 +66,19 @@ $analyzePreReqs = {
 }
 
 # Synopsis: Execute PSScriptAnalyzer tests
-Task Analyze -If (. $analyzePreReqs) Build, {
+Task Analyze -If (. $analyzePreReqs) -Inputs {
+    Get-ChildItem -Path $PSBPreference.Build.ModuleOutDir -Recurse -File -Include '*.ps1', '*.psm1', '*.psd1'
+} -Outputs {
+    Join-Path $PSBPreference.Build.OutDir '.analyze-ok'
+} Build, {
     $analyzeParams = @{
         Path              = $PSBPreference.Build.ModuleOutDir
         SeverityThreshold = $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel
         SettingsPath      = $PSBPreference.Test.ScriptAnalysis.SettingsPath
     }
     Test-PSBuildScriptAnalysis @analyzeParams
+    # Write marker file for cache validation
+    Set-Content -Path (Join-Path $PSBPreference.Build.OutDir '.analyze-ok') -Value (Get-Date -Format 'o')
 }
 
 $pesterPreReqs = {
@@ -86,7 +99,13 @@ $pesterPreReqs = {
 }
 
 # Synopsis: Execute Pester tests
-Task Pester -If (. $pesterPreReqs) Build, {
+Task Pester -If (. $pesterPreReqs) -Inputs {
+    $testFiles = Get-ChildItem -Path $PSBPreference.Test.RootDir -Recurse -File -Filter '*.ps1'
+    $moduleFiles = Get-ChildItem -Path $PSBPreference.Build.ModuleOutDir -Recurse -File -ErrorAction SilentlyContinue
+    @($testFiles) + @($moduleFiles)
+} -Outputs {
+    $PSBPreference.Test.OutputFile
+} Build, {
     $pesterParams = @{
         Path                         = $PSBPreference.Test.RootDir
         ModuleName                   = $PSBPreference.General.ModuleName
@@ -101,6 +120,10 @@ Task Pester -If (. $pesterPreReqs) Build, {
         ImportModule                 = $PSBPreference.Test.ImportModule
         SkipRemainingOnFailure       = $PSBPreference.Test.SkipRemainingOnFailure
         OutputVerbosity              = $PSBPreference.Test.OutputVerbosity
+        OutputMode                   = $PSBPreference.Test.OutputMode
+    }
+    if ($PSBPreference.Test.PesterConfigurationPath) {
+        $pesterParams.PesterConfigurationPath = $PSBPreference.Test.PesterConfigurationPath
     }
     Test-PSBuildPester @pesterParams
 }
@@ -117,7 +140,15 @@ $genMarkdownPreReqs = {
 }
 
 # Synopsis: Generates PlatyPS markdown files from module help
-Task GenerateMarkdown -if (. $genMarkdownPreReqs) StageFiles, {
+Task GenerateMarkdown -if (. $genMarkdownPreReqs) -Inputs {
+    if (Test-Path $PSBPreference.Build.ModuleOutDir) {
+        Get-ChildItem -Path $PSBPreference.Build.ModuleOutDir -Recurse -File -Include '*.ps1', '*.psm1'
+    }
+} -Outputs {
+    if (Test-Path $PSBPreference.Docs.RootDir) {
+        Get-ChildItem -Path $PSBPreference.Docs.RootDir -Recurse -File -Filter '*.md'
+    }
+} StageFiles, {
     $buildMDParams = @{
         ModulePath            = $PSBPreference.Build.ModuleOutDir
         ModuleName            = $PSBPreference.General.ModuleName
@@ -141,7 +172,15 @@ $genHelpFilesPreReqs = {
 }
 
 # Synopsis: Generates MAML-based help from PlatyPS markdown files
-Task GenerateMAML -if (. $genHelpFilesPreReqs) GenerateMarkdown, {
+Task GenerateMAML -if (. $genHelpFilesPreReqs) -Inputs {
+    if (Test-Path $PSBPreference.Docs.RootDir) {
+        Get-ChildItem -Path $PSBPreference.Docs.RootDir -Recurse -File -Filter '*.md'
+    }
+} -Outputs {
+    if (Test-Path $PSBPreference.Build.ModuleOutDir) {
+        Get-ChildItem -Path $PSBPreference.Build.ModuleOutDir -Recurse -File -Filter '*-help.xml'
+    }
+} GenerateMarkdown, {
     Build-PSBuildMAMLHelp -Path $PSBPreference.Docs.RootDir -DestinationPath $PSBPreference.Build.ModuleOutDir
 }
 
@@ -155,7 +194,15 @@ $genUpdatableHelpPreReqs = {
 }
 
 # Synopsis: Create updatable help .cab file based on PlatyPS markdown help
-Task GenerateUpdatableHelp -if (. $genUpdatableHelpPreReqs) BuildHelp, {
+Task GenerateUpdatableHelp -if (. $genUpdatableHelpPreReqs) -Inputs {
+    if (Test-Path $PSBPreference.Build.ModuleOutDir) {
+        Get-ChildItem -Path $PSBPreference.Build.ModuleOutDir -Recurse -File -Filter '*-help.xml'
+    }
+} -Outputs {
+    if (Test-Path $PSBPreference.Help.UpdatableHelpOutDir) {
+        Get-ChildItem -Path $PSBPreference.Help.UpdatableHelpOutDir -Recurse -File -Filter '*.cab'
+    }
+} BuildHelp, {
     Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
 }
 

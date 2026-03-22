@@ -36,4 +36,8 @@ CertificateMissingPrivateKey=The resolved certificate does not have an accessibl
 CertificateExpired=The resolved certificate has expired (NotAfter: {0}). Code signing requires a valid, unexpired certificate. Subject=[{1}]
 CertificateMissingCodeSigningEku=The resolved certificate does not have the Code Signing Enhanced Key Usage (EKU: 1.3.6.1.5.5.7.3.3). Subject=[{0}]
 CertificateSourceStoreNotSupported=CertificateSource 'Store' is only supported on Windows platforms.
+LLMOutputHeader=Test results (structured output):
+MinimalFailureLine=[FAIL] {0} ({1}:{2}) - {3}
+PesterConfigLoaded=Loaded PesterConfiguration from [{0}]
+InvalidPesterConfigPath=PesterConfiguration file [{0}] not found
 '@
