@@ -4,10 +4,10 @@
 
 **PowerShellBuild** is a PowerShell module that provides a standardized set of build, test, and publish tasks for PowerShell module projects. It supports two popular PowerShell task-runner frameworks:
 
-- **psake** (4.9.0+) — task-based build system
-- **Invoke-Build** (5.8.1+) — alternative task runner
+- **psake** (5.0.0+) — task-based build system with declarative syntax and content-addressed caching
+- **Invoke-Build** (5.8.1+) — alternative task runner with native Inputs/Outputs caching
 
-The module version is **0.7.3** and targets PowerShell 3.0+. It is cross-platform and tested on Windows, Linux, and macOS.
+The module version is **1.0.0-alpha1** and targets PowerShell 5.1+. It is cross-platform and tested on Windows (including Windows PowerShell 5.1), Linux, and macOS.
 
 ---
 
@@ -26,8 +26,8 @@ PowerShellBuild/
 ├── Build/
 │   └── Convert-PSAke.ps1       # Utility: converts psake tasks to Invoke-Build
 ├── PowerShellBuild/            # THE MODULE SOURCE (System Under Test)
-│   ├── Public/                 # Exported (public) functions — 9 functions
-│   ├── Private/                # Internal functions — 1 function
+│   ├── Public/                 # Exported (public) functions — 13 functions
+│   ├── Private/                # Internal functions — 2 functions
 │   ├── en-US/
 │   │   └── Messages.psd1       # Localized string resources
 │   ├── PowerShellBuild.psd1    # Module manifest (version, deps, exports)
@@ -67,8 +67,8 @@ The hashtable is organized into sections:
 | Section | Purpose |
 |---------|---------|
 | `General` | ProjectRoot, SrcRootDir, ModuleName, ModuleVersion, ModuleManifestPath |
-| `Build` | OutDir, ModuleOutDir, CompileModule, CompileDirectories, CopyDirectories, Exclude |
-| `Test` | Enabled, RootDir, OutputFile, OutputFormat, ScriptAnalysis, CodeCoverage, ImportModule, SkipRemainingOnFailure, OutputVerbosity |
+| `Build` | OutDir, ModuleOutDir, CompileModule, CompileDirectories, CopyDirectories, Exclude, EnableTaskCaching |
+| `Test` | Enabled, RootDir, OutputFile, OutputFormat, ScriptAnalysis, CodeCoverage, ImportModule, SkipRemainingOnFailure, OutputVerbosity, OutputMode, PesterConfigurationPath |
 | `Help` | UpdatableHelpOutDir, DefaultLocale, ConvertReadMeToAboutHelp |
 | `Docs` | RootDir, Overwrite, AlphabeticParamsOrder, ExcludeDontShow, UseFullTypeName |
 | `Publish` | PSRepository, PSRepositoryApiKey, PSRepositoryCredential |
@@ -124,8 +124,11 @@ All functions reside in `PowerShellBuild/Public/`.
 | `Test-PSBuildPester` | Runs Pester tests with configurable output and coverage |
 | `Test-PSBuildScriptAnalysis` | Runs PSScriptAnalyzer with configurable severity threshold |
 | `Publish-PSBuildModule` | Publishes the built module to a PowerShell repository |
+| `Format-PSBuildResult` | Formats a PsakeBuildResult for Human, JSON, or GitHubActions output |
 
-Private helper: `Remove-ExcludedItem` — filters file system items by regex patterns during builds.
+Private helpers:
+- `Remove-ExcludedItem` — filters file system items by regex patterns during builds
+- `ConvertTo-PSBuildLLMOutput` — converts Pester results to structured JSON for LLM consumption
 
 ### Invoke-Build Alias
 
@@ -207,7 +210,7 @@ Defined in `requirements.psd1`, installed via **PSDepend**:
 |--------|---------|
 | BuildHelpers | 2.0.16 |
 | Pester | ≥ 5.6.1 |
-| psake | 4.9.0 |
+| psake | 5.0.0 |
 | PSScriptAnalyzer | 1.24.0 |
 | InvokeBuild | 5.8.1 |
 | platyPS | 0.14.2 |
@@ -386,7 +389,7 @@ After a successful build, output is in `Output/PowerShellBuild/<version>/`:
 ```
 Output/
 └── PowerShellBuild/
-    └── 0.7.3/
+    └── 1.0.0/
         ├── Public/                   # (when CompileModule = $false)
         ├── Private/
         ├── en-US/

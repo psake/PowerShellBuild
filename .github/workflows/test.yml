@@ -3,7 +3,7 @@ permissions:
   contents: read
 on:
   push:
-    branches: [ $default-branch ]
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 jobs:
@@ -11,13 +11,29 @@ jobs:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
     - uses: actions/checkout@v4
     - name: Test
       shell: pwsh
+      env:
+        DEBUG: ${{ runner.debug == '1' }}
+      run: |
+        if($env:DEBUG -eq 'true' -or $env:DEBUG -eq '1') {
+          $DebugPreference = 'Continue'
+        }
+        ./build.ps1 -Task Test -Bootstrap
+  test_powershell:
+    name: Test
+    runs-on: windows-latest
+    strategy:
+      fail-fast: true
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test
+      shell: powershell
       env:
         DEBUG: ${{ runner.debug == '1' }}
       run: |

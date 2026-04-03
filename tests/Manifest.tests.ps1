@@ -10,8 +10,8 @@ BeforeAll {
 
     $changelogPath    = Join-Path -Path $env:BHProjectPath -Child 'CHANGELOG.md'
     $changelogVersion = Get-Content $changelogPath | ForEach-Object {
-        if ($_ -match "^##\s\[(?<Version>(\d+\.){1,3}\d+)\]") {
-            $changelogVersion = $matches.Version
+        if ($_ -match "^##\s\[(?<Version>(\d+\.){1,3}\d+(-[\w.]+)?)\]") {
+            $changelogVersion = $matches.Version -replace '-.*$', ''
             break
         }
     }

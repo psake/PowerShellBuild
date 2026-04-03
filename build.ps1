@@ -55,6 +55,6 @@ if ($PSCmdlet.ParameterSetName -eq 'Help') {
     if ($PSGalleryApiKey) {
         $parameters['galleryApiKey'] = $PSGalleryApiKey
     }
-    Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -parameters $parameters
-    exit ( [int]( -not $psake.build_success ) )
+    $result = Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -parameters $parameters
+    exit ( [int]( -not $result.Success ) )
 }

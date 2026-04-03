@@ -1,3 +1,5 @@
+Version 5
+
 properties {
     $settings = . ([IO.Path]::Combine($PSScriptRoot, 'build.settings.ps1'))
     if ($galleryApiKey) {

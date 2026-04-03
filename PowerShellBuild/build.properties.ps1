@@ -44,6 +44,10 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # List of files (regular expressions) to exclude from output directory
         Exclude            = @()
+
+        # When $true (default), cacheable tasks use psake 5.0.0 content-addressed caching.
+        # Set $false to force all tasks to re-execute (equivalent to -NoCache).
+        EnableTaskCaching  = $true
     }
     Test    = @{
         # Enable/disable Pester tests
@@ -103,6 +107,16 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # Set verbosity of output. Options are None, Normal, Detailed and Diagnostic. Default: Detailed.
         OutputVerbosity        = 'Detailed'
+
+        # Output mode for test results.
+        # 'Detailed' = verbose human-readable (default)
+        # 'Minimal'  = failures only, compact summary
+        # 'LLM'      = structured JSON with failure details, optimized for machine consumption
+        OutputMode             = 'Detailed'
+
+        # Path to an external PesterConfiguration .psd1 file.
+        # When set, loaded as base config; explicit $PSBPreference.Test values overlay on top.
+        PesterConfigurationPath = $null
     }
     Help    = @{
         # Path to updatable help CAB

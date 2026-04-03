@@ -9,7 +9,12 @@
             SkipPublisherCheck = $true
         }
     }
-    psake            = '4.9.0'
+    psake            = @{
+        MinimumVerson = '5.0.0'
+        Parameters    = @{
+            AllowPrerelease = $true
+        }
+    }
     PSScriptAnalyzer = '1.24.0'
     InvokeBuild      = '5.8.1'
     platyPS          = '0.14.2'
