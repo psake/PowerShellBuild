@@ -9,7 +9,9 @@
         "xml",
         "markdown"
     ],
-    "words": [],
+    "words": [
+        "psake"
+    ],
     "ignoreWords": [
         "psake",
         "MAML"
