@@ -64,14 +64,16 @@ it, set values *before* loading the task file, or use `Set-Variable -Force`.
 
 Sections:
 
-| Section   | Purpose                                                                                 |
-| --------- | --------------------------------------------------------------------------------------- |
-| `General` | ProjectRoot, SrcRootDir, ModuleName, ModuleVersion, ModuleManifestPath                  |
-| `Build`   | OutDir, ModuleOutDir, CompileModule, CompileDirectories, CopyDirectories, Exclude       |
-| `Test`    | Enabled, RootDir, OutputFile/Format, ScriptAnalysis, CodeCoverage, ImportModule, etc.   |
-| `Help`    | UpdatableHelpOutDir, DefaultLocale, ConvertReadMeToAboutHelp                            |
-| `Docs`    | RootDir, Overwrite, AlphabeticParamsOrder, ExcludeDontShow, UseFullTypeName             |
-| `Publish` | PSRepository, PSRepositoryApiKey, PSRepositoryCredential                                |
+| Section        | Purpose                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `General`      | ProjectRoot, SrcRootDir, ModuleName, ModuleVersion, ModuleManifestPath                                             |
+| `Build`        | OutDir, ModuleOutDir, CompileModule, CompileDirectories, CopyDirectories, Exclude                                  |
+| `Test`         | Enabled, RootDir, OutputFile/Format, ScriptAnalysis, CodeCoverage, ImportModule, etc.                              |
+| `Help`         | UpdatableHelpOutDir, DefaultLocale, ConvertReadMeToAboutHelp                                                       |
+| `Docs`         | RootDir, Overwrite, AlphabeticParamsOrder, ExcludeDontShow, UseFullTypeName                                        |
+| `Publish`      | PSRepository, PSRepositoryApiKey, PSRepositoryCredential                                                           |
+| `Sign`         | Enabled, CertificateSource, CertStoreLocation, Thumbprint, EnvVar/PfxFile sources, TimestampServer, HashAlgorithm, FilesToSign, Catalog |
+| `Sign.Catalog` | Enabled, Version, FileName                                                                                         |
 
 ### Module compilation modes
 
@@ -108,6 +110,10 @@ Variables (pattern: `$PSB{TaskName}Dependency`):
 | `$PSBGenerateMAMLDependency`          | `@('GenerateMarkdown')`          |
 | `$PSBGenerateUpdatableHelpDependency` | `@('BuildHelp')`                 |
 | `$PSBPublishDependency`               | `@('Test')`                      |
+| `$PSBSignModuleDependency`            | `@('Build')`                     |
+| `$PSBBuildCatalogDependency`          | `@('SignModule')`                |
+| `$PSBSignCatalogDependency`           | `@('BuildCatalog')`              |
+| `$PSBSignDependency`                  | `@('SignCatalog')`               |
 
 ## Public API (Exported Functions)
 
@@ -138,7 +144,8 @@ the Invoke-Build dot-source pattern:
 
 ```powershell
 # In a consumer's .build.ps1 for Invoke-Build
-. ([IO.Path]::Combine((Split-Path (Get-Module PowerShellBuild).Path), 'PowerShellBuild.IB.Tasks'))
+Import-Module PowerShellBuild
+. PowerShellBuild.IB.Tasks
 ```
 
 ## Build Workflows
@@ -196,10 +203,20 @@ These are the tasks consumer modules get when they import PowerShellBuild:
 | `BuildHelp`             | GenerateMarkdown + GenerateMAML              |
 | `GenerateUpdatableHelp` | CAB file for updatable help                  |
 | `Publish`               | Publish to repository                        |
+| `SignModule`            | Authenticode-sign module files (`*.psd1`, `*.psm1`, `*.ps1`) |
+| `BuildCatalog`          | Create Windows catalog (`.cat`) for the built module |
+| `SignCatalog`           | Authenticode-sign the module catalog file    |
+| `Sign`                  | Meta task — runs the full signing chain      |
 
 Tasks with prerequisite modules (`Analyze`, `Pester`, `GenerateMarkdown`, `GenerateMAML`,
 `GenerateUpdatableHelp`) check that required modules are installed; they skip gracefully
 with a warning if the module is missing.
+
+The signing tasks (`SignModule`, `BuildCatalog`, `SignCatalog`) have similar preconditions:
+they skip when `$PSBPreference.Sign.Enabled` is `$false` (catalog tasks also require
+`$PSBPreference.Sign.Catalog.Enabled = $true`) or when the required Windows-only cmdlets
+(`Set-AuthenticodeSignature`, `New-FileCatalog`) are not available — so signing safely
+no-ops on non-Windows.
 
 ## Dependencies
 
@@ -271,19 +288,23 @@ don't replace them.
 ```powershell
 # In consumer's psakeFile.ps1
 properties {
-    # Override defaults BEFORE including the tasks
-    $PSBPreference.Build.CompileModule = $true
-    $PSBPreference.Test.CodeCoverage.Enabled = $true
+    # These settings overwrite values supplied from the PowerShellBuild
+    # module and govern how those tasks are executed
+    $PSBPreference.Test.ScriptAnalysisEnabled = $false
+    $PSBPreference.Test.CodeCoverage.Enabled  = $true
 }
 
-Include "$PSScriptRoot/node_modules/PowerShellBuild/psakeFile.ps1"
+task default -depends Build
+
+task Build -FromModule PowerShellBuild -Version '0.1.0'
 ```
 
 ### With Invoke-Build
 
 ```powershell
 # In consumer's .build.ps1
-. ([IO.Path]::Combine((Split-Path (Get-Module PowerShellBuild -ListAvailable).Path), 'PowerShellBuild.IB.Tasks'))
+Import-Module PowerShellBuild
+. PowerShellBuild.IB.Tasks
 
 # Override configuration after dot-sourcing
 $PSBPreference.Build.CompileModule = $false
