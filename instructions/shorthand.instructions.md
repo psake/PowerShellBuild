@@ -37,6 +37,7 @@ use full, descriptive words instead of shorthand or abbreviations.
 | Err    | Error                        |
 | Msg    | Message                      |
 | Conn   | Connection / Connections     |
+| Dir    | Directory                    |
 | Cmd    | Command                      |
 | Svc    | Service                      |
 | Cfg    | Configuration                |

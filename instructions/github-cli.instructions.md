@@ -164,9 +164,15 @@ gh run view <run-id> --log-failed
 
 ### Creating Releases
 
+Use `--notes-file` (write notes to a temporary file first) rather than `--notes` to avoid
+escaping issues with backticks, backslashes, and quotes. For project releases, the rules in
+`releases.instructions.md` take precedence over these examples.
+
 ```bash
-# Create release from tag
-gh release create v1.0.0 --title "Version 1.0.0" --notes "Release notes"
+# Create release from tag (write notes to a file first to avoid escaping issues)
+printf '## Highlights\n\n- Your release notes here\n' > release-notes.md
+gh release create v1.0.0 --title "Version 1.0.0" --notes-file release-notes.md
+rm release-notes.md
 
 # Create release with auto-generated notes
 gh release create v1.0.0 --generate-notes

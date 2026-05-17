@@ -56,7 +56,7 @@ Follow existing patterns in the repository:
 
 **For new instruction files:**
 
-- Place in `instructions/` folder
+- Place in `instruction-templates/` folder
 - Use `.instructions.md` extension
 - Include required YAML frontmatter
 
