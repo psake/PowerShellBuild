@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Initialize v0.8 → v1.0 migration guide skeleton at
+  `docs/migration-v0.8-to-v1.0.md`. Includes an AI-assisted migration
+  prompt (referential style for IDE/CLI agents) and a format spec for
+  per-break entries that Phase 2 PRs will populate. Phase 1 of
+  [#120](https://github.com/psake/PowerShellBuild/issues/120).
+
 ## [0.8.0] 2026-02-20
 
 ### Added
