@@ -88,6 +88,11 @@ function Get-PSBuildCertificate {
         'CertificatePasswordEnvVar',
         Justification = 'This is not a password in plain text. It is the name of an environment variable that contains the password, which is a common pattern for CI/CD pipelines and secrets management.'
     )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseCompatibleCommands',
+        '',
+        Justification = 'Get-ChildItem -CodeSigningCert is a dynamic parameter supplied by the Certificate (Cert:) provider, not a static parameter of Get-ChildItem, so the static command data used by PSUseCompatibleCommands cannot see it. It is available on both Windows PowerShell 5.1 and PowerShell 7+.'
+    )]
     param(
         [ValidateSet('Auto', 'Store', 'Thumbprint', 'EnvVar', 'PfxFile')]
         [string]$CertificateSource = 'Auto',
@@ -122,8 +127,11 @@ function Get-PSBuildCertificate {
 
     switch ($resolvedSource) {
         'Store' {
-            # Throw if running on a non-Windows platform since the certificate store is not supported
-            if (-not $IsWindows) {
+            # Throw if running on a non-Windows platform since the certificate store is not supported.
+            # $IsWindows does not exist on Windows PowerShell 5.1 (Desktop edition), where it is $null
+            # and the platform is always Windows; only treat the platform as non-Windows when $IsWindows
+            # is explicitly $false (PowerShell 7+ on Linux/macOS).
+            if ($null -ne $IsWindows -and -not $IsWindows) {
                 throw $LocalizedData.CertificateSourceStoreNotSupported
             }
             $cert = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert |
@@ -195,6 +203,7 @@ function Get-PSBuildCertificate {
         Write-Verbose "Certificate validation passed: HasPrivateKey=$($cert.HasPrivateKey), NotAfter=$($cert.NotAfter), CodeSigningEKU=Present"
     }
 
-    Write-Verbose ('Certificate resolution complete: ' + ($cert ? $cert.Subject : 'No certificate found'))
+    $certSubject = if ($cert) { $cert.Subject } else { 'No certificate found' }
+    Write-Verbose ('Certificate resolution complete: ' + $certSubject)
     $cert
 }

@@ -25,3 +25,46 @@ jobs:
           $DebugPreference = 'Continue'
         }
         ./build.ps1 -Task Test -Bootstrap
+
+  # Smoke test on the lowest supported engine. The manifest declares support for Windows
+  # PowerShell (Desktop), so the module must parse and import there. This job caught the 0.8.0
+  # regression where a PowerShell 7+-only ternary operator broke module import on 5.1.
+  # The root .psm1 is imported directly (rather than the .psd1) so the real dot-source loader runs
+  # without the manifest's RequiredModules bootstrap, keeping the smoke test fast and dependency-free.
+  import-smoke:
+    name: Import smoke (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Parse and import module under Windows PowerShell 5.1
+      shell: powershell
+      run: |
+        $ErrorActionPreference = 'Stop'
+        "Engine: $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)"
+
+        $moduleRoot = Join-Path $PWD 'PowerShellBuild'
+
+        # 1. Parse every module file with the 5.1 language parser to catch syntax the lowest
+        #    supported engine cannot load (for example the PowerShell 7+ ternary operator).
+        $files = Get-ChildItem -Path $moduleRoot -Recurse -Include *.ps1, *.psm1, *.psd1
+        $parseFailed = $false
+        foreach ($file in $files) {
+            $tokens = $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$parseErrors) > $null
+            if ($parseErrors) {
+                $parseFailed = $true
+                Write-Host "Parse errors in $($file.FullName):"
+                $parseErrors | ForEach-Object { Write-Host "  line $($_.Extent.StartLineNumber): $($_.Message)" }
+            }
+        }
+        if ($parseFailed) {
+            throw 'One or more module files failed to parse under Windows PowerShell 5.1.'
+        }
+        "Parsed $($files.Count) module files with no errors."
+
+        # 2. Import the root module to run the real dot-source loader and confirm it loads on 5.1.
+        Import-Module (Join-Path $moduleRoot 'PowerShellBuild.psm1') -Force -ErrorAction Stop
+        if (-not (Get-Command Get-PSBuildCertificate -ErrorAction SilentlyContinue)) {
+            throw 'PowerShellBuild imported but expected functions are missing.'
+        }
+        'PowerShellBuild imported successfully under Windows PowerShell 5.1.'

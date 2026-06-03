@@ -36,6 +36,11 @@ function Test-PSBuildPester {
         Run Pester tests in ./tests and save results to ./out/testResults.xml
     #>
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseCompatibleCommands',
+        '',
+        Justification = 'Invoke-Pester -Configuration is a Pester 5+ parameter. This module requires Pester >= 5.6.1 (see RequiredModules in the manifest) and imports Pester with -MinimumVersion 5.0.0 before use, so the parameter is always available at runtime. The bundled PSUseCompatibleCommands profiles captured an older Pester, producing a false positive on both Windows PowerShell 5.1 and PowerShell 7.'
+    )]
     param(
         [parameter(Mandatory)]
         [string]$Path,

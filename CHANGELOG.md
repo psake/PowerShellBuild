@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Fixed
+
+- Restore Windows PowerShell 5.1 (Desktop edition) compatibility, which regressed
+  in 0.8.0. `Get-PSBuildCertificate` used the PowerShell 7+-only ternary operator,
+  causing the file to fail to parse and the whole module to fail to import under
+  Windows PowerShell 5.1 — even though the manifest still declares support for it.
+  The ternary is replaced with an `if`/`else` expression, and the `$IsWindows`
+  platform guard now treats the absent automatic variable on Desktop edition as
+  Windows (matching the existing pattern in `Build-PSBuildUpdatableHelp`). Behavior
+  on PowerShell 7+ is unchanged.
+
+### Added
+
+- Cross-version compatibility guardrails so a PowerShell 7+-only construct cannot
+  silently break the lowest supported engine again:
+  - The `PSUseCompatibleSyntax`, `PSUseCompatibleCommands`, and
+    `PSUseCompatibleTypes` rules are enabled in
+    `PowerShellBuild/ScriptAnalyzerSettings.psd1` (targeting Windows PowerShell 5.1
+    and PowerShell 7), and the `Analyze` build task now fails on any compatibility
+    violation.
+  - A new `Import smoke (Windows PowerShell 5.1)` CI job parses and imports the
+    module on the real lowest-supported engine.
+
 ## [0.8.0] 2026-02-20
 
 ### Added
