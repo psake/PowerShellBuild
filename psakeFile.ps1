@@ -33,8 +33,23 @@ task Analyze -depends Build {
 task Pester -depends Build {
     Remove-Module $settings.ProjectName -ErrorAction SilentlyContinue -Verbose:$false
 
-    $testResultsXml = [IO.Path]::Combine($settings.OutputDir, 'testResults.xml')
-    $testResults    = Invoke-Pester -Path $settings.Tests -Output Detailed -PassThru
+    # Write the NUnit results to tests/out/testResults.xml so the shared CI workflow can
+    # upload and publish them (its artifact step looks for ./tests/out/testResults.xml).
+    $testResultsDir = [IO.Path]::Combine($settings.ProjectRoot, 'tests', 'out')
+    if (-not (Test-Path -Path $testResultsDir)) {
+        New-Item -Path $testResultsDir -ItemType Directory -Force > $null
+    }
+    $testResultsXml = [IO.Path]::Combine($testResultsDir, 'testResults.xml')
+
+    $pesterConfiguration = New-PesterConfiguration
+    $pesterConfiguration.Run.Path             = $settings.Tests.FullName
+    $pesterConfiguration.Run.PassThru         = $true
+    $pesterConfiguration.Output.Verbosity     = 'Detailed'
+    $pesterConfiguration.TestResult.Enabled   = $true
+    $pesterConfiguration.TestResult.OutputPath = $testResultsXml
+    $pesterConfiguration.TestResult.OutputFormat = 'NUnitXml'
+
+    $testResults = Invoke-Pester -Configuration $pesterConfiguration
 
     if ($testResults.FailedCount -gt 0) {
         $testResults | Format-List
