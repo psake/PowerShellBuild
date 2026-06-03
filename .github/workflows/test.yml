@@ -16,7 +16,7 @@ jobs:
   # module import on 5.1 are caught by the standard test run rather than a separate smoke test.
   ci:
     name: CI
-    # TODO: pin to a tagged release or commit SHA of psake/.github once the 5.1 (test_powershell)
-    # job has merged there. Until then `@main` is required so this resolves to a version that
-    # includes the Windows PowerShell 5.1 job.
+    # TODO: the Windows PowerShell 5.1 (test_powershell) job is added upstream in psake/.github#7.
+    # Once that merges, consider pinning to a tagged release or commit SHA of psake/.github
+    # instead of @main.
     uses: psake/.github/.github/workflows/ModuleCI.yml@main
