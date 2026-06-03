@@ -16,29 +16,12 @@ task Init {
 task Test -Depends Init, Analyze, Pester -description 'Run test suite'
 
 task Analyze -depends Build {
-    $analyzerSettings = [IO.Path]::Combine($env:BHModulePath, 'ScriptAnalyzerSettings.psd1')
-    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings $analyzerSettings
-    $errors   = $analysis | Where-Object { $_.Severity -eq 'Error' }
-
-    # Cross-version compatibility violations (PSUseCompatibleSyntax) are reported at Warning
-    # severity, but must always fail the build. A PowerShell 7+-only construct such as the ternary
-    # operator parses fine under pwsh yet breaks module import on Windows PowerShell 5.1, which the
-    # manifest still supports. PSUseCompatibleSyntax checks the target language versions regardless
-    # of the engine the analyzer runs under, so this gate catches such a regression even though CI
-    # runs the analysis from pwsh.
-    $compatibilityIssues = $analysis | Where-Object { $_.RuleName -like 'PSUseCompatible*' }
-
-    # Remaining warnings are reported but, per project policy, do not fail the build.
-    $warnings = $analysis | Where-Object { $_.Severity -eq 'Warning' -and $_.RuleName -notlike 'PSUseCompatible*' }
-
-    if (@($compatibilityIssues).Count -gt 0) {
-        $compatibilityIssues | Format-Table RuleName, ScriptName, Line, Message -AutoSize -Wrap
-        Write-Error -Message 'One or more cross-version compatibility issues were found. Build cannot continue!'
-    }
-
+    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings ([IO.Path]::Combine($env:BHModulePath, 'ScriptAnalyzerSettings.psd1'))
+    $errors   = $analysis | Where-Object {$_.Severity -eq 'Error'}
+    $warnings = $analysis | Where-Object {$_.Severity -eq 'Warning'}
     if (@($errors).Count -gt 0) {
-        $errors | Format-Table -AutoSize
         Write-Error -Message 'One or more Script Analyzer errors were found. Build cannot continue!'
+        $errors | Format-Table -AutoSize
     }
 
     if (@($warnings).Count -gt 0) {

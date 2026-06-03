@@ -22,16 +22,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Cross-version compatibility guardrails so a PowerShell 7+-only construct cannot
-  silently break the lowest supported engine again:
-  - The `PSUseCompatibleSyntax` rule is enabled in
-    `PowerShellBuild/ScriptAnalyzerSettings.psd1` (targeting Windows PowerShell 5.1
-    and PowerShell 7), and the `Analyze` build task now fails on a compatibility
-    violation. It checks the target language version regardless of the engine it
-    runs under, so a ternary (or other PowerShell 7+-only syntax) is caught even
-    from `pwsh`.
-  - A new `Import smoke (Windows PowerShell 5.1)` CI job parses and imports the
-    module on the real lowest-supported engine.
+- An `Import smoke (Windows PowerShell 5.1)` CI job that parses and imports the
+  module on the real lowest-supported engine, so a construct that breaks import on
+  Windows PowerShell 5.1 (such as a PowerShell 7+-only ternary operator) fails CI
+  deterministically.
 
 ## [0.8.0] 2026-02-20
 
