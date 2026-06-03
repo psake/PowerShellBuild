@@ -20,12 +20,12 @@ task Analyze -depends Build {
     $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings $analyzerSettings
     $errors   = $analysis | Where-Object { $_.Severity -eq 'Error' }
 
-    # Cross-version compatibility violations (PSUseCompatibleSyntax/Commands/Types) are reported at
-    # Warning severity, but must always fail the build. A PowerShell 7+-only construct such as the
-    # ternary operator parses fine under pwsh yet breaks module import on Windows PowerShell 5.1,
-    # which the manifest still supports. PSUseCompatibleSyntax checks the target language versions
-    # regardless of the engine the analyzer runs under, so this gate catches such a regression even
-    # though CI runs the analysis from pwsh.
+    # Cross-version compatibility violations (PSUseCompatibleSyntax) are reported at Warning
+    # severity, but must always fail the build. A PowerShell 7+-only construct such as the ternary
+    # operator parses fine under pwsh yet breaks module import on Windows PowerShell 5.1, which the
+    # manifest still supports. PSUseCompatibleSyntax checks the target language versions regardless
+    # of the engine the analyzer runs under, so this gate catches such a regression even though CI
+    # runs the analysis from pwsh.
     $compatibilityIssues = $analysis | Where-Object { $_.RuleName -like 'PSUseCompatible*' }
 
     # Remaining warnings are reported but, per project policy, do not fail the build.

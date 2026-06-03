@@ -88,11 +88,6 @@ function Get-PSBuildCertificate {
         'CertificatePasswordEnvVar',
         Justification = 'This is not a password in plain text. It is the name of an environment variable that contains the password, which is a common pattern for CI/CD pipelines and secrets management.'
     )]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        'PSUseCompatibleCommands',
-        '',
-        Justification = 'Get-ChildItem -CodeSigningCert is a dynamic parameter supplied by the Certificate (Cert:) provider, not a static parameter of Get-ChildItem, so the static command data used by PSUseCompatibleCommands cannot see it. It is available on both Windows PowerShell 5.1 and PowerShell 7+.'
-    )]
     param(
         [ValidateSet('Auto', 'Store', 'Thumbprint', 'EnvVar', 'PfxFile')]
         [string]$CertificateSource = 'Auto',
