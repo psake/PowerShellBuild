@@ -1,70 +1,22 @@
 name: Test
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
+  issues: write
 on:
   push:
-    branches: [ $default-branch ]
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 jobs:
-  test:
-    name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test
-      shell: pwsh
-      env:
-        DEBUG: ${{ runner.debug == '1' }}
-      run: |
-        if($env:DEBUG -eq 'true' -or $env:DEBUG -eq '1') {
-          $DebugPreference = 'Continue'
-        }
-        ./build.ps1 -Task Test -Bootstrap
-
-  # Smoke test on the lowest supported engine. The manifest declares support for Windows
-  # PowerShell (Desktop), so the module must parse and import there. This job caught the 0.8.0
-  # regression where a PowerShell 7+-only ternary operator broke module import on 5.1.
-  # The root .psm1 is imported directly (rather than the .psd1) so the real dot-source loader runs
-  # without the manifest's RequiredModules bootstrap, keeping the smoke test fast and dependency-free.
-  import-smoke:
-    name: Import smoke (Windows PowerShell 5.1)
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Parse and import module under Windows PowerShell 5.1
-      shell: powershell
-      run: |
-        $ErrorActionPreference = 'Stop'
-        "Engine: $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)"
-
-        $moduleRoot = Join-Path $PWD 'PowerShellBuild'
-
-        # 1. Parse every module file with the 5.1 language parser to catch syntax the lowest
-        #    supported engine cannot load (for example the PowerShell 7+ ternary operator).
-        $files = Get-ChildItem -Path $moduleRoot -Recurse -Include *.ps1, *.psm1, *.psd1
-        $parseFailed = $false
-        foreach ($file in $files) {
-            $tokens = $parseErrors = $null
-            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$parseErrors) > $null
-            if ($parseErrors) {
-                $parseFailed = $true
-                Write-Host "Parse errors in $($file.FullName):"
-                $parseErrors | ForEach-Object { Write-Host "  line $($_.Extent.StartLineNumber): $($_.Message)" }
-            }
-        }
-        if ($parseFailed) {
-            throw 'One or more module files failed to parse under Windows PowerShell 5.1.'
-        }
-        "Parsed $($files.Count) module files with no errors."
-
-        # 2. Import the root module to run the real dot-source loader and confirm it loads on 5.1.
-        Import-Module (Join-Path $moduleRoot 'PowerShellBuild.psm1') -Force -ErrorAction Stop
-        if (-not (Get-Command Get-PSBuildCertificate -ErrorAction SilentlyContinue)) {
-            throw 'PowerShellBuild imported but expected functions are missing.'
-        }
-        'PowerShellBuild imported successfully under Windows PowerShell 5.1.'
+  # Delegate to the psake org's shared module CI workflow. It runs the full build/test suite
+  # (Build + Analyze + Pester) on PowerShell 7+ across Linux/Windows/macOS and on the real
+  # Windows PowerShell 5.1 (Desktop) engine, so regressions like the 0.8.0 ternary that broke
+  # module import on 5.1 are caught by the standard test run rather than a separate smoke test.
+  ci:
+    name: CI
+    # TODO: pin to a tagged release or commit SHA of psake/.github once the 5.1 (test_powershell)
+    # job has merged there. Until then `@main` is required so this resolves to a version that
+    # includes the Windows PowerShell 5.1 job.
+    uses: psake/.github/.github/workflows/ModuleCI.yml@main
