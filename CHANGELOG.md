@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.1] 2026-06-03
+
 ### Fixed
 
 - Restore Windows PowerShell 5.1 (Desktop edition) compatibility, which regressed
