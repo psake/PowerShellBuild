@@ -20,13 +20,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Windows (matching the existing pattern in `Build-PSBuildUpdatableHelp`). Behavior
   on PowerShell 7+ is unchanged.
 
-### Added
-
-- An `Import smoke (Windows PowerShell 5.1)` CI job that parses and imports the
-  module on the real lowest-supported engine, so a construct that breaks import on
-  Windows PowerShell 5.1 (such as a PowerShell 7+-only ternary operator) fails CI
-  deterministically.
-
 ## [0.8.0] 2026-02-20
 
 ### Added
