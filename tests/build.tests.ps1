@@ -21,11 +21,13 @@ Describe 'Build' {
             Write-Host "OutputPath: $script:testModuleOutputPath"
 
             # build is PS job so psake doesn't freak out because it's nested
+            # NOTE: the scriptblock Set-Location handles the working directory;
+            # Start-Job -WorkingDirectory is PS 6+ only and breaks on Windows PowerShell 5.1.
             Start-Job -Scriptblock {
                 Set-Location -Path $using:testModuleSource
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
-            } -WorkingDirectory $script:testModuleSource | Wait-Job
+            } | Wait-Job
         }
 
         AfterAll {
@@ -73,11 +75,13 @@ Describe 'Build' {
     Context 'Dot-sourced module' {
         BeforeAll {
             # build is PS job so psake doesn't freak out because it's nested
+            # NOTE: the scriptblock Set-Location handles the working directory;
+            # Start-Job -WorkingDirectory is PS 6+ only and breaks on Windows PowerShell 5.1.
             Start-Job -Scriptblock {
                 Set-Location -Path $using:testModuleSource
                 $global:PSBuildCompile = $false
                 ./build.ps1 -Task Build
-            } -WorkingDirectory $script:testModuleSource | Wait-Job
+            } | Wait-Job
             Write-Debug "TestModule output path: $script:testModuleSource"
             $items = Get-ChildItem -Path $script:testModuleSource -Recurse -File
             Write-Debug ($items | Format-Table FullName | Out-String)

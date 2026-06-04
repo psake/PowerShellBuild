@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.1] 2026-06-03
+
+### Fixed
+
+- Restore Windows PowerShell 5.1 (Desktop edition) compatibility, which regressed
+  in 0.8.0. `Get-PSBuildCertificate` used the PowerShell 7+-only ternary operator,
+  causing the file to fail to parse and the whole module to fail to import under
+  Windows PowerShell 5.1 — even though the manifest still declares support for it.
+  The ternary is replaced with an `if`/`else` expression, and the `$IsWindows`
+  platform guard now treats the absent automatic variable on Desktop edition as
+  Windows (matching the existing pattern in `Build-PSBuildUpdatableHelp`). Behavior
+  on PowerShell 7+ is unchanged.
+
+### Added
+
+- An `Import smoke (Windows PowerShell 5.1)` CI job that parses and imports the
+  module on the real lowest-supported engine, so a construct that breaks import on
+  Windows PowerShell 5.1 (such as a PowerShell 7+-only ternary operator) fails CI
+  deterministically.
+
 ## [0.8.0] 2026-02-20
 
 ### Added

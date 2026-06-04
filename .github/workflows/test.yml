@@ -1,27 +1,19 @@
 name: Test
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
+  issues: write
 on:
   push:
-    branches: [ $default-branch ]
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 jobs:
-  test:
-    name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test
-      shell: pwsh
-      env:
-        DEBUG: ${{ runner.debug == '1' }}
-      run: |
-        if($env:DEBUG -eq 'true' -or $env:DEBUG -eq '1') {
-          $DebugPreference = 'Continue'
-        }
-        ./build.ps1 -Task Test -Bootstrap
+  # Delegate to the psake org's shared module CI workflow. It runs the full build/test suite
+  # (Build + Analyze + Pester) on PowerShell 7+ across Linux/Windows/macOS and on the real
+  # Windows PowerShell 5.1 (Desktop) engine, so regressions like the 0.8.0 ternary that broke
+  # module import on 5.1 are caught by the standard test run rather than a separate smoke test.
+  ci:
+    name: CI
+    uses: psake/.github/.github/workflows/ModuleCI.yml@main
