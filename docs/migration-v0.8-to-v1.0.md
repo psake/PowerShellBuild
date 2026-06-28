@@ -31,8 +31,8 @@ Inputs:
 - This migration guide: docs/migration-v0.8-to-v1.0.md in the
   psake/PowerShellBuild repository on GitHub. Fetch and read it if you
   have web or repo access; otherwise ask me to paste it.
-- My build file (default: ./build.ps1; ask if it lives elsewhere or has
-  a different name).
+- My build file (default: ./build.ps1 for psake, or ./.build.ps1 for
+  Invoke-Build; ask if it lives elsewhere or has a different name).
 - Any psake or Invoke-Build files my build file references.
 
 Task:
