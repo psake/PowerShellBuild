@@ -1,5 +1,12 @@
 # Migrating from PowerShellBuild v0.8 to v1.0
 
+> 🚧 **Pre-release.** v1.0.0 has not shipped yet, and no breaking changes
+> have been documented here. This guide is being prepared alongside the
+> v1.0.0 work; entries are added by each breaking-change PR as it lands.
+> Track progress in
+> [#120 — PowerShellBuild v1.0.0 roadmap](https://github.com/psake/PowerShellBuild/issues/120).
+> If you are on 0.8.x today, there is nothing to migrate yet.
+
 This guide helps you upgrade a consumer `build.ps1` (or equivalent) from
 PowerShellBuild **0.8.x** to **1.0.0**.
 
@@ -70,38 +77,34 @@ PowerShellBuild conventions worth knowing:
 
 ## Migration entries
 
+_No breaking changes documented yet._ Each breaking-change PR adds its
+entry here as it lands; see [Adding an entry](#adding-an-entry-for-pr-contributors)
+below for the format.
+
 <!--
-EXAMPLE ENTRY — REPLACE OR REMOVE WHEN THE FIRST REAL ENTRY LANDS.
+TEMPLATE / EXAMPLE ENTRY — for PR contributors only; not rendered to
+readers. Copy this structure for a real entry. It uses a FICTIONAL change
+to demonstrate the format; the first real entry's PR can remove this
+comment block.
 
-This entry uses a FICTIONAL change to demonstrate the format. Real
-entries are added by Phase 2 PRs as breaking changes land. See
-"Adding an entry" below for the spec.
--->
+### `Invoke-PSBuildPlaceholder` renamed its `-LegacyOption` parameter
 
-### Example: `Invoke-PSBuildPlaceholder` renamed its `-LegacyOption` parameter
-
-> **This is an illustrative example only — not a real break.**
-
-The hypothetical function `Invoke-PSBuildPlaceholder` renamed its
-`-LegacyOption` parameter to `-StandardOption`. The behavior is
-otherwise unchanged.
+The function `Invoke-PSBuildPlaceholder` renamed its `-LegacyOption`
+parameter to `-StandardOption`. The behavior is otherwise unchanged.
 
 **Before (0.8.x):**
 
-```powershell
-Invoke-PSBuildPlaceholder -LegacyOption 'value'
-```
+    Invoke-PSBuildPlaceholder -LegacyOption 'value'
 
 **After (1.0.0):**
 
-```powershell
-Invoke-PSBuildPlaceholder -StandardOption 'value'
-```
+    Invoke-PSBuildPlaceholder -StandardOption 'value'
 
 You will see a parameter-binding error referencing `LegacyOption` if you
 do not migrate.
 
-Tracked in hypothetical PR #999.
+Tracked in PR #999.
+-->
 
 ## Adding an entry (for PR contributors)
 
@@ -127,8 +130,9 @@ Also:
   to your new entry's heading.
 - Reference this guide from your PR description (the entry it adds).
 
-The illustrative example entry above can be deleted by the first real
-entry's PR — it exists only to show the format.
+A commented-out template entry lives in the **Migration entries** section
+above (visible only in the raw Markdown) — copy it as a starting point.
+The first real entry's PR can remove that comment block.
 
 ## Related
 
