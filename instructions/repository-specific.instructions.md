@@ -14,10 +14,10 @@ file only adds repo-specific concepts.
 **PowerShellBuild** is a PowerShell module that provides standardized build, test, and publish
 tasks for other PowerShell module projects. It supports two task-runner frameworks:
 
-- **psake** (4.9.0+)
-- **Invoke-Build** (5.8.1+)
+- **psake**
+- **Invoke-Build**
 
-- Current version: **0.8.1** (see `PowerShellBuild/PowerShellBuild.psd1`)
+- Current version: see `ModuleVersion` in `PowerShellBuild/PowerShellBuild.psd1`
 - `PowerShellVersion` in the manifest is currently `'3.0'` — almost certainly wrong; under
   review in the v1.0.0 roadmap (psake/PowerShellBuild#120)
 - Cross-platform: Windows, Linux, macOS (CI matrix in `.github/workflows/test.yml`)
@@ -220,16 +220,17 @@ no-ops on non-Windows.
 
 ## Dependencies
 
-Defined in `requirements.psd1`, installed via **PSDepend** when `./build.ps1 -Bootstrap` runs:
+Defined in `requirements.psd1` — the source of truth for build-dependency names and pinned
+versions — and installed via **PSDepend** when `./build.ps1 -Bootstrap` runs:
 
-| Module           | Version  |
-| ---------------- | -------- |
-| BuildHelpers     | 2.0.16   |
-| Pester           | 5.8.0    |
-| psake            | 4.9.0    |
-| PSScriptAnalyzer | 1.25.0   |
-| InvokeBuild      | 5.8.1    |
-| platyPS          | 0.14.2   |
+| Module           | Purpose                                                    |
+| ---------------- | ---------------------------------------------------------- |
+| BuildHelpers     | Populates the `BH*` build environment variables            |
+| Pester           | Test framework                                             |
+| psake            | Task runner for this repo's own build                      |
+| PSScriptAnalyzer | Static analysis of the built module                        |
+| InvokeBuild      | Alternate task runner (consumer-facing `IB.tasks.ps1`)     |
+| platyPS          | Help and documentation generation                          |
 
 ## Testing
 
