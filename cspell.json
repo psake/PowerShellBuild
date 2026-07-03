@@ -9,10 +9,13 @@
         "xml",
         "markdown"
     ],
-    "words": [],
-    "ignoreWords": [
+    "words": [
+        "Authenticode",
         "psake",
         "MAML"
+    ],
+    "ignoreWords": [
+        "ExcludeDontShow"
     ],
     "import": []
 }
