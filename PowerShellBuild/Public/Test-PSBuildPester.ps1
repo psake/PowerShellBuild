@@ -104,7 +104,10 @@ function Test-PSBuildPester {
 
         $testResult = Invoke-Pester -Configuration $configuration -Verbose:$VerbosePreference
 
-        if ($testResult.FailedCount -gt 0) {
+        # Gate on the run's aggregate result rather than FailedCount alone. A failed
+        # BeforeAll/AfterAll or a container that errors during discovery leaves
+        # FailedCount at 0, but Pester still marks the overall Result as 'Failed'.
+        if ($testResult.Result -eq 'Failed') {
             throw $LocalizedData.PesterTestsFailed
         }
 
