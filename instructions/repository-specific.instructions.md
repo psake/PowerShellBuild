@@ -284,6 +284,9 @@ don't replace them.
 - **Script analysis**: PSScriptAnalyzer config is `PowerShellBuild/ScriptAnalyzerSettings.psd1`.
   Default severity threshold for build failure is `Error`. Warnings are reported but don't
   fail the build.
+- **Changelog scope**: `CHANGELOG.md` documents user-facing changes to the shipped module
+  only. Repository-internal changes — development dependencies, CI workflows, this repo's own
+  build scripts, or the test suite — do not get changelog entries.
 - **Spell-checker ignores**: inline comments — `# spell-checker:ignore MAML PSGALLERY`.
 
 ## How Consumers Use This Module
