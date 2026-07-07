@@ -234,7 +234,11 @@ versions — and installed via **PSDepend** when `./build.ps1 -Bootstrap` runs:
 
 ## Testing
 
-Tests live in `tests/` and use **Pester 5+** syntax.
+Tests live in `tests/` and run on **Pester 6.0.0** (pinned exactly in `requirements.psd1`;
+see psake/PowerShellBuild#17 for the targeting decision). Write assertions with the classic
+`Should -Be` syntax — valid in both Pester 5 and 6 — rather than the Pester 6-only `Should-*`
+assertion family, so tests remain backportable. The shipped module's own Pester compatibility
+floor (5.0.0 in `Test-PSBuildPester`) is a separate contract and is unchanged.
 
 - Always build the module before running Pester directly — running against source can produce
   incorrect results. Prefer `./build.ps1 -Task Test` over a raw `Invoke-Pester` call.
@@ -280,6 +284,9 @@ don't replace them.
 - **Script analysis**: PSScriptAnalyzer config is `PowerShellBuild/ScriptAnalyzerSettings.psd1`.
   Default severity threshold for build failure is `Error`. Warnings are reported but don't
   fail the build.
+- **Changelog scope**: `CHANGELOG.md` documents user-facing changes to the shipped module
+  only. Repository-internal changes — development dependencies, CI workflows, this repo's own
+  build scripts, or the test suite — do not get changelog entries.
 - **Spell-checker ignores**: inline comments — `# spell-checker:ignore MAML PSGALLERY`.
 
 ## How Consumers Use This Module

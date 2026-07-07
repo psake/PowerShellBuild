@@ -44,6 +44,8 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         $commandParameters     = global:FilterOutCommonParams -Params $command.ParameterSets.Parameters
         $commandParameterNames = $commandParameters.Name
         $helpLinks             = $commandHelp.relatedLinks.navigationLink.uri
+        $helpParameters        = global:FilterOutCommonParams -Params $commandHelp.Parameters.Parameter
+        $helpParameterNames    = $helpParameters.Name
     }
 
     BeforeAll {
@@ -77,41 +79,50 @@ Describe "Test help for <_.Name>" -ForEach $commands {
         ($commandHelp.Examples.Example.Remarks | Select-Object -First 1).Text | Should -Not -BeNullOrEmpty
     }
 
-    It "Help link <_> is valid" -ForEach $helpLinks {
-        (Invoke-WebRequest -Uri $_ -UseBasicParsing).StatusCode | Should -Be '200'
-    }
-
-    Context "Parameter <_.Name>" -Foreach $commandParameters {
-
-        BeforeAll {
-            $parameter         = $_
-            $parameterName     = $parameter.Name
-            $parameterHelp     = $commandHelp.parameters.parameter | Where-Object Name -eq $parameterName
-            $parameterHelpType = if ($parameterHelp.ParameterValue) { $parameterHelp.ParameterValue.Trim() }
-        }
-
-        # Should be a description for every parameter
-        It "Has description" {
-            $parameterHelp.Description.Text | Should -Not -BeNullOrEmpty
-        }
-
-        # Required value in Help should match IsMandatory property of parameter
-        It "Has correct [mandatory] value" {
-            $codeMandatory = $_.IsMandatory.toString()
-            $parameterHelp.Required | Should -Be $codeMandatory
-        }
-
-        # Parameter type in help should match code
-        It "Has correct parameter type" {
-            $parameterHelpType | Should -Be $parameter.ParameterType.Name
+    # The if guards around the data-driven blocks below skip generation when the
+    # collection is empty. Pester 5 skipped empty -ForEach silently; Pester 6 fails
+    # discovery instead, and these guards keep the v5 behavior on both versions.
+    if ($helpLinks) {
+        It "Help link <_> is valid" -ForEach $helpLinks {
+            (Invoke-WebRequest -Uri $_ -UseBasicParsing).StatusCode | Should -Be '200'
         }
     }
 
-    Context "Test <_> help parameter help for <commandName>" -Foreach $helpParameterNames {
+    if ($commandParameters) {
+        Context "Parameter <_.Name>" -Foreach $commandParameters {
 
-        # Shouldn't find extra parameters in help.
-        It "finds help parameter in code: <_>" {
-            $_ -in $parameterNames | Should -Be $true
+            BeforeAll {
+                $parameter         = $_
+                $parameterName     = $parameter.Name
+                $parameterHelp     = $commandHelp.parameters.parameter | Where-Object Name -eq $parameterName
+                $parameterHelpType = if ($parameterHelp.ParameterValue) { $parameterHelp.ParameterValue.Trim() }
+            }
+
+            # Should be a description for every parameter
+            It "Has description" {
+                $parameterHelp.Description.Text | Should -Not -BeNullOrEmpty
+            }
+
+            # Required value in Help should match IsMandatory property of parameter
+            It "Has correct [mandatory] value" {
+                $codeMandatory = $_.IsMandatory.toString()
+                $parameterHelp.Required | Should -Be $codeMandatory
+            }
+
+            # Parameter type in help should match code
+            It "Has correct parameter type" {
+                $parameterHelpType | Should -Be $parameter.ParameterType.Name
+            }
+        }
+    }
+
+    if ($helpParameterNames) {
+        Context "Test <_> help parameter help for <commandName>" -Foreach $helpParameterNames {
+
+            # Shouldn't find extra parameters in help.
+            It "finds help parameter in code: <_>" {
+                $_ -in $commandParameterNames | Should -Be $true
+            }
         }
     }
 }
