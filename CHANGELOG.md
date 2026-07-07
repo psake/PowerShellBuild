@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Changed
+
+- [**#17**](https://github.com/psake/PowerShellBuild/issues/17) The repository's
+  own test suite now runs on Pester 6.0.0 (pinned in `requirements.psd1`). This
+  is a development-dependency change only — the shipped module's Pester
+  compatibility contract is unchanged: `Test-PSBuildPester` still imports Pester
+  with a 5.0.0 minimum and the manifest still declares Pester 5.x support, so
+  consumers on Pester 5 are unaffected.
+
 ## [0.8.1] 2026-06-03
 
 ### Fixed
