@@ -9,13 +9,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- [**#128**](https://github.com/psake/PowerShellBuild/pull/128)
+- [**#133**](https://github.com/psake/PowerShellBuild/pull/133)
   `Test-PSBuildPester` now fails the build when a Pester run fails for any
   reason, not only when individual tests fail. Previously the function gated
   only on `FailedCount`, so a `BeforeAll`/`AfterAll` that threw or a test file
   that errored during discovery left the count at zero and the build passed
   despite tests never running. The gate now checks the run's aggregate
   `Result` property, which Pester derives from all failure categories.
+  Companion to [#128](https://github.com/psake/PowerShellBuild/pull/128),
+  which fixes the same gap in this repository's own build file.
 
 ## [0.8.1] 2026-06-03
 
