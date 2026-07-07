@@ -51,7 +51,7 @@ task Pester -depends Build {
 
     $testResults = Invoke-Pester -Configuration $pesterConfiguration
 
-    if ($testResults.FailedCount -gt 0) {
+    if (($testResults.FailedCount + $testResults.FailedBlocksCount + $testResults.FailedContainersCount) -gt 0) {
         $testResults | Format-List
         Write-Error -Message 'One or more Pester tests failed. Build cannot continue!'
     }
