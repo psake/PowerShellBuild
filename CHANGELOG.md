@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.2] 2026-07-08
+
 ### Fixed
 
 - [**#133**](https://github.com/psake/PowerShellBuild/pull/133)
