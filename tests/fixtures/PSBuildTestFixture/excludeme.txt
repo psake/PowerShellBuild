@@ -1,0 +1,3 @@
+=== EXCLUDE ME ===
+This file exists so integration tests can assert that $PSBPreference.Build.Exclude
+patterns keep matching files out of the build output.
