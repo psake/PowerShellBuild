@@ -29,7 +29,16 @@ function Copy-PSBuildTestFixture {
     $fixtureSourcePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSBuildTestFixture'
     $fixtureCopyPath = Join-Path -Path $Destination -ChildPath 'PSBuildTestFixture'
 
-    Copy-Item -Path $fixtureSourcePath -Destination $fixtureCopyPath -Recurse -Force
+    # Remove any previous copy and recreate the directory before copying the fixture
+    # contents. Copying into an existing directory would otherwise nest a second
+    # PSBuildTestFixture directory inside it, and the destination (or its parents)
+    # may not exist yet.
+    if (Test-Path -Path $fixtureCopyPath) {
+        Remove-Item -Path $fixtureCopyPath -Recurse -Force
+    }
+    New-Item -Path $fixtureCopyPath -ItemType Directory -Force > $null
+    Copy-Item -Path (Join-Path -Path $fixtureSourcePath -ChildPath '*') -Destination $fixtureCopyPath -Recurse -Force
+
     $fixtureCopyPath
 }
 

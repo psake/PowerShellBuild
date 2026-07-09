@@ -27,6 +27,16 @@ Describe 'PSBuildTestFixture' {
             Join-Path -Path $fixturePath -ChildPath 'Private/Test-WidgetName.ps1' | Should -Exist
             Join-Path -Path $fixturePath -ChildPath 'excludeme.txt' | Should -Exist
         }
+
+        It 'Recopying into the same destination replaces the copy without nesting' {
+            $destination = Join-Path -Path $TestDrive -ChildPath 'recopy'
+            $firstCopyPath = Copy-PSBuildTestFixture -Destination $destination
+            $secondCopyPath = Copy-PSBuildTestFixture -Destination $destination
+
+            $secondCopyPath | Should -Be $firstCopyPath
+            Join-Path -Path $secondCopyPath -ChildPath 'PSBuildTestFixture.psd1' | Should -Exist
+            Join-Path -Path $secondCopyPath -ChildPath 'PSBuildTestFixture' | Should -Not -Exist
+        }
     }
 
     Context 'Fixture module' {
@@ -69,7 +79,9 @@ Describe 'PSBuildTestFixture' {
 
             $help.Synopsis | Should -Not -BeNullOrEmpty
             $help.Description | Should -Not -BeNullOrEmpty
-            $help.Examples.Example.Count | Should -BeGreaterOrEqual 1
+            # The array subexpression matters: on Windows PowerShell 5.1 a single help
+            # example is a bare PSObject whose .Count is $null.
+            @($help.Examples.Example).Count | Should -BeGreaterOrEqual 1
         }
     }
 }

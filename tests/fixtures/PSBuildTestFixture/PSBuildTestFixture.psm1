@@ -5,7 +5,7 @@ foreach ($import in $public + $private) {
     try {
         . $import.FullName
     } catch {
-        throw "Unable to dot source [$($import.FullName)]"
+        throw "Unable to dot source [$($import.FullName)]: $($_.Exception.Message)"
     }
 }
 
