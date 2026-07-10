@@ -27,6 +27,7 @@ FolderDoesNotExist=Folder does not exist: {0}
 PathArgumentMustBeAFolder=The Path argument must be a folder. File paths are not allowed.
 UnableToFindModuleManifest=Unable to find module manifest [{0}]. Can't import module
 PesterTestsFailed=One or more Pester tests failed
+PesterVersionNotSupported=Pester version [{0}] is loaded, but Test-PSBuildPester requires Pester 5.0.0 or newer.
 CodeCoverage=Code Coverage
 Type=Type
 CodeCoverageLessThanThreshold=Code coverage: [{0}] is [{1:p}], which is less than the threshold of [{2:p}]
