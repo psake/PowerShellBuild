@@ -61,10 +61,11 @@ task Pester -depends Build {
     $testResults = Invoke-Pester -Configuration $pesterConfiguration
 
     if ($testResults.CodeCoverage) {
-        $coverageMessage = 'Code coverage: {0:p1} of analyzed commands executed ({1} of {2})' -f (
-            $testResults.CodeCoverage.CoveragePercent / 100),
-            $testResults.CodeCoverage.CommandsExecutedCount,
+        $coverageMessage = 'Code coverage: {0:p1} of analyzed commands executed ({1} of {2})' -f @(
+            ($testResults.CodeCoverage.CoveragePercent / 100)
+            $testResults.CodeCoverage.CommandsExecutedCount
             $testResults.CodeCoverage.CommandsAnalyzedCount
+        )
         Write-Host $coverageMessage -ForegroundColor Cyan
     }
 
