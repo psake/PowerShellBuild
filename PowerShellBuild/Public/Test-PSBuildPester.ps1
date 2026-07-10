@@ -67,8 +67,15 @@ function Test-PSBuildPester {
         [string]$OutputVerbosity = 'Detailed'
     )
 
-    if (-not (Get-Module -Name Pester)) {
-        Import-Module -Name Pester -ErrorAction Stop
+    # Respect an already-loaded Pester so callers can pin a specific version; importing again
+    # would load the newest installed Pester on top of it, which crashes when two Pester
+    # versions are installed side by side. Only load Pester ourselves when none is loaded.
+    $loadedPester = Get-Module -Name Pester
+    if (-not $loadedPester) {
+        $loadedPester = Import-Module -Name Pester -MinimumVersion 5.0.0 -ErrorAction Stop -PassThru
+    }
+    if ($loadedPester.Version -lt [version]'5.0.0') {
+        throw ($LocalizedData.PesterVersionNotSupported -f $loadedPester.Version)
     }
 
     try {
@@ -84,7 +91,6 @@ function Test-PSBuildPester {
 
         Push-Location -LiteralPath $Path
 
-        Import-Module Pester -MinimumVersion 5.0.0
         $configuration = [PesterConfiguration]::Default
         $configuration.Output.Verbosity = $OutputVerbosity
         $configuration.Run.PassThru = $true
@@ -142,6 +148,10 @@ function Test-PSBuildPester {
         }
     } finally {
         Pop-Location
-        Remove-Module $ModuleName -ErrorAction SilentlyContinue
+        # ModuleName is optional; Remove-Module with an empty -Name raises a parameter-binding
+        # error that -ErrorAction SilentlyContinue cannot suppress.
+        if ($ModuleName) {
+            Remove-Module -Name $ModuleName -ErrorAction SilentlyContinue
+        }
     }
 }

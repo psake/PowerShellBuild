@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Fixed
+
+- [**#102**](https://github.com/psake/PowerShellBuild/issues/102)
+  `Test-PSBuildPester` no longer raises a parameter-binding error from its
+  cleanup logic when the optional `ModuleName` parameter is not supplied.
+- [**#102**](https://github.com/psake/PowerShellBuild/issues/102)
+  `Test-PSBuildPester` now respects a Pester module that is already loaded in
+  the session instead of unconditionally importing the newest installed
+  version on top of it, which crashed with a Pester.dll version conflict when
+  two Pester versions were installed side by side. When no Pester is loaded,
+  the newest installed version (5.0.0 minimum) is imported as before, and a
+  loaded Pester older than 5.0.0 now produces a clear error.
+
 ## [0.8.2] 2026-07-08
 
 ### Fixed
