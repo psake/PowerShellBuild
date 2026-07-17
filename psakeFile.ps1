@@ -49,7 +49,25 @@ task Pester -depends Build {
     $pesterConfiguration.TestResult.OutputPath = $testResultsXml
     $pesterConfiguration.TestResult.OutputFormat = 'NUnitXml'
 
+    # Track (never gate on) code coverage of the built module. The number understates real
+    # coverage: tests that exercise code in child processes (the build.tests.ps1 child builds
+    # and the Test-PSBuildPester subprocess matrix) are invisible to session instrumentation.
+    # Publishing the JaCoCo file from CI is psake/PowerShellBuild#139.
+    $pesterConfiguration.CodeCoverage.Enabled      = $true
+    $pesterConfiguration.CodeCoverage.Path         = $settings.ModuleOutDir
+    $pesterConfiguration.CodeCoverage.OutputPath   = [IO.Path]::Combine($testResultsDir, 'coverage.xml')
+    $pesterConfiguration.CodeCoverage.OutputFormat = 'JaCoCo'
+
     $testResults = Invoke-Pester -Configuration $pesterConfiguration
+
+    if ($testResults.CodeCoverage) {
+        $coverageMessage = 'Code coverage: {0:p1} of analyzed commands executed ({1} of {2})' -f @(
+            ($testResults.CodeCoverage.CoveragePercent / 100)
+            $testResults.CodeCoverage.CommandsExecutedCount
+            $testResults.CodeCoverage.CommandsAnalyzedCount
+        )
+        Write-Host $coverageMessage -ForegroundColor Cyan
+    }
 
     # Result aggregates every failure category (failed tests, blocks, containers),
     # matching the gate in Test-PSBuildPester.
