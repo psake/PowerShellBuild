@@ -97,7 +97,9 @@ older than 5.1, `Import-Module PowerShellBuild` fails with an error that
 the module "requires a minimum PowerShell version of '5.1'" — migrate by
 running the build under Windows PowerShell 5.1 or PowerShell 7.4+.
 
-Decision record and platform validation details:
+Tracked in PR
+[#141](https://github.com/psake/PowerShellBuild/pull/141); decision
+record and platform validation details in
 [#120 (comment)](https://github.com/psake/PowerShellBuild/issues/120#issuecomment-5028978464).
 
 ## Adding an entry (for PR contributors)
