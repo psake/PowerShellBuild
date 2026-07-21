@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Changed
+
+- [**#120**](https://github.com/psake/PowerShellBuild/issues/120)
+  **Breaking:** the module manifest now requires PowerShell 5.1 or newer
+  (`PowerShellVersion = '5.1'`, previously `'3.0'`) and declares
+  `CompatiblePSEditions = @('Desktop', 'Core')`. Supported and CI-tested
+  platforms are Windows PowerShell 5.1 and PowerShell 7.4+. See the
+  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md) for
+  details.
+
 ### Fixed
 
 - [**#102**](https://github.com/psake/PowerShellBuild/issues/102)
