@@ -11,6 +11,6 @@
     }
     psake            = '4.9.0'
     PSScriptAnalyzer = '1.25.0'
-    InvokeBuild      = '5.8.1'
+    InvokeBuild      = '5.14.23'
     platyPS          = '0.14.2'
 }
