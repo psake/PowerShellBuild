@@ -18,8 +18,8 @@ do not require user action, see [`CHANGELOG.md`](../CHANGELOG.md).
 One line per break; follow the link for details and migration steps.
 
 - [Minimum supported PowerShell version is now 5.1](#minimum-supported-powershell-version-is-now-51)
-  — the manifest requires PowerShell 5.1+; supported and CI-tested
-  platforms are Windows PowerShell 5.1 and PowerShell 7.4+.
+  — the manifest requires PowerShell 5.1+; the support floor is
+  Windows PowerShell 5.1 or PowerShell 7.4+.
 
 > More entries will follow as the Phase 2 migrations to
 > Microsoft.PowerShell.PlatyPS 1.x and psake 5.x land.
@@ -81,11 +81,13 @@ PowerShellBuild conventions worth knowing:
 ### Minimum supported PowerShell version is now 5.1
 
 The module manifest now declares `PowerShellVersion = '5.1'` (previously
-`'3.0'`) and `CompatiblePSEditions = @('Desktop', 'Core')`. The supported
-and CI-tested platforms for 1.0.0 are **Windows PowerShell 5.1** and
-**PowerShell 7.4+**. PowerShell 3.0–5.0 can no longer import the module;
-PowerShell 6.0–7.3 is not blocked by the manifest but is untested and
-unsupported (the test toolchain, Pester 6, supports only 5.1 and 7.4+).
+`'3.0'`) and `CompatiblePSEditions = @('Desktop', 'Core')`. The support
+floor for 1.0.0 is **Windows PowerShell 5.1** or **PowerShell 7.4+**.
+PowerShell 3.0–5.0 can no longer import the module; PowerShell 6.0–7.3 is
+not blocked by the manifest but is untested and unsupported (the test
+toolchain, Pester 6, supports only 5.1 and 7.4+). CI exercises Windows
+PowerShell 5.1 and the runners' current PowerShell 7 release on Linux,
+Windows, and macOS.
 
 The previous `'3.0'` floor was aspirational — the module's dependencies
 (Pester 5+, BuildHelpers, psake) and its own code have required a newer
