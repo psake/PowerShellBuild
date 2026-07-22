@@ -1,11 +1,11 @@
 # Migrating from PowerShellBuild v0.8 to v1.0
 
-> 🚧 **Pre-release.** v1.0.0 has not shipped yet, and no breaking changes
-> have been documented here. This guide is being prepared alongside the
-> v1.0.0 work; entries are added by each breaking-change PR as it lands.
-> Track progress in
+> 🚧 **Pre-release.** v1.0.0 has not shipped yet. This guide is being
+> prepared alongside the v1.0.0 work; entries are added by each
+> breaking-change PR as it lands. Track progress in
 > [#120 — PowerShellBuild v1.0.0 roadmap](https://github.com/psake/PowerShellBuild/issues/120).
-> If you are on 0.8.x today, there is nothing to migrate yet.
+> If you are on 0.8.x today, no action is needed until you upgrade to a
+> 1.0.0 prerelease or release.
 
 This guide helps you upgrade a consumer `build.ps1` (or equivalent) from
 PowerShellBuild **0.8.x** to **1.0.0**.
@@ -15,13 +15,14 @@ do not require user action, see [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Quick Start
 
-> **Status:** no breaking changes have landed yet. This list will be
-> populated by Phase 2 PRs as the migration to Microsoft.PowerShell.PlatyPS
-> 1.x and psake 5.x progresses.
->
-> Once entries exist, this section will summarize each break in one line
-> with a link into the body below — so you can scan what's likely to
-> affect you before reading the details.
+One line per break; follow the link for details and migration steps.
+
+- [Minimum supported PowerShell version is now 5.1](#minimum-supported-powershell-version-is-now-51)
+  — the manifest requires PowerShell 5.1+; the support floor is
+  Windows PowerShell 5.1 or PowerShell 7.4+.
+
+> More entries will follow as the Phase 2 migrations to
+> Microsoft.PowerShell.PlatyPS 1.x and psake 5.x land.
 
 ## AI-assisted migration
 
@@ -77,34 +78,31 @@ PowerShellBuild conventions worth knowing:
 
 ## Migration entries
 
-_No breaking changes documented yet._ Each breaking-change PR adds its
-entry here as it lands; see [Adding an entry](#adding-an-entry-for-pr-contributors)
-below for the format.
+### Minimum supported PowerShell version is now 5.1
 
-<!--
-TEMPLATE / EXAMPLE ENTRY — for PR contributors only; not rendered to
-readers. Copy this structure for a real entry. It uses a FICTIONAL change
-to demonstrate the format; the first real entry's PR can remove this
-comment block.
+The module manifest now declares `PowerShellVersion = '5.1'` (previously
+`'3.0'`) and `CompatiblePSEditions = @('Desktop', 'Core')`. The support
+floor for 1.0.0 is **Windows PowerShell 5.1** or **PowerShell 7.4+**.
+PowerShell 3.0–5.0 can no longer import the module; PowerShell 6.0–7.3 is
+not blocked by the manifest but is untested and unsupported (the test
+toolchain, Pester 6, supports only 5.1 and 7.4+). CI exercises Windows
+PowerShell 5.1 and the runners' current PowerShell 7 release on Linux,
+Windows, and macOS.
 
-### `Invoke-PSBuildPlaceholder` renamed its `-LegacyOption` parameter
+The previous `'3.0'` floor was aspirational — the module's dependencies
+(Pester 5+, BuildHelpers, psake) and its own code have required a newer
+engine for some time. The manifest now states the contract that is
+actually tested.
 
-The function `Invoke-PSBuildPlaceholder` renamed its `-LegacyOption`
-parameter to `-StandardOption`. The behavior is otherwise unchanged.
+No build-file code change is needed. If you run your build on an engine
+older than 5.1, `Import-Module PowerShellBuild` fails with an error that
+the module "requires a minimum PowerShell version of '5.1'" — migrate by
+running the build under Windows PowerShell 5.1 or PowerShell 7.4+.
 
-**Before (0.8.x):**
-
-    Invoke-PSBuildPlaceholder -LegacyOption 'value'
-
-**After (1.0.0):**
-
-    Invoke-PSBuildPlaceholder -StandardOption 'value'
-
-You will see a parameter-binding error referencing `LegacyOption` if you
-do not migrate.
-
-Tracked in PR #999.
--->
+Tracked in PR
+[#141](https://github.com/psake/PowerShellBuild/pull/141); decision
+record and platform validation details in
+[#120 (comment)](https://github.com/psake/PowerShellBuild/issues/120#issuecomment-5028978464).
 
 ## Adding an entry (for PR contributors)
 
@@ -130,9 +128,8 @@ Also:
   to your new entry's heading.
 - Reference this guide from your PR description (the entry it adds).
 
-A commented-out template entry lives in the **Migration entries** section
-above (visible only in the raw Markdown) — copy it as a starting point.
-The first real entry's PR can remove that comment block.
+Use the existing entries in the **Migration entries** section above as a
+model for structure and tone.
 
 ## Related
 

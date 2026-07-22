@@ -18,8 +18,10 @@ tasks for other PowerShell module projects. It supports two task-runner framewor
 - **Invoke-Build**
 
 - Current version: see `ModuleVersion` in `PowerShellBuild/PowerShellBuild.psd1`
-- `PowerShellVersion` in the manifest is currently `'3.0'` — almost certainly wrong; under
-  review in the v1.0.0 roadmap (psake/PowerShellBuild#120)
+- `PowerShellVersion` in the manifest is `'5.1'` with `CompatiblePSEditions = @('Desktop', 'Core')`
+  — decided in the v1.0.0 roadmap (psake/PowerShellBuild#120). The support floor is Windows
+  PowerShell 5.1 or PowerShell 7.4+; CI runs Windows PowerShell 5.1 and the runners' current
+  PowerShell 7 release across Linux/Windows/macOS
 - Cross-platform: Windows, Linux, macOS (CI matrix in `.github/workflows/test.yml`)
 - The module is **psake/PowerShellBuild** on PSGallery and GitHub; maintained by the psake org
 
