@@ -20,6 +20,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#96**](https://github.com/psake/PowerShellBuild/issues/96)
+  `Test-PSBuildScriptAnalysis` now fails the build when PSScriptAnalyzer
+  reports findings at or above the configured severity threshold. The
+  severity counts were computed from `$_Severity` — an undefined variable —
+  instead of `$_.Severity`, so all three counts were always zero and the
+  `Error`, `Warning`, and `Information` thresholds could never fail a build.
+  Script analysis reported its findings and the build passed regardless.
+  Because the default `FailBuildOnSeverityLevel` is `Error`, any consumer
+  running the `Analyze` task had a gate that only ever looked like it was
+  working. See the
+  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md) — a build
+  that passed before may now correctly fail.
+- [**#96**](https://github.com/psake/PowerShellBuild/issues/96)
+  `Test-PSBuildScriptAnalysis` no longer fails with a path-resolution error
+  when `SettingsPath` is not supplied. An unsupplied path was forwarded to
+  PSScriptAnalyzer as `-Settings ''`, which resolved against the current
+  directory and threw before any analysis ran, so the function's own
+  documented example could not run as written.
 - [**#102**](https://github.com/psake/PowerShellBuild/issues/102)
   `Test-PSBuildPester` no longer raises a parameter-binding error from its
   cleanup logic when the optional `ModuleName` parameter is not supplied.
