@@ -10,8 +10,10 @@
 This guide helps you upgrade a consumer `build.ps1` (or equivalent) from
 PowerShellBuild **0.8.x** to **1.0.0**.
 
-It only covers **breaking changes**. For new features and bug fixes that
-do not require user action, see [`CHANGELOG.md`](../CHANGELOG.md).
+It covers **breaking changes**, plus any **behavioral change that can
+require action when you upgrade** — including bug fixes that make a
+previously passing build start failing. For new features and fixes that
+need nothing from you, see [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Quick Start
 
