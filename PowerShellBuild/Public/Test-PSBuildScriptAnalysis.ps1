@@ -39,11 +39,16 @@ function Test-PSBuildScriptAnalysis {
     }
 
     $analysisResult = Invoke-ScriptAnalyzer @invokeScriptAnalyzerParameters -Verbose:$VerbosePreference
-    $errorCount = ($analysisResult.where({ $_.Severity -eq 'Error' })).Count
-    $warningCount = ($analysisResult.where({ $_.Severity -eq 'Warning' })).Count
-    $informationCount = ($analysisResult.where({ $_.Severity -eq 'Information' })).Count
 
-    if ($analysisResult) {
+    # A single diagnostic record comes back as a scalar rather than a collection, and Windows
+    # PowerShell 5.1 does not expose .Where() or .Count on every scalar type. Wrapping in @()
+    # guarantees collection semantics on both engines.
+    $analysisRecords = @($analysisResult)
+    $errorCount = ($analysisRecords.Where({ $_.Severity -eq 'Error' })).Count
+    $warningCount = ($analysisRecords.Where({ $_.Severity -eq 'Warning' })).Count
+    $informationCount = ($analysisRecords.Where({ $_.Severity -eq 'Information' })).Count
+
+    if ($analysisRecords.Count -gt 0) {
         Write-Host $LocalizedData.PSScriptAnalyzerResults -ForegroundColor Yellow
         $analysisResult | Format-Table -AutoSize
     }
@@ -68,7 +73,7 @@ function Test-PSBuildScriptAnalysis {
             }
         }
         default {
-            if ($analysisResult.Count -ne 0) {
+            if ($analysisRecords.Count -ne 0) {
                 throw $LocalizedData.ScriptAnalyzerIssues
             }
         }

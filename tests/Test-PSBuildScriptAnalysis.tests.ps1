@@ -104,6 +104,11 @@ Describe 'Test-PSBuildScriptAnalysis' {
         # Regression coverage for the gate that never fired: the severity counts were computed
         # from $_Severity (an undefined variable) rather than $_.Severity, so every count was
         # zero and the Error, Warning, and Information thresholds could never fail a build.
+        #
+        # Each mock returns a single record, which PowerShell unrolls to a scalar. That also
+        # guards the collection semantics the function depends on: Windows PowerShell 5.1 does
+        # not expose .Where() or .Count on every scalar type, so the analyzer result has to be
+        # wrapped in @() before it is inspected.
 
         It 'Fails when a <FindingSeverity> finding meets the <Threshold> threshold' -ForEach @(
             @{ FindingSeverity = 'Error'; Threshold = 'Error' }
