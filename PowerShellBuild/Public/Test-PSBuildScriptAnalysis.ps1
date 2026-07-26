@@ -28,12 +28,27 @@ function Test-PSBuildScriptAnalysis {
 
     Write-Verbose ($LocalizedData.SeverityThresholdSetTo -f $SeverityThreshold)
 
-    $analysisResult = Invoke-ScriptAnalyzer -Path $Path -Settings $SettingsPath -Recurse -Verbose:$VerbosePreference
-    $errors = ($analysisResult.where({ $_Severity -eq 'Error' })).Count
-    $warnings = ($analysisResult.where({ $_Severity -eq 'Warning' })).Count
-    $infos = ($analysisResult.where({ $_Severity -eq 'Information' })).Count
+    $invokeScriptAnalyzerParameters = @{
+        Path    = $Path
+        Recurse = $true
+    }
+    # An unsupplied SettingsPath must not be forwarded. PSScriptAnalyzer resolves an empty
+    # -Settings value against the current directory and fails before any analysis runs.
+    if (-not [string]::IsNullOrWhiteSpace($SettingsPath)) {
+        $invokeScriptAnalyzerParameters.Settings = $SettingsPath
+    }
 
-    if ($analysisResult) {
+    $analysisResult = Invoke-ScriptAnalyzer @invokeScriptAnalyzerParameters -Verbose:$VerbosePreference
+
+    # A single diagnostic record comes back as a scalar rather than a collection, and Windows
+    # PowerShell 5.1 does not expose .Where() or .Count on every scalar type. Wrapping in @()
+    # guarantees collection semantics on both engines.
+    $analysisRecords = @($analysisResult)
+    $errorCount = ($analysisRecords.Where({ $_.Severity -eq 'Error' })).Count
+    $warningCount = ($analysisRecords.Where({ $_.Severity -eq 'Warning' })).Count
+    $informationCount = ($analysisRecords.Where({ $_.Severity -eq 'Information' })).Count
+
+    if ($analysisRecords.Count -gt 0) {
         Write-Host $LocalizedData.PSScriptAnalyzerResults -ForegroundColor Yellow
         $analysisResult | Format-Table -AutoSize
     }
@@ -43,22 +58,22 @@ function Test-PSBuildScriptAnalysis {
             return
         }
         'Error' {
-            if ($errors -gt 0) {
+            if ($errorCount -gt 0) {
                 throw $LocalizedData.ScriptAnalyzerErrors
             }
         }
         'Warning' {
-            if ($errors -gt 0 -or $warnings -gt 0) {
+            if ($errorCount -gt 0 -or $warningCount -gt 0) {
                 throw $LocalizedData.ScriptAnalyzerWarnings
             }
         }
         'Information' {
-            if ($errors -gt 0 -or $warnings -gt 0 -or $infos -gt 0) {
+            if ($errorCount -gt 0 -or $warningCount -gt 0 -or $informationCount -gt 0) {
                 throw $LocalizedData.ScriptAnalyzerWarnings
             }
         }
         default {
-            if ($analysisResult.Count -ne 0) {
+            if ($analysisRecords.Count -ne 0) {
                 throw $LocalizedData.ScriptAnalyzerIssues
             }
         }

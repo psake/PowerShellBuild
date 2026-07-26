@@ -10,8 +10,10 @@
 This guide helps you upgrade a consumer `build.ps1` (or equivalent) from
 PowerShellBuild **0.8.x** to **1.0.0**.
 
-It only covers **breaking changes**. For new features and bug fixes that
-do not require user action, see [`CHANGELOG.md`](../CHANGELOG.md).
+It covers **breaking changes**, plus any **behavioral change that can
+require action when you upgrade** — including bug fixes that make a
+previously passing build start failing. For new features and fixes that
+need nothing from you, see [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Quick Start
 
@@ -20,6 +22,9 @@ One line per break; follow the link for details and migration steps.
 - [Minimum supported PowerShell version is now 5.1](#minimum-supported-powershell-version-is-now-51)
   — the manifest requires PowerShell 5.1+; the support floor is
   Windows PowerShell 5.1 or PowerShell 7.4+.
+- [Script analysis now actually fails the build](#script-analysis-now-actually-fails-the-build)
+  — the `Analyze` task's severity threshold never fired in 0.8.x; a build
+  that passed before may now correctly fail.
 
 > More entries will follow as the Phase 2 migrations to
 > Microsoft.PowerShell.PlatyPS 1.x and psake 5.x land.
@@ -103,6 +108,53 @@ Tracked in PR
 [#141](https://github.com/psake/PowerShellBuild/pull/141); decision
 record and platform validation details in
 [#120 (comment)](https://github.com/psake/PowerShellBuild/issues/120#issuecomment-5028978464).
+
+### Script analysis now actually fails the build
+
+This is a bug fix, but it is listed here because it can turn a build that
+passed on 0.8.x red on 1.0.0 without anything else changing.
+
+In 0.8.x, `Test-PSBuildScriptAnalysis` counted findings by severity using
+`$_Severity` — an undefined variable — rather than `$_.Severity`. Every
+count was therefore zero, and the `Error`, `Warning`, and `Information`
+thresholds could never fail a build. The `Analyze` task printed its
+findings and then passed. Since `FailBuildOnSeverityLevel` defaults to
+`Error`, this affected every consumer who ran the task: the gate reported
+problems but never enforced them.
+
+The counts are now correct, so the threshold you have configured is
+enforced for the first time.
+
+**No configuration change is required.** If your build starts failing at
+the `Analyze` task after upgrading, the analyzer findings it reports were
+present before too — they were simply never enforced. You have three
+options:
+
+1. Fix the reported findings (recommended — they are real).
+2. Exclude specific rules through your PSScriptAnalyzer settings file,
+   pointed to by `$PSBPreference.Test.ScriptAnalysis.SettingsPath`.
+3. Raise the bar or turn enforcement off:
+
+**Report findings without failing the build:**
+
+    $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel = 'None'
+
+**Fail only on errors, ignoring warnings:**
+
+    $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel = 'Error'
+
+To see what will be enforced before you upgrade, run PSScriptAnalyzer
+against your built module directly:
+
+    Invoke-ScriptAnalyzer -Path ./Output/MyModule/1.0.0 -Recurse |
+        Group-Object -Property Severity
+
+A related fix ships alongside it: omitting `-SettingsPath` no longer
+fails with a path-resolution error, so
+`Test-PSBuildScriptAnalysis -Path ./Output/MyModule/0.1.0 -SeverityThreshold Error`
+now runs as documented instead of throwing.
+
+Tracked in issue #96.
 
 ## Adding an entry (for PR contributors)
 
