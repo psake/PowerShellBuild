@@ -31,10 +31,14 @@ task Analyze -depends Build {
             $analysis = Invoke-ScriptAnalyzer @analyzerParameters
             break
         } catch {
+            $errorRecord = $_
             if ($attempt -eq $maximumAttempt) {
-                throw
+                throw $errorRecord
             }
-            Write-Warning "PSScriptAnalyzer failed on attempt $attempt of $maximumAttempt. Retrying."
+            Write-Warning (
+                "PSScriptAnalyzer failed on attempt $attempt of $maximumAttempt and will be retried. " +
+                "[$($errorRecord.FullyQualifiedErrorId)] $($errorRecord.Exception.Message)"
+            )
             Start-Sleep -Seconds 2
         }
     }
