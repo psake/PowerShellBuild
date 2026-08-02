@@ -16,7 +16,29 @@ task Init {
 task Test -Depends Init, Analyze, Pester -description 'Run test suite'
 
 task Analyze -depends Build {
-    $analysis = Invoke-ScriptAnalyzer -Path $settings.ModuleOutDir -Recurse -Verbose:$false -Settings ([IO.Path]::Combine($env:BHModulePath, 'ScriptAnalyzerSettings.psd1'))
+    # PSScriptAnalyzer crashes intermittently on an internal race of its own, unrelated to the
+    # code being analyzed, and a re-run always succeeds. See psake/PowerShellBuild#136.
+    $analyzerParameters = @{
+        Path        = $settings.ModuleOutDir
+        Recurse     = $true
+        Verbose     = $false
+        Settings    = [IO.Path]::Combine($env:BHModulePath, 'ScriptAnalyzerSettings.psd1')
+        ErrorAction = 'Stop'
+    }
+    $maximumAttempt = 3
+    for ($attempt = 1; $attempt -le $maximumAttempt; $attempt++) {
+        try {
+            $analysis = Invoke-ScriptAnalyzer @analyzerParameters
+            break
+        } catch {
+            if ($attempt -eq $maximumAttempt) {
+                throw
+            }
+            Write-Warning "PSScriptAnalyzer failed on attempt $attempt of $maximumAttempt. Retrying."
+            Start-Sleep -Seconds 2
+        }
+    }
+
     $errors   = $analysis | Where-Object {$_.Severity -eq 'Error'}
     $warnings = $analysis | Where-Object {$_.Severity -eq 'Warning'}
     if (@($errors).Count -gt 0) {
