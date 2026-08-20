@@ -25,9 +25,13 @@ One line per break; follow the link for details and migration steps.
 - [Script analysis now actually fails the build](#script-analysis-now-actually-fails-the-build)
   — the `Analyze` task's severity threshold never fired in 0.8.x; a build
   that passed before may now correctly fail.
+- [psake 5.x is now the tested build toolchain](#psake-5x-is-now-the-tested-build-toolchain)
+  — `Invoke-psake` returns a result object where it previously returned
+  nothing, and Pester tests that call `Set-BuildEnvironment` can start
+  failing.
 
-> More entries will follow as the Phase 2 migrations to
-> Microsoft.PowerShell.PlatyPS 1.x and psake 5.x land.
+> More entries will follow as the Phase 2 migration to
+> Microsoft.PowerShell.PlatyPS 1.x lands.
 
 ## AI-assisted migration
 
@@ -155,6 +159,95 @@ fails with a path-resolution error, so
 now runs as documented instead of throwing.
 
 Tracked in issue #96.
+
+### psake 5.x is now the tested build toolchain
+
+PowerShellBuild's own build and test toolchain moved from psake 4.9.0 to
+**psake 5.0.4**. The module manifest still requires only `psake` **4.9.0
+or newer**, so this does not force you to upgrade: PowerShellBuild's
+task definitions are unchanged and run on both majors. Task names,
+task dependencies, and the `$PSBPreference` contract are all identical.
+
+Two things can still affect you if *you* move to psake 5.x.
+
+**1. `Invoke-psake` now returns a result object.**
+
+In psake 4.x, `Invoke-psake` wrote nothing to the pipeline. In 5.x it
+returns a `PsakeBuildResult` (`Success`, `Duration`, `Tasks`,
+`ErrorMessage`, and more). A `build.ps1` that captures or pipes the call
+now receives an object where it previously received nothing.
+
+**Before (psake 4.x):**
+
+    # $result is $null; the build's success is read from $psake
+    $result = Invoke-psake -buildFile ./psakeFile.ps1 -taskList $Task -nologo
+    exit ([int](-not $psake.build_success))
+
+**After (psake 5.x):**
+
+    # $result is a PsakeBuildResult
+    $result = Invoke-psake -buildFile ./psakeFile.ps1 -taskList $Task -nologo
+    exit ([int](-not $result.Success))
+
+`$psake.build_success` is still set by psake 5.x, so the original form
+keeps working — you only need to change anything if an unexpected object
+on the pipeline breaks your script (for example, a `build.ps1` whose
+output is consumed by another tool).
+
+**Detection:** look for an assignment or pipe on the `Invoke-psake` call
+in your build file.
+
+    Select-String -Path ./build.ps1 -Pattern '=\s*Invoke-psake|Invoke-psake.*\|'
+
+**2. Pester tests that call `Set-BuildEnvironment` can start failing.**
+
+If your Pester suite calls BuildHelpers' `Set-BuildEnvironment` inside a
+`BeforeAll` block, and that suite runs inside a psake task, the whole
+test container can fail on psake 5.x with:
+
+    A 'break' or 'continue' statement with a label that does not match
+    any enclosing loop escaped from your code.
+
+`Set-BuildEnvironment` calls `Get-BuildVariable`, which uses `break`
+inside `switch` blocks. That `break` can unwind out of the `BeforeAll`.
+psake 4.9.x's task invocation absorbs it; psake 5.x's does not, so
+Pester fails the container and every test in it
+([pester/Pester#2669](https://github.com/pester/Pester/issues/2669)).
+
+The fix is to skip the call when the build variables are already set —
+your build script normally sets them before invoking psake, which makes
+the call redundant there while keeping standalone `Invoke-Pester` runs
+working:
+
+**Before:**
+
+    BeforeAll {
+        Set-BuildEnvironment -Force
+    }
+
+**After:**
+
+    BeforeAll {
+        if (-not $env:BHProjectName) { Set-BuildEnvironment -Force }
+    }
+
+Wrapping the call in a dummy loop does **not** help — the `break` escapes
+that too.
+
+**Detection:**
+
+    Select-String -Path ./tests -Pattern 'Set-BuildEnvironment' -Recurse
+
+For psake's own list of v4 → v5 breaking changes (`default.ps1`
+auto-detection, the `psake.ps1`/`psake.cmd` launchers, .NET Framework
+below 4.0, and the `$framework` global), see
+[`psake/psake docs/migration-v4-to-v5.md`](https://github.com/psake/psake/blob/main/docs/migration-v4-to-v5.md).
+None of them affect PowerShellBuild itself.
+
+Tracked in issue
+[#161](https://github.com/psake/PowerShellBuild/issues/161); spike
+findings and evidence in
+[#155](https://github.com/psake/PowerShellBuild/issues/155).
 
 ## Adding an entry (for PR contributors)
 
