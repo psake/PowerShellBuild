@@ -9,19 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- [**#161**](https://github.com/psake/PowerShellBuild/issues/161)
-  The build and test toolchain now uses psake **5.0.4** (previously
-  4.9.0) in `requirements.psd1`. The module manifest still requires
-  `psake` 4.9.0 or newer — PowerShellBuild's task definitions are
-  unchanged and run on both majors, so consumers are not forced to
-  upgrade. If you do move to psake 5.x, two behaviors can affect your
-  build: `Invoke-psake` now returns a `PsakeBuildResult` where it
-  previously returned nothing, and Pester tests calling
-  `Set-BuildEnvironment` in a `BeforeAll` can fail the whole container.
-  See the
-  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md) for both,
-  with detection commands and fixes.
-
 - [**#120**](https://github.com/psake/PowerShellBuild/issues/120)
   **Breaking:** the module manifest now requires PowerShell 5.1 or newer
   (`PowerShellVersion = '5.1'`, previously `'3.0'`) and declares
