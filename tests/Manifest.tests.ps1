@@ -1,5 +1,10 @@
 BeforeAll {
-    Set-BuildEnvironment -Force
+    # Only call Set-BuildEnvironment when the build variables are not already present.
+    # build.ps1 sets them before Invoke-psake, so inside a build this is a no-op; standalone
+    # Pester runs still get them. Calling it unconditionally lets an escaping 'break' from
+    # BuildHelpers' Get-BuildVariable switch blocks unwind out of this BeforeAll, which
+    # psake 4.9.x absorbs but psake 5.x does not -- Pester then fails the whole container.
+    if (-not $env:BHProjectName) { Set-BuildEnvironment -Force }
     $moduleName         = $env:BHProjectName
     $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
     $outputDir          = Join-Path -Path $ENV:BHProjectPath -ChildPath 'Output'
