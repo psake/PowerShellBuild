@@ -25,6 +25,9 @@ One line per break; follow the link for details and migration steps.
 - [Script analysis now actually fails the build](#script-analysis-now-actually-fails-the-build)
   — the `Analyze` task's severity threshold never fired in 0.8.x; a build
   that passed before may now correctly fail.
+- [Unparsable files now fail the script analysis gate](#unparsable-files-now-fail-the-script-analysis-gate)
+  — `ParseError` findings are counted with `Error`, so a file that does not
+  parse fails every threshold except `None`.
 
 > More entries will follow as the Phase 2 migrations to
 > Microsoft.PowerShell.PlatyPS 1.x and psake 5.x land.
@@ -155,6 +158,47 @@ fails with a path-resolution error, so
 now runs as documented instead of throwing.
 
 Tracked in issue #96.
+
+### Unparsable files now fail the script analysis gate
+
+PSScriptAnalyzer's severity enum has four members — `Information`,
+`Warning`, `Error`, and `ParseError`. In 0.8.x,
+`Test-PSBuildScriptAnalysis` counted only the first three. A
+`ParseError` record — a file that does not parse at all — therefore
+satisfied no threshold, including the strictest one available
+(`Information`): the record was printed in the results table and the
+build passed.
+
+`ParseError` is now counted alongside `Error`, so a file the engine
+cannot even read fails every threshold except `None`. A file that does
+not parse cannot be meaningfully analyzed, so this closes a gap where
+the most severe possible finding was the only one that could never fail
+a build.
+
+**No configuration change is required.** If your build starts failing at
+the `Analyze` task after upgrading and the reported record has severity
+`ParseError`, the file genuinely does not parse — fix the syntax error.
+It was being reported on 0.8.x too; it just never failed anything.
+
+To check before you upgrade:
+
+    Invoke-ScriptAnalyzer -Path ./Output/MyModule/1.0.0 -Recurse |
+        Where-Object Severity -eq 'ParseError'
+
+Any output there is what will start failing your build.
+
+Alongside this, the severity threshold gains an **`Any`** value, which
+fails the build on any diagnostic record regardless of severity:
+
+    $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel = 'Any'
+
+`Any` was documented in `build.properties.ps1` on 0.8.x but was missing
+from the parameter's `ValidateSet`, so setting it failed parameter
+binding rather than doing what the documentation promised. It now works.
+This is additive — existing values behave as before.
+
+Tracked in issue
+[#144](https://github.com/psake/PowerShellBuild/issues/144).
 
 ## Adding an entry (for PR contributors)
 

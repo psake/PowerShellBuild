@@ -66,10 +66,14 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             Enabled                  = $true
 
             # When PSScriptAnalyzer is enabled, control which severity level will generate a build failure.
-            # Valid values are Error, Warning, Information and None.  "None" will report errors but will not
-            # cause a build failure.  "Error" will fail the build only on diagnostic records that are of
-            # severity error.  "Warning" will fail the build on Warning and Error diagnostic records.
-            # "Any" will fail the build on any diagnostic record, regardless of severity.
+            # Valid values are None, Information, Warning, Error, and Any.
+            #   "None"        reports findings but never fails the build.
+            #   "Information" fails the build on Information, Warning, and Error records.
+            #   "Warning"     fails the build on Warning and Error records.
+            #   "Error"       fails the build only on Error records.
+            #   "Any"         fails the build on any diagnostic record, regardless of severity.
+            # PSScriptAnalyzer also reports ParseError records for files that do not parse at all.
+            # Those are counted with Error, so an unparsable file fails every level except "None".
             FailBuildOnSeverityLevel = 'Error'
 
             # Path to the PSScriptAnalyzer settings file.
