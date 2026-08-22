@@ -70,7 +70,7 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
             #   "None"        reports findings but never fails the build.
             #   "Information" fails the build on Information, Warning, and Error records.
             #   "Warning"     fails the build on Warning and Error records.
-            #   "Error"       fails the build only on Error records.
+            #   "Error"       fails the build on Error records.
             #   "Any"         fails the build on any diagnostic record, regardless of severity.
             # PSScriptAnalyzer also reports ParseError records for files that do not parse at all.
             # Those are counted with Error, so an unparsable file fails every level except "None".
