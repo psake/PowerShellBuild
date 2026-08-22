@@ -24,6 +24,7 @@ PSScriptAnalyzerResults=PSScriptAnalyzer results:
 ScriptAnalyzerErrors=One or more ScriptAnalyzer errors were found!
 ScriptAnalyzerWarnings=One or more ScriptAnalyzer warnings were found!
 ScriptAnalyzerIssues=One or more ScriptAnalyzer issues were found!
+ScriptAnalyzerRuleErrorRetry=A PSScriptAnalyzer rule failed on attempt {0} of {1} and the analysis will be retried. This is an analyzer race, not a problem with the code being analyzed: {2}
 NoCertificateFound=No valid code signing certificate was found. Verify the configured CertificateSource and that a certificate with a private key is available.
 CertificateResolvedFromStore=Resolved code signing certificate from store [{0}]: Subject=[{1}]
 CertificateResolvedFromThumbprint=Resolved code signing certificate by thumbprint [{0}]: Subject=[{1}]
