@@ -10,14 +10,27 @@ function Invoke-SetBuildEnvironment {
         commit message, which Get-BuildVariable reads with 'git log --format=%B -n 1'. Windows
         has the smaller pipe buffer, so it hangs there first.
 
-        Get-BuildVariable only shells out for the commit message when it cannot read one from a
-        known CI variable. This function reads the message itself -- PowerShell drains the pipe
-        while the process writes, so it cannot deadlock -- and publishes it through the one
-        variable BuildHelpers consumes verbatim, so BuildHelpers never runs the git command that
-        hangs. The variable is removed again afterwards.
+        Get-BuildVariable decides where the commit message comes from with a switch over the
+        environment variable names it recognises. Some branches read a message straight out of a
+        variable; the rest run git against a commit SHA held in a variable. This function makes
+        the first kind win:
+
+        1. The SHA variables whose branches shell out to git are removed for the duration of the
+           call, so none of those branches can be selected. The switch runs over an unordered
+           hashtable of variables, so removing them is the only way to make the choice
+           deterministic -- setting a competing variable is a coin toss.
+        2. The commit message is read here instead. PowerShell drains the pipe while the process
+           writes, so reading it cannot deadlock.
+        3. That message is published through the Azure Pipelines variable BuildHelpers consumes
+           verbatim, and removed again afterwards.
+
+        Nothing else keys off the borrowed variable: the build system, branch, build root, and
+        build number are each detected from different variables. The suppressed SHA variables are
+        also used to report the commit hash, so the hash BuildHelpers derives from HEAD is
+        replaced afterwards with the value the build system supplied.
 
         See psake/PowerShellBuild#167. The defect is upstream in BuildHelpers, whose last release
-        (2.0.16) predates this workaround by several years.
+        (2.0.16) predates this workaround by five years.
 
         This file is dot-sourced by build.properties.ps1 and by this repository's own build.ps1
         as well as being loaded with the module, so it must stay self-contained: no localized
@@ -42,34 +55,60 @@ function Invoke-SetBuildEnvironment {
         $Path = $PWD.Path
     )
 
-    # Azure Pipelines publishes the commit message in this variable, and Get-BuildVariable reads
-    # it directly instead of calling git. Nothing else keys off it: the build system, branch,
-    # commit hash, and build number are each detected from different variables, so borrowing this
-    # one does not make BuildHelpers report an Azure Pipelines build.
-    $commitMessageVariable = 'Env:BUILD_SOURCEVERSIONMESSAGE'
+    # Every variable whose Get-BuildVariable branch runs 'git log --format=%B -n 1 <sha>'.
+    $shaVariableUsingGit = @(
+        'CI_COMMIT_SHA'                     # GitLab CI 9.0+
+        'CI_BUILD_REF'                      # GitLab CI 8.x
+        'GIT_COMMIT'                        # Jenkins
+        'BUILD_SOURCEVERSION'               # Azure Pipelines classic release
+        'BUILD_VCS_NUMBER'                  # TeamCity
+        'BAMBOO_REPOSITORY_REVISION_NUMBER' # Bamboo
+        'GITHUB_SHA'                        # GitHub Actions
+    )
+    $azureCommitMessageVariable = 'Env:BUILD_SOURCEVERSIONMESSAGE'
 
-    $commitMessage = $null
-    # A real Azure Pipelines build already supplies the variable. Leave it alone -- BuildHelpers
-    # will use it and never reach the git call.
-    if (-not (Test-Path -Path $commitMessageVariable)) {
-        $commitMessage = Get-HeadCommitMessage -Path $Path
+    $suppressedVariable = @{}
+    foreach ($name in $shaVariableUsingGit) {
+        $variablePath = "Env:$name"
+        if (Test-Path -Path $variablePath) {
+            $suppressedVariable[$name] = (Get-Item -Path $variablePath).Value
+            Remove-Item -Path $variablePath
+        }
+    }
+
+    # A build system that publishes the message itself already avoids the git call. Only read the
+    # repository when nothing supplied one.
+    $ownCommitMessage = $null
+    if (-not (Test-Path -Path $azureCommitMessageVariable)) {
+        $ownCommitMessage = Get-HeadCommitMessage -Path $Path
     }
 
     try {
-        if ($commitMessage) {
-            Set-Item -Path $commitMessageVariable -Value $commitMessage
+        if ($ownCommitMessage) {
+            Set-Item -Path $azureCommitMessageVariable -Value $ownCommitMessage
         }
 
         BuildHelpers\Set-BuildEnvironment @Parameter
 
-        if ($commitMessage) {
-            # The Azure Pipelines path joins the message onto a single line. Restore the form the
-            # git path produces so the variable looks the same as it always has.
-            $env:BHCommitMessage = $commitMessage
+        if ($ownCommitMessage) {
+            # The Azure Pipelines branch joins the message onto a single line. Restore the form
+            # the git branch produces so the variable looks the way it always has.
+            $env:BHCommitMessage = $ownCommitMessage
+        }
+
+        # With the SHA variables hidden, BuildHelpers falls back to HEAD for the commit hash.
+        # That is the same commit every build system checks out, but report what the build system
+        # actually said. Only one CI system's variables are ever present at once; if that ever
+        # stops being true, leave the value BuildHelpers derived rather than guess between them.
+        if ($suppressedVariable.Count -eq 1) {
+            $env:BHCommitHash = $suppressedVariable.Values | Select-Object -First 1
         }
     } finally {
-        if ($commitMessage) {
-            Remove-Item -Path $commitMessageVariable -ErrorAction SilentlyContinue
+        if ($ownCommitMessage) {
+            Remove-Item -Path $azureCommitMessageVariable -ErrorAction SilentlyContinue
+        }
+        foreach ($name in $suppressedVariable.Keys) {
+            Set-Item -Path "Env:$name" -Value $suppressedVariable[$name]
         }
     }
 }
