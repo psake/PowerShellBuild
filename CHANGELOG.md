@@ -76,6 +76,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   two Pester versions were installed side by side. When no Pester is loaded,
   the newest installed version (5.0.0 minimum) is imported as before, and a
   loaded Pester older than 5.0.0 now produces a clear error.
+- [**#138**](https://github.com/psake/PowerShellBuild/issues/138)
+  `Test-PSBuildPester` now reports real code coverage percentages and compares
+  them against `CodeCoverageThreshold` correctly. Each percentage was passed
+  through `[Math]::Truncate`, which collapses any fraction to zero, so the
+  coverage report always printed `0.00%` (or `100.00%`) and every threshold
+  above zero failed the build unless coverage was exactly 100%. Consumers who
+  set `$PSBPreference.Test.CodeCoverage.Threshold` could not use coverage
+  gating at all. The comparison is now strictly more permissive than before,
+  so a build that passed with a coverage threshold set still passes.
 
 ## [0.8.2] 2026-07-08
 

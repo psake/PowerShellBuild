@@ -124,7 +124,12 @@ function Test-PSBuildPester {
                 [xml]$testCoverage = Get-Content $CodeCoverageOutputFile
                 $ccReport = $testCoverage.report.counter.ForEach({
                         $total = [int]$_.missed + [int]$_.covered
-                        $percent = [Math]::Truncate([int]$_.covered / $total)
+                        # Keep the ratio as a fraction between 0 and 1. [Math]::Truncate collapsed
+                        # every partial result to 0, which both printed 0.00% and failed the
+                        # CodeCoverageThreshold comparison below for any coverage under 100%.
+                        # The value is deliberately not rounded: rounding 0.7996 up to 0.80 would
+                        # pass a 0.80 threshold that the real coverage does not meet.
+                        $percent = [int]$_.covered / $total
                         [PSCustomObject]@{
                             name    = $textInfo.ToTitleCase($_.Type.ToLower())
                             percent = $percent
