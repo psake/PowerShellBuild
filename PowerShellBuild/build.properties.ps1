@@ -1,5 +1,9 @@
 # spell-checker:ignore PSGALLERY BHPS MAML
-BuildHelpers\Set-BuildEnvironment -Force
+# Dot-sourced rather than calling BuildHelpers directly: Set-BuildEnvironment hangs on a large
+# HEAD commit message. This file runs before any task, so the hang would happen before a
+# consumer's build produced a single line of output. See psake/PowerShellBuild#167.
+. ([IO.Path]::Combine($PSScriptRoot, 'Private', 'Invoke-SetBuildEnvironment.ps1'))
+Invoke-SetBuildEnvironment -Parameter @{ Force = $true }
 
 $outDir = [IO.Path]::Combine($env:BHProjectPath, 'Output')
 $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).ModuleVersion

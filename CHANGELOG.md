@@ -86,6 +86,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   gating at all. The comparison is now strictly more permissive than before,
   so a build that passed with a coverage threshold set still passes.
 
+- [**#167**](https://github.com/psake/PowerShellBuild/issues/167)
+  Builds no longer hang when the HEAD commit message is large. `BuildHelpers`
+  populates `$env:BHCommitMessage` by running `git log` and waiting for git to
+  exit before reading its output, which deadlocks once git writes more than the
+  pipe buffer holds — git waits for the pipe to drain, `BuildHelpers` waits for
+  git, and the build stops with no output and no timeout. Windows has the
+  smaller buffer, so it hung there first. `Initialize-PSBuild` and
+  `build.properties.ps1` now read the commit message directly and hand it to
+  `BuildHelpers` through the environment, so the git call that hangs never runs.
+
 ## [0.8.2] 2026-07-08
 
 ### Fixed

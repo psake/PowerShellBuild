@@ -45,8 +45,11 @@ function Initialize-PSBuild {
 
     $params = @{
         BuildOutput = $BuildEnvironment.Build.ModuleOutDir
+        Force       = $true
     }
-    Set-BuildEnvironment @params -Force
+    # Wrapped rather than called directly: BuildHelpers hangs on a large HEAD commit message.
+    # See Invoke-SetBuildEnvironment and psake/PowerShellBuild#167.
+    Invoke-SetBuildEnvironment -Parameter $params
 
     Write-Host $LocalizedData.BuildSystemDetails -ForegroundColor 'Yellow'
     $psVersion = $PSVersionTable.PSVersion.ToString()

@@ -53,7 +53,11 @@ if ($PSCmdlet.ParameterSetName -eq 'Help') {
     Get-PSakeScriptTasks -buildFile $psakeFile |
         Format-Table -Property Name, Description, Alias, DependsOn
 } else {
-    Set-BuildEnvironment -Force
+    # Dot-sourced from the module source rather than calling BuildHelpers directly:
+    # Set-BuildEnvironment hangs on a large HEAD commit message, which stalls this build before
+    # psake starts. See psake/PowerShellBuild#167.
+    . ([IO.Path]::Combine($PSScriptRoot, 'PowerShellBuild', 'Private', 'Invoke-SetBuildEnvironment.ps1'))
+    Invoke-SetBuildEnvironment -Parameter @{ Force = $true }
     $parameters = @{}
     if ($PSGalleryApiKey) {
         $parameters['galleryApiKey'] = $PSGalleryApiKey
