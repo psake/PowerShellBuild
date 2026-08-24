@@ -198,6 +198,12 @@ function Invoke-PSBuildCommandInJob {
         Name of the command to invoke.
     .PARAMETER Parameter
         Parameters to splat onto the command.
+    .PARAMETER RequiredModule
+        Modules to import at an exact version inside the job, before the PowerShellBuild module
+        is imported, as a name-to-version map. Use this when the command's behavior depends on
+        which version of a dependency is loaded. Each named module's loaded versions are
+        reported back in LoadedModuleVersion so a test can assert what actually loaded rather
+        than what it asked for.
     .PARAMETER TimeoutSecond
         How long to wait before giving up. A hung job would otherwise stall CI with no output
         and no error, so the timeout is reported as a failure like any other. Defaults to 300.
@@ -230,13 +236,23 @@ function Invoke-PSBuildCommandInJob {
         [hashtable]
         $Parameter,
 
+        [ValidateNotNull()]
+        [hashtable]
+        $RequiredModule = @{},
+
         [ValidateRange(1, 3600)]
         [int]
         $TimeoutSecond = 300
     )
 
     $job = Start-Job -ScriptBlock {
-        param($modulePath, $commandName, $parameter)
+        param($modulePath, $commandName, $parameter, $requiredModule)
+
+        # Imported before the PowerShellBuild module so that a dependency the module would
+        # otherwise autoload is already present at the requested version.
+        foreach ($moduleName in $requiredModule.Keys) {
+            Import-Module -Name $moduleName -RequiredVersion $requiredModule[$moduleName] -ErrorAction Stop
+        }
 
         Import-Module -Name $modulePath -Force -ErrorAction Stop
 
@@ -252,21 +268,32 @@ function Invoke-PSBuildCommandInJob {
             $errorMessage = $_.Exception.Message
         }
 
-        [PSCustomObject]@{
-            Threw        = $threw
-            ErrorMessage = $errorMessage
-            Output       = $commandOutput
+        # Report what is loaded after the call, not before: the point is to catch a command
+        # that pulled in a different version than the one requested.
+        $loadedModuleVersion = @{}
+        foreach ($moduleName in $requiredModule.Keys) {
+            $loadedModuleVersion[$moduleName] = @(
+                (Get-Module -Name $moduleName).Version.ForEach({ $_.ToString() })
+            )
         }
-    } -ArgumentList $ModulePath, $CommandName, $Parameter
+
+        [PSCustomObject]@{
+            Threw               = $threw
+            ErrorMessage        = $errorMessage
+            Output              = $commandOutput
+            LoadedModuleVersion = $loadedModuleVersion
+        }
+    } -ArgumentList $ModulePath, $CommandName, $Parameter, $RequiredModule
 
     $completedJob = Wait-Job -Job $job -Timeout $TimeoutSecond
     if (-not $completedJob) {
         Stop-Job -Job $job
         Remove-Job -Job $job -Force
         return [PSCustomObject]@{
-            Threw        = $true
-            ErrorMessage = "$CommandName did not complete within $TimeoutSecond seconds."
-            Output       = @()
+            Threw               = $true
+            ErrorMessage        = "$CommandName did not complete within $TimeoutSecond seconds."
+            Output              = @()
+            LoadedModuleVersion = @{}
         }
     }
 
@@ -275,9 +302,87 @@ function Invoke-PSBuildCommandInJob {
     $jobResult
 }
 
+function Invoke-TestPSBuildPesterInJob {
+    <#
+    .SYNOPSIS
+        Run Test-PSBuildPester in a background job against a pinned inner Pester version.
+    .DESCRIPTION
+        A thin shape over Invoke-PSBuildCommandInJob for the Test-PSBuildPester integration
+        matrix, which invokes the command many times and varies only the scenario path, the
+        inner Pester version, and a few extra parameters.
+
+        Testing Test-PSBuildPester means Pester testing Pester, so the job is doing two jobs at
+        once: it gives the inner run its own session, and it lets that session pin a Pester
+        version independently of the outer framework. Two Pester majors cannot coexist in one
+        session, so without the job the matrix could only ever cover the version already loaded.
+    .PARAMETER ModulePath
+        Path to the built PowerShellBuild module to import inside the job.
+    .PARAMETER InnerPesterVersion
+        Exact Pester version to import inside the job before Test-PSBuildPester runs.
+    .PARAMETER Path
+        Scenario directory to point Test-PSBuildPester at.
+    .PARAMETER AdditionalParameter
+        Extra parameters for Test-PSBuildPester, merged over the defaults. Supply a key already
+        in the defaults to override it.
+    .PARAMETER TimeoutSecond
+        How long to wait before giving up. Defaults to 300.
+    .EXAMPLE
+        PS> $result = Invoke-TestPSBuildPesterInJob -ModulePath $builtModulePath -InnerPesterVersion '6.0.0' -Path $healthyPath
+
+        Runs Test-PSBuildPester against the healthy scenario under Pester 6.0.0.
+    .OUTPUTS
+        System.Management.Automation.PSCustomObject
+    #>
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ModulePath,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $InnerPesterVersion,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Path,
+
+        [ValidateNotNull()]
+        [hashtable]
+        $AdditionalParameter = @{},
+
+        [ValidateRange(1, 3600)]
+        [int]
+        $TimeoutSecond = 300
+    )
+
+    $testPSBuildPesterParameter = @{
+        Path            = $Path
+        OutputVerbosity = 'None'
+        ErrorAction     = 'Stop'
+    }
+    foreach ($key in $AdditionalParameter.Keys) {
+        $testPSBuildPesterParameter[$key] = $AdditionalParameter[$key]
+    }
+
+    $jobParameter = @{
+        ModulePath     = $ModulePath
+        CommandName    = 'Test-PSBuildPester'
+        Parameter      = $testPSBuildPesterParameter
+        RequiredModule = @{ Pester = $InnerPesterVersion }
+        TimeoutSecond  = $TimeoutSecond
+    }
+    Invoke-PSBuildCommandInJob @jobParameter
+}
+
 Export-ModuleMember -Function @(
     'Copy-PSBuildTestFixture'
     'Invoke-PSBuildCommandInJob'
+    'Invoke-TestPSBuildPesterInJob'
     'New-PSBuildDocsScenario'
     'New-PSBuildMarkdownParameter'
 )

@@ -4,7 +4,8 @@
 # invocation runs in a Start-Job subprocess: two Pester versions cannot coexist in one session,
 # and the subprocess lets each test pin the inner Pester version independently of the outer
 # framework. The scenarios run against every installed Pester major (5.x and 6.x) to verify the
-# shipped function keeps supporting Pester 5 consumers.
+# shipped function keeps supporting Pester 5 consumers. The job runner itself lives in
+# fixtures/FixtureHelpers.psm1, shared with the other test files that need a fresh session.
 #
 # The crash fixtures are generated into $TestDrive at runtime, never checked in, so the
 # repository's own Pester run can never discover them (see #97 for the convention).
@@ -33,57 +34,6 @@ Describe 'Test-PSBuildPester' {
         $script:builtModulePath = [IO.Path]::Combine($script:moduleRoot, 'Output', 'PowerShellBuild')
 
         Import-Module -Name ([IO.Path]::Combine($PSScriptRoot, 'fixtures', 'FixtureHelpers.psm1')) -Force
-
-        # Runs Test-PSBuildPester in a subprocess with a pinned inner Pester version and reports
-        # what happened. Returns an object with Threw, ErrorMessage, and the Pester version that
-        # was loaded in the subprocess after the call.
-        function script:Invoke-TestPSBuildPesterJob {
-            param(
-                [string]$InnerPesterVersion,
-                [string]$Path,
-                [hashtable]$AdditionalParameters = @{}
-            )
-
-            $job = Start-Job -ScriptBlock {
-                param($innerPesterVersion, $builtModulePath, $path, $additionalParameters)
-
-                Import-Module -Name 'Pester' -RequiredVersion $innerPesterVersion -ErrorAction Stop
-                Import-Module -Name $builtModulePath -Force -ErrorAction Stop
-
-                $testPSBuildPesterParameters = @{
-                    Path            = $path
-                    OutputVerbosity = 'None'
-                    ErrorAction     = 'Stop'
-                }
-                foreach ($key in $additionalParameters.Keys) {
-                    $testPSBuildPesterParameters[$key] = $additionalParameters[$key]
-                }
-
-                $threw = $false
-                $errorMessage = $null
-                # Capture the command's output rather than letting it fall through to the job's
-                # output stream, where the coverage report lines would be interleaved with the
-                # result object below.
-                $commandOutput = @()
-                try {
-                    $commandOutput = @(Test-PSBuildPester @testPSBuildPesterParameters)
-                } catch {
-                    $threw = $true
-                    $errorMessage = $_.Exception.Message
-                }
-
-                [PSCustomObject]@{
-                    Threw                = $threw
-                    ErrorMessage         = $errorMessage
-                    Output               = $commandOutput
-                    LoadedPesterVersions = @((Get-Module -Name 'Pester').Version.ToString())
-                }
-            } -ArgumentList $InnerPesterVersion, $script:builtModulePath, $Path, $AdditionalParameters
-
-            $jobResult = $job | Wait-Job | Receive-Job
-            Remove-Job -Job $job -Force
-            $jobResult
-        }
 
         # Scenario directories, generated at runtime.
         $script:healthyPath = Join-Path -Path $TestDrive -ChildPath 'healthy'
@@ -169,14 +119,14 @@ Describe 'Coverage target' {
         }
 
         It 'succeeds for a healthy suite' {
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:healthyPath
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:healthyPath
 
             $result.Threw | Should -BeFalse
         }
 
         It 'fails the build when a test fails' {
             # Regression: #52
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:failingTestPath
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:failingTestPath
 
             $result.Threw | Should -BeTrue
             $result.ErrorMessage | Should -Match 'Pester tests failed'
@@ -184,7 +134,7 @@ Describe 'Coverage target' {
 
         It 'fails the build when a setup block throws' {
             # Regression: #128 / #133 (FailedCount alone misses failed blocks)
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:beforeAllCrashPath
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:beforeAllCrashPath
 
             $result.Threw | Should -BeTrue
             $result.ErrorMessage | Should -Match 'Pester tests failed'
@@ -192,7 +142,7 @@ Describe 'Coverage target' {
 
         It 'fails the build when a test file errors during discovery' {
             # Regression: #128 / #133 (FailedCount alone misses failed containers)
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:discoveryCrashPath
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:discoveryCrashPath
 
             $result.Threw | Should -BeTrue
             $result.ErrorMessage | Should -Match 'Pester tests failed'
@@ -203,7 +153,7 @@ Describe 'Coverage target' {
             $additionalParameters = @{
                 OutputPath = $testResultsPath
             }
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:healthyPath -AdditionalParameters $additionalParameters
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:healthyPath -AdditionalParameter $additionalParameters
 
             $result.Threw | Should -BeFalse
             $testResultsPath | Should -Exist
@@ -218,7 +168,7 @@ Describe 'Coverage target' {
                 CodeCoverageOutputFile       = $coverageOutputPath
                 CodeCoverageOutputFileFormat = 'JaCoCo'
             }
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameters $additionalParameters
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameter $additionalParameters
 
             $result.Threw | Should -BeFalse
             $coverageOutputPath | Should -Exist
@@ -239,7 +189,7 @@ Describe 'Coverage target' {
                 CodeCoverageOutputFile = $coverageOutputPath
                 CodeCoverageThreshold  = 0.01
             }
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameters $additionalParameters
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameter $additionalParameters
 
             $result.Threw | Should -BeFalse
         }
@@ -253,7 +203,7 @@ Describe 'Coverage target' {
                 CodeCoverageOutputFile = $coverageOutputPath
                 CodeCoverageThreshold  = 0.99
             }
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameters $additionalParameters
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameter $additionalParameters
 
             $result.Threw | Should -BeTrue
             $result.ErrorMessage | Should -Match 'less than the threshold'
@@ -275,7 +225,7 @@ Describe 'Coverage target' {
             # Regression: the finally block called Remove-Module with an empty -Name, which
             # raised a parameter-binding error that -ErrorAction SilentlyContinue cannot
             # suppress.
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:newestInnerVersion -Path $script:healthyPath
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:newestInnerVersion -Path $script:healthyPath
 
             $result.Threw | Should -BeFalse
             $result.ErrorMessage | Should -BeNullOrEmpty
@@ -285,10 +235,10 @@ Describe 'Coverage target' {
             # Regression: an unconditional Import-Module Pester -MinimumVersion 5.0.0 loaded the
             # newest installed Pester on top of an already-loaded older one, which crashes with a
             # Pester.dll version conflict when 5.x and 6.x are installed side by side.
-            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:oldestInnerVersion -Path $script:healthyPath
+            $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:oldestInnerVersion -Path $script:healthyPath
 
             $result.Threw | Should -BeFalse
-            $result.LoadedPesterVersions | Should -Be @($script:oldestInnerVersion)
+            $result.LoadedModuleVersion['Pester'] | Should -Be @($script:oldestInnerVersion)
         }
     }
 }
