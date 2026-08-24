@@ -256,13 +256,25 @@ function Invoke-PSBuildCommandInJob {
 
         Import-Module -Name $modulePath -Force -ErrorAction Stop
 
+        # Default ErrorAction into the splat rather than passing it alongside. Supplying it
+        # both ways is fatal on Windows PowerShell 5.1 -- "Cannot bind parameter because
+        # parameter 'ErrorAction' is specified more than once" -- even though PowerShell 7
+        # accepts it. Defaulting it here also lets a caller ask for different behavior.
+        $invokeParameter = @{}
+        foreach ($key in $parameter.Keys) {
+            $invokeParameter[$key] = $parameter[$key]
+        }
+        if (-not $invokeParameter.ContainsKey('ErrorAction')) {
+            $invokeParameter['ErrorAction'] = 'Stop'
+        }
+
         $threw = $false
         $errorMessage = $null
         # Capture the command's own output rather than letting it fall through to the job's
         # output stream, where it would be interleaved with the result object below.
         $commandOutput = @()
         try {
-            $commandOutput = @(& $commandName @parameter -ErrorAction Stop)
+            $commandOutput = @(& $commandName @invokeParameter)
         } catch {
             $threw = $true
             $errorMessage = $_.Exception.Message
