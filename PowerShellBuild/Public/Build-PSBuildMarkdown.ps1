@@ -4,6 +4,10 @@ function Build-PSBuildMarkdown {
         Creates PlatyPS markdown documents based on comment-based help of module.
     .DESCRIPTION
         Creates PlatyPS markdown documents based on comment-based help of module.
+
+        Existing command markdown is refreshed in place with Update-MarkdownCommandHelp so
+        hand-written prose survives, and markdown for commands that have no document yet is
+        generated with New-MarkdownCommandHelp.
     .PARAMETER ModulePath
         The path to the module
     .PARAMETER ModuleName
@@ -14,8 +18,6 @@ function Build-PSBuildMarkdown {
         The locale to save the markdown docs.
     .PARAMETER Overwrite
         Overwrite existing markdown files and use comment based help as the source of truth.
-    .PARAMETER AlphabeticParamsOrder
-        Order parameters alphabetically by name in PARAMETERS section. There are 5 exceptions: -Confirm, -WhatIf, -IncludeTotalCount, -Skip, and -First parameters will be the last.
     .PARAMETER ExcludeDontShow
         Exclude the parameters marked with `DontShow` in the parameter attribute from the help content.
     .PARAMETER UseFullTypeName
@@ -43,9 +45,6 @@ function Build-PSBuildMarkdown {
         [bool]$Overwrite,
 
         [parameter(Mandatory)]
-        [bool]$AlphabeticParamsOrder,
-
-        [parameter(Mandatory)]
         [bool]$ExcludeDontShow,
 
         [parameter(Mandatory)]
@@ -60,41 +59,72 @@ function Build-PSBuildMarkdown {
             return
         }
 
-        if (-not (Test-Path -LiteralPath $DocsPath)) {
-            New-Item -Path $DocsPath -ItemType Directory > $null
+        $localePath = [IO.Path]::Combine($DocsPath, $Locale)
+        if (-not (Test-Path -LiteralPath $localePath)) {
+            New-Item -Path $localePath -ItemType Directory -Force > $null
         }
 
-        if (Get-ChildItem -LiteralPath $DocsPath -Filter *.md -Recurse) {
-            $updateMDParams = @{
-                AlphabeticParamsOrder = $AlphabeticParamsOrder
-                ExcludeDontShow       = $ExcludeDontShow
-                UseFullTypeName       = $UseFullTypeName
-                Verbose               = $VerbosePreference
-            }
-            Get-ChildItem -LiteralPath $DocsPath -Directory | ForEach-Object {
-                Update-MarkdownHelp -Path $_.FullName @updateMDParams > $null
+        # Refresh first. Update-MarkdownCommandHelp merges the module's current surface into
+        # existing documents and preserves hand-written prose, where regenerating would
+        # discard it. -NoBackup keeps it from littering the docs tree with .md.bak files.
+        # Module landing pages are a different document type and are left alone.
+        $existingMarkdown = @(
+            Get-ChildItem -LiteralPath $localePath -Filter '*.md' -File -ErrorAction SilentlyContinue
+        )
+        if ($existingMarkdown.Count -gt 0) {
+            $existingCommandMarkdown = @(
+                $existingMarkdown.Where({
+                        (Measure-PlatyPSMarkdown -LiteralPath $_.FullName).Filetype -match 'CommandHelp'
+                    })
+            )
+            if ($existingCommandMarkdown.Count -gt 0) {
+                Update-MarkdownCommandHelp -LiteralPath $existingCommandMarkdown.FullName -NoBackup > $null
             }
         }
 
-        # ErrorAction set to SilentlyContinue so this command will not overwrite an existing MD file.
-        $newMDParams = @{
-            Module                = $ModuleName
-            Locale                = $Locale
-            OutputFolder          = [IO.Path]::Combine($DocsPath, $Locale)
-            AlphabeticParamsOrder = $AlphabeticParamsOrder
-            ExcludeDontShow       = $ExcludeDontShow
-            UseFullTypeName       = $UseFullTypeName
-            ErrorAction           = 'SilentlyContinue'
-            Verbose               = $VerbosePreference
+        # New-MarkdownCommandHelp always writes to <OutputFolder>/<ModuleName>, and without
+        # -Force it skips existing files with a warning rather than an error. Generating into
+        # an empty staging directory and moving the results keeps the documented
+        # <DocsPath>/<Locale> layout and keeps Overwrite meaning what it did before.
+        $stagingPath = [IO.Path]::Combine(
+            [IO.Path]::GetTempPath(),
+            [IO.Path]::GetRandomFileName()
+        )
+        try {
+            $newMarkdownParams = @{
+                ModuleInfo   = $moduleInfo
+                OutputFolder = $stagingPath
+                Locale       = $Locale
+                Verbose      = $VerbosePreference
+            }
+            if ($ExcludeDontShow) {
+                $newMarkdownParams.ExcludeDontShow = $true
+            }
+            # The sense of this option inverted in PlatyPS 1.x: full type names are now the
+            # default and abbreviation is the switch, so the old setting maps to its absence.
+            if (-not $UseFullTypeName) {
+                $newMarkdownParams.AbbreviateParameterTypeName = $true
+            }
+            New-MarkdownCommandHelp @newMarkdownParams > $null
+
+            $generatedPath = [IO.Path]::Combine($stagingPath, $ModuleName)
+            $generatedMarkdown = @(
+                Get-ChildItem -LiteralPath $generatedPath -Filter '*.md' -File -ErrorAction SilentlyContinue
+            )
+            foreach ($markdownFile in $generatedMarkdown) {
+                $destinationPath = Join-Path -Path $localePath -ChildPath $markdownFile.Name
+                if ((Test-Path -LiteralPath $destinationPath) -and -not $Overwrite) {
+                    # Already refreshed above; regenerating would discard hand-written prose.
+                    continue
+                }
+                Move-Item -LiteralPath $markdownFile.FullName -Destination $destinationPath -Force
+            }
+        } finally {
+            Remove-Item -LiteralPath $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
         }
-        if ($Overwrite) {
-            $newMDParams.Add('Force', $true)
-            $newMDParams.Remove('ErrorAction')
-        }
-        New-MarkdownHelp @newMDParams > $null
     } catch {
         Write-Error ($LocalizedData.FailedToGenerateMarkdownHelp -f $_)
     } finally {
-        Remove-Module $moduleName
+        Remove-Module $ModuleName
     }
 }

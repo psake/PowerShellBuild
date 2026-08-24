@@ -4,6 +4,11 @@ function Build-PSBuildUpdatableHelp {
         Create updatable help .cab file based on PlatyPS markdown help.
     .DESCRIPTION
         Create updatable help .cab file based on PlatyPS markdown help.
+
+        Not implemented against PlatyPS 1.x yet. The cabinet pipeline is migrated in
+        psake/PowerShellBuild#152 along with the three defects in #169 that prevented this
+        function from ever succeeding. Until then it reports that updatable help was skipped
+        and returns without writing anything.
     .PARAMETER DocsPath
         Path to PlatyPS markdown help files.
     .PARAMETER OutputPath
@@ -14,8 +19,11 @@ function Build-PSBuildUpdatableHelp {
     .EXAMPLE
         PS> Build-PSBuildUpdatableHelp -DocsPath ./docs -OutputPath ./Output/UpdatableHelp
 
-        Create help .cab file based on PlatyPS markdown help.
+        Reports that updatable help is not available and returns.
     #>
+    # The parameters are unused only because the body is stubbed. They stay so the public
+    # signature does not change twice -- once here and again when #152 restores the body.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '')]
     [CmdletBinding()]
     param(
         [parameter(Mandatory)]
@@ -27,44 +35,11 @@ function Build-PSBuildUpdatableHelp {
         [string]$Module = $ModuleName
     )
 
-    if ($null -ne $IsWindows -and -not $IsWindows) {
-        Write-Warning $LocalizedData.MakeCabNotAvailable
-        return
-    }
-
-    $helpLocales = (Get-ChildItem -Path $DocsPath -Directory).Name
-
-    # Create updatable help output directory
-    if (-not (Test-Path -LiteralPath $OutputPath)) {
-        $newItemSplat = @{
-            ItemType = 'Directory'
-            Verbose  = $VerbosePreference
-            Path     = $OutputPath
-        }
-        New-Item @newItemSplat > $null
-    } else {
-        Write-Verbose ($LocalizedData.DirectoryAlreadyExists -f $OutputPath)
-        $removeItemSplat = @{
-            Recurse = $true
-            Force   = $true
-            Verbose = $VerbosePreference
-        }
-        Get-ChildItem $OutputPath | Remove-Item @removeItemSplat
-    }
-
-    # Generate updatable help files. Note: this will currently update the
-    # version number in the module's MD file in the metadata.
-    foreach ($locale in $helpLocales) {
-        $cabParams = @{
-            CabFilesFolder  = [IO.Path]::Combine($moduleOutDir, $locale)
-            LandingPagePath = [IO.Path]::Combine(
-                $DocsPath,
-                $locale,
-                "$Module.md"
-            )
-            OutputFolder    = $OutputPath
-            Verbose         = $VerbosePreference
-        }
-        New-ExternalHelpCab @cabParams > $null
-    }
+    # Deliberately references no PlatyPS command. Naming New-ExternalHelpCab here is enough to
+    # make PowerShell autoload platyPS 0.14.2 on any session that resolves it, and once that
+    # module is loaded, Microsoft.PowerShell.PlatyPS can no longer be imported in the same
+    # process -- both ship their own YamlDotNet with different assembly identities. Leaving the
+    # old call in place would poison every session that still has 0.14.2 installed, which is
+    # every consumer part-way through the upgrade.
+    Write-Warning $LocalizedData.UpdatableHelpNotMigrated
 }
