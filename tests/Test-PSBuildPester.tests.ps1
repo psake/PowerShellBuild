@@ -61,8 +61,12 @@ Describe 'Test-PSBuildPester' {
 
                 $threw = $false
                 $errorMessage = $null
+                # Capture the command's output rather than letting it fall through to the job's
+                # output stream, where the coverage report lines would be interleaved with the
+                # result object below.
+                $commandOutput = @()
                 try {
-                    Test-PSBuildPester @testPSBuildPesterParameters
+                    $commandOutput = @(Test-PSBuildPester @testPSBuildPesterParameters)
                 } catch {
                     $threw = $true
                     $errorMessage = $_.Exception.Message
@@ -71,6 +75,7 @@ Describe 'Test-PSBuildPester' {
                 [PSCustomObject]@{
                     Threw                = $threw
                     ErrorMessage         = $errorMessage
+                    Output               = $commandOutput
                     LoadedPesterVersions = @((Get-Module -Name 'Pester').Version.ToString())
                 }
             } -ArgumentList $InnerPesterVersion, $script:builtModulePath, $Path, $AdditionalParameters
@@ -219,6 +224,39 @@ Describe 'Coverage target' {
             $coverageOutputPath | Should -Exist
             [xml]$coverageReport = Get-Content -Path $coverageOutputPath -Raw
             $coverageReport.report | Should -Not -BeNullOrEmpty
+        }
+
+        # The coverage scenario exercises only Get-Widget while measuring both public fixture
+        # functions, so measured coverage is always partial: comfortably above 1% and well
+        # below 99%. Asserting from both sides pins the reported value to a fraction between
+        # 0 and 1 -- a truncated 0 fails the first test, and a 0-to-100 scale fails the second.
+        It 'passes when measured coverage is above the code coverage threshold' {
+            # Regression: #138
+            $coverageOutputPath = Join-Path -Path $script:outputPath -ChildPath "coverage-above-threshold-$script:innerVersion.xml"
+            $additionalParameters = @{
+                CodeCoverage           = $true
+                CodeCoverageFiles      = @(Join-Path -Path $script:fixturePath -ChildPath 'Public/*.ps1')
+                CodeCoverageOutputFile = $coverageOutputPath
+                CodeCoverageThreshold  = 0.01
+            }
+            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameters $additionalParameters
+
+            $result.Threw | Should -BeFalse
+        }
+
+        It 'fails when measured coverage is below the code coverage threshold' {
+            # Regression: #138
+            $coverageOutputPath = Join-Path -Path $script:outputPath -ChildPath "coverage-below-threshold-$script:innerVersion.xml"
+            $additionalParameters = @{
+                CodeCoverage           = $true
+                CodeCoverageFiles      = @(Join-Path -Path $script:fixturePath -ChildPath 'Public/*.ps1')
+                CodeCoverageOutputFile = $coverageOutputPath
+                CodeCoverageThreshold  = 0.99
+            }
+            $result = Invoke-TestPSBuildPesterJob -InnerPesterVersion $script:innerVersion -Path $script:coveragePath -AdditionalParameters $additionalParameters
+
+            $result.Threw | Should -BeTrue
+            $result.ErrorMessage | Should -Match 'less than the threshold'
         }
     }
 

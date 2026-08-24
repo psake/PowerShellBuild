@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [**#144**](https://github.com/psake/PowerShellBuild/issues/144)
+  **Breaking:** `Test-PSBuildScriptAnalysis` now counts PSScriptAnalyzer
+  `ParseError` records alongside `Error`. A file that does not parse at all
+  previously satisfied no threshold — not even the strictest validated value,
+  `Information` — so it was reported and the build passed anyway. It now fails
+  every threshold except `None`. See the
+  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md) — a build that
+  passed before may now correctly fail.
+
 - [**#120**](https://github.com/psake/PowerShellBuild/issues/120)
   **Breaking:** the module manifest now requires PowerShell 5.1 or newer
   (`PowerShellVersion = '5.1'`, previously `'3.0'`) and declares
@@ -18,7 +27,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md) for
   details.
 
+### Added
+
+- [**#144**](https://github.com/psake/PowerShellBuild/issues/144)
+  `Test-PSBuildScriptAnalysis` accepts `Any` as a `SeverityThreshold`, failing
+  the build on any diagnostic record regardless of severity. `Any` was already
+  documented in `build.properties.ps1` but was missing from the parameter's
+  `ValidateSet`, so setting
+  `$PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel = 'Any'` failed
+  parameter binding instead of working as documented.
+
 ### Fixed
+
+- [**#147**](https://github.com/psake/PowerShellBuild/issues/147)
+  `Test-PSBuildScriptAnalysis` retries the analysis when a PSScriptAnalyzer rule
+  crashes on an internal race
+  ([PSScriptAnalyzer#1538](https://github.com/PowerShell/PSScriptAnalyzer/issues/1538)),
+  which is unrelated to the code being analyzed and succeeds on a re-run.
+  Consumers who set `$ErrorActionPreference = 'Stop'` — common in a build script —
+  previously got a randomly red build. A crash that survives every attempt is
+  still surfaced, so a persistent failure behaves as it did before.
 
 - [**#96**](https://github.com/psake/PowerShellBuild/issues/96)
   `Test-PSBuildScriptAnalysis` now fails the build when PSScriptAnalyzer
@@ -48,6 +76,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   two Pester versions were installed side by side. When no Pester is loaded,
   the newest installed version (5.0.0 minimum) is imported as before, and a
   loaded Pester older than 5.0.0 now produces a clear error.
+- [**#138**](https://github.com/psake/PowerShellBuild/issues/138)
+  `Test-PSBuildPester` now reports real code coverage percentages and compares
+  them against `CodeCoverageThreshold` correctly. Each percentage was passed
+  through `[Math]::Truncate`, which collapses any fraction to zero, so the
+  coverage report always printed `0.00%` (or `100.00%`) and every threshold
+  above zero failed the build unless coverage was exactly 100%. Consumers who
+  set `$PSBPreference.Test.CodeCoverage.Threshold` could not use coverage
+  gating at all. The comparison is now strictly more permissive than before,
+  so a build that passed with a coverage threshold set still passes.
 
 ## [0.8.2] 2026-07-08
 

@@ -95,7 +95,7 @@ Describe 'Test-PSBuildScriptAnalysis' {
             $validateSet = $command.Parameters['SeverityThreshold'].Attributes.Where({
                     $_.TypeId.Name -eq 'ValidateSetAttribute'
                 })[0]
-            ($validateSet.ValidValues | Sort-Object) -join ',' | Should -Be 'Error,Information,None,Warning'
+            ($validateSet.ValidValues | Sort-Object) -join ',' | Should -Be 'Any,Error,Information,None,Warning'
         }
     }
 
@@ -246,6 +246,164 @@ Describe 'Test-PSBuildScriptAnalysis' {
                 }
             }
             Should -Invoke @shouldInvokeParameters
+        }
+    }
+
+    Context 'ParseError severity' {
+
+        # PSScriptAnalyzer's severity enum has four members; ParseError is reported for a file
+        # that does not parse at all. It was counted by none of the thresholds, so the strictest
+        # validated value (Information) still let an unparsable file through: the record was
+        # printed in the results table and the build passed. It is now counted with Error.
+
+        It 'Fails at the <Threshold> threshold when a ParseError record is returned' -ForEach @(
+            @{ Threshold = 'Error' }
+            @{ Threshold = 'Warning' }
+            @{ Threshold = 'Information' }
+            @{ Threshold = 'Any' }
+        ) {
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith {
+                [PSCustomObject]@{
+                    Severity   = 'ParseError'
+                    RuleName   = 'FakeParseErrorRule'
+                    ScriptName = 'Unparsable.ps1'
+                    Message    = 'A fake ParseError record'
+                }
+            }
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = $Threshold
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            { Test-PSBuildScriptAnalysis @testParameters } | Should -Throw
+        }
+
+        It 'Still reports without failing at the None threshold' {
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith {
+                [PSCustomObject]@{
+                    Severity   = 'ParseError'
+                    RuleName   = 'FakeParseErrorRule'
+                    ScriptName = 'Unparsable.ps1'
+                    Message    = 'A fake ParseError record'
+                }
+            }
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = 'None'
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            { Test-PSBuildScriptAnalysis @testParameters } | Should -Not -Throw
+        }
+    }
+
+    Context 'Any threshold' {
+
+        # 'Any' was documented in build.properties.ps1 but missing from the ValidateSet, so
+        # setting it failed parameter binding instead of doing what the documentation promised.
+
+        It 'Fails on a <FindingSeverity> finding' -ForEach @(
+            @{ FindingSeverity = 'Error' }
+            @{ FindingSeverity = 'Warning' }
+            @{ FindingSeverity = 'Information' }
+        ) {
+            $mockFindings = @(
+                [PSCustomObject]@{
+                    Severity   = $FindingSeverity
+                    RuleName   = "Fake${FindingSeverity}Rule"
+                    ScriptName = 'Fake.ps1'
+                    Message    = "A fake $FindingSeverity record"
+                }
+            )
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith {
+                $mockFindings
+            }.GetNewClosure()
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = 'Any'
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            { Test-PSBuildScriptAnalysis @testParameters } | Should -Throw
+        }
+
+        It 'Passes when there are no findings at all' {
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith { }
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = 'Any'
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            { Test-PSBuildScriptAnalysis @testParameters } | Should -Not -Throw
+        }
+    }
+
+    Context 'Analyzer rule crash retry' {
+
+        # PSScriptAnalyzer can crash a rule on an internal race unrelated to the code being
+        # analyzed (psake/PowerShellBuild#147). A re-run succeeds, so a RULE_ERROR is retried.
+        # A consumer with $ErrorActionPreference = 'Stop' would otherwise get a random red build.
+
+        It 'Retries and succeeds when a rule crashes once' {
+            $script:analyzerAttempt = 0
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith {
+                $script:analyzerAttempt++
+                if ($script:analyzerAttempt -eq 1) {
+                    # Non-terminating, mirroring how the real cmdlet behaves under the
+                    # -ErrorAction SilentlyContinue the function passes. The mock body would
+                    # otherwise inherit $ErrorActionPreference = 'Stop' and throw on attempt one.
+                    $ErrorActionPreference = 'SilentlyContinue'
+                    Write-Error -Message 'Object reference not set to an instance of an object.' -ErrorId 'RULE_ERROR'
+                }
+            }
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = 'Error'
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            { Test-PSBuildScriptAnalysis @testParameters -WarningAction SilentlyContinue } |
+                Should -Not -Throw
+
+            Should -Invoke -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -Times 2 -Exactly
+        }
+
+        It 'Gives up after three attempts and surfaces the error' {
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith {
+                $ErrorActionPreference = 'SilentlyContinue'
+                Write-Error -Message 'Object reference not set to an instance of an object.' -ErrorId 'RULE_ERROR'
+            }
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = 'Error'
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            # A persistent failure must still reach the caller, so a consumer using
+            # ErrorActionPreference = 'Stop' behaves exactly as it did before the retry existed.
+            { Test-PSBuildScriptAnalysis @testParameters -WarningAction SilentlyContinue -ErrorAction Stop } |
+                Should -Throw
+
+            Should -Invoke -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -Times 3 -Exactly
+        }
+
+        It 'Does not retry an error that is not a rule crash' {
+            Mock -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -MockWith {
+                $ErrorActionPreference = 'SilentlyContinue'
+                Write-Error -Message 'Some other analyzer failure.' -ErrorId 'SOME_OTHER_ERROR'
+            }
+
+            $testParameters = @{
+                Path              = $script:cleanPath
+                SeverityThreshold = 'Error'
+                SettingsPath      = $script:defaultSettingsPath
+            }
+            { Test-PSBuildScriptAnalysis @testParameters -ErrorAction SilentlyContinue } |
+                Should -Not -Throw
+
+            Should -Invoke -CommandName 'Invoke-ScriptAnalyzer' -ModuleName 'PowerShellBuild' -Times 1 -Exactly
         }
     }
 
