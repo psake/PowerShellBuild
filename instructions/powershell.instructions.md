@@ -636,7 +636,7 @@ Describe 'Get-Album' {
     }
 }
 
-# Bad - $_ is not bound yet on the It's own -ForEach, so every case skips
+# Bad - $_ is not bound yet on the It block's own -ForEach, so every case skips
 Describe 'Get-Album' {
     It 'Reports the expected track count' -ForEach $albums -Skip:($null -eq $_.ExpectedTracks) {
         (Get-Album -Name $_.Name).Tracks.Count | Should -Be $_.ExpectedTracks
@@ -682,6 +682,13 @@ Could not load file or assembly 'Pester, Version=6.0.1.0'. Assembly with same na
 This was observed twice on hosted runners: one module repository pinned `6.0.1` against an
 image carrying `6.1.0` and all 19 of its test files failed to run, and another repository's CI
 was red for eight days for the same reason.
+
+The rule governs the Pester version the suite itself runs on. A deliberate side-by-side compatibility
+matrix is the exception: a repository that verifies its code against more than one Pester major
+installs those extra versions on purpose, from a manifest that is installed but never imported,
+and selects one explicitly inside a separate process. Autoloading never competes with that pin,
+because a version is already imported by the time discovery runs. Keep the exact pins in an
+install-only manifest, and keep `latest` for the version the suite itself runs on.
 
 ```powershell
 # Good - always resolve whatever Pester the runner already has
@@ -803,10 +810,12 @@ in the sum; where they are not, leave it out so an all-inconclusive suite is cau
 ### InModuleScope Placement
 
 Put `InModuleScope` inside the `Context` or `It` that needs it; never wrap it around `Describe`
-or `It`. Pester's own documentation advises against that enclosing placement, because a
-wrapping `InModuleScope` forces the module to load during discovery rather than execution.
-Combined with Pester 6 discovering each test file separately, those discovery-time imports
-accumulate across files until a later file's discovery hard-errors:
+or `It`. Pester's own documentation advises against that enclosing placement. A top-level
+`InModuleScope` is file-scope code, so it runs during discovery rather than execution -- and
+because it requires the module to be loaded already, the `Import-Module` that satisfies it has
+to sit at file scope too, where it also runs during discovery. Combined with Pester 6
+discovering each test file separately, those discovery-time imports accumulate across files
+until a later file's discovery hard-errors:
 
 ```text
 Multiple script or manifest modules named 'ExampleModule' are currently loaded
@@ -831,7 +840,7 @@ Describe 'Get-Thing' {
     }
 }
 
-# Bad - forces a module import during discovery of every file that does this
+# Bad - runs during discovery, and needs a file-scope import that runs during discovery too
 InModuleScope 'ExampleModule' {
     Describe 'Get-Thing' {
         It 'Calls the private helper' {
