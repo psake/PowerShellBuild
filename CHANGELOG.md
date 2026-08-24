@@ -9,23 +9,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- [**#105**](https://github.com/psake/PowerShellBuild/issues/105)
-  **Breaking:** help generation moved from `platyPS` 0.14.x to
-  [`Microsoft.PowerShell.PlatyPS`](https://www.powershellgallery.com/packages/Microsoft.PowerShell.PlatyPS)
-  1.x. PlatyPS is also no longer a `RequiredModules` entry, so
-  `Install-Module PowerShellBuild` no longer installs it — the two PlatyPS
-  modules cannot be loaded into one process, so forcing the new one into every
-  session would break any consumer still holding the old one. Install it
-  yourself if you build help. `$PSBPreference.Docs.AlphabeticParamsOrder` is
-  removed, because PlatyPS 1.x always sorts parameters alphabetically and
-  offers no way back. Generated markdown carries the 1.x schema, though its
-  on-disk layout is unchanged. `Build-PSBuildUpdatableHelp` warns and returns
-  until the cabinet pipeline migrates in
-  [#152](https://github.com/psake/PowerShellBuild/issues/152); it could never
-  succeed in 0.8.x either, see
-  [#169](https://github.com/psake/PowerShellBuild/issues/169). See the
-  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
-
+- [**#105**](https://github.com/psake/PowerShellBuild/issues/105)
+  **Breaking:** help generation moved from `platyPS` 0.14.x to
+  [`Microsoft.PowerShell.PlatyPS`](https://www.powershellgallery.com/packages/Microsoft.PowerShell.PlatyPS)
+  1.x. PlatyPS is also no longer a `RequiredModules` entry, so
+  `Install-Module PowerShellBuild` no longer installs it — the two PlatyPS
+  modules cannot be loaded into one process, so forcing the new one into every
+  session would break any consumer still holding the old one. Install it
+  yourself if you build help. `$PSBPreference.Docs.AlphabeticParamsOrder` is
+  removed, because PlatyPS 1.x always sorts parameters alphabetically and
+  offers no way back. Generated markdown carries the 1.x schema, though its
+  on-disk layout is unchanged. `Build-PSBuildUpdatableHelp` warns and returns
+  until the cabinet pipeline migrates in
+  [#152](https://github.com/psake/PowerShellBuild/issues/152); it could never
+  succeed in 0.8.x either, see
+  [#169](https://github.com/psake/PowerShellBuild/issues/169). See the
+  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
+
 - [**#144**](https://github.com/psake/PowerShellBuild/issues/144)
   **Breaking:** `Test-PSBuildScriptAnalysis` now counts PSScriptAnalyzer
   `ParseError` records alongside `Error`. A file that does not parse at all
