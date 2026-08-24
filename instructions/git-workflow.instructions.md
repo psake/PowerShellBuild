@@ -39,6 +39,9 @@ When using project management tools, include the ticket identifier:
 <type>/<ticket-id>-<short-description>
 ```
 
+Lowercase the ticket identifier even when the tracker displays it in uppercase (`PROJ-123`
+becomes `proj-123`), so the whole branch name stays lowercase.
+
 ### Branch Types
 
 | Prefix      | Purpose                              | Example                              |
@@ -55,9 +58,9 @@ When using project management tools, include the ticket identifier:
 ### Examples with Ticket Numbers
 
 ```text
-feature/PROJ-123-add-user-authentication
-bugfix/PROJ-456-fix-login-validation
-hotfix/PROJ-789-patch-security-issue
+feature/proj-123-add-user-authentication
+bugfix/proj-456-fix-login-validation
+hotfix/proj-789-patch-security-issue
 ```
 
 ### Best Practices
