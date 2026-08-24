@@ -95,7 +95,18 @@ function Build-PSBuildMarkdown {
                 ModuleInfo   = $moduleInfo
                 OutputFolder = $stagingPath
                 Locale       = $Locale
-                Verbose      = $VerbosePreference
+                # PlatyPS 1.x defaults this front matter key to "<Module>-Help.xml", where
+                # 0.14.x wrote "<Module>-help.xml". The key is what Export-MamlCommandHelp
+                # names the MAML file after, so pinning it here keeps the markdown, the MAML
+                # file name, and any existing .ExternalHelp directive in agreement -- and
+                # keeps help resolving on case-sensitive file systems. Renaming after export
+                # would fix the file name while leaving the front matter disagreeing with it.
+                Metadata     = @{ 'external help file' = "$ModuleName-help.xml" }
+                # Compared explicitly rather than passing $VerbosePreference through. The
+                # preference is an ActionPreference, and converting it to a switch uses the
+                # underlying number, so Stop and Inquire turn verbose output on even though
+                # neither asked for it.
+                Verbose      = ($VerbosePreference -eq 'Continue')
             }
             if ($ExcludeDontShow) {
                 $newMarkdownParams.ExcludeDontShow = $true

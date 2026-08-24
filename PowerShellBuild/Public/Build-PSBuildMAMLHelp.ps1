@@ -62,11 +62,10 @@ function Build-PSBuildMAMLHelp {
             }
 
             foreach ($file in $mamlFile) {
-                # PlatyPS 1.x capitalizes the suffix as "-Help.xml" where 0.14.x wrote
-                # "-help.xml". Preserving the old casing keeps existing .ExternalHelp
-                # directives resolving on case-sensitive file systems.
-                $destinationFileName = $file.Name -replace '-Help\.xml$', '-help.xml'
-                $destinationFilePath = Join-Path -Path $localeDestinationPath -ChildPath $destinationFileName
+                # The file name is whatever the document's "external help file" front matter
+                # says, which Build-PSBuildMarkdown pins to the 0.14.x casing. Renaming here
+                # instead would leave the markdown and the MAML disagreeing about the name.
+                $destinationFilePath = Join-Path -Path $localeDestinationPath -ChildPath $file.Name
                 Move-Item -LiteralPath $file.FullName -Destination $destinationFilePath -Force
             }
         } finally {
