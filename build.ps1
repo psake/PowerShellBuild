@@ -42,9 +42,9 @@ if ($Bootstrap.IsPresent) {
     }
     Import-Module -Name PSDepend -Verbose:$false
     Invoke-PSDepend -Path './requirements.psd1' -Install -Import -Force -WarningAction SilentlyContinue
-    # Install-only, never imported: every module in this file conflicts with something
-    # requirements.psd1 imports. See requirements.install-only.psd1 for the per-module reason.
-    Invoke-PSDepend -Path './requirements.install-only.psd1' -Install -Force -WarningAction SilentlyContinue
+    # Install-only, never imported: importing a second Pester major into this session would
+    # crash with a Pester.dll version conflict. See requirements.pester-matrix.psd1.
+    Invoke-PSDepend -Path './requirements.pester-matrix.psd1' -Install -Force -WarningAction SilentlyContinue
 }
 
 # Execute psake task(s)
