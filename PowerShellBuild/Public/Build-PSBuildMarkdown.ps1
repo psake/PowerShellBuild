@@ -95,6 +95,10 @@ function Build-PSBuildMarkdown {
                 ModuleInfo   = $moduleInfo
                 OutputFolder = $stagingPath
                 Locale       = $Locale
+                # The landing page is what carries the module GUID, locale, and help
+                # version into the updatable-help cabinet. 0.14.x never produced one,
+                # which is why Build-PSBuildUpdatableHelp could not work.
+                WithModulePage = $true
                 # PlatyPS 1.x defaults this front matter key to "<Module>-Help.xml", where
                 # 0.14.x wrote "<Module>-help.xml". The key is what Export-MamlCommandHelp
                 # names the MAML file after, so pinning it here keeps the markdown, the MAML

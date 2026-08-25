@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Fixed
+
+- [**#169**](https://github.com/psake/PowerShellBuild/issues/169)
+  `Build-PSBuildUpdatableHelp` produces a help cabinet. It never could before:
+  it needed a module landing page that `Build-PSBuildMarkdown` did not
+  generate, passed an undefined variable as the cabinet source folder, and was
+  never given the module name — so any build that reached the
+  `GenerateUpdatableHelp` task failed with a parameter-binding error.
+  `Build-PSBuildMarkdown` now writes the landing page, and the task passes the
+  module name and output path it always should have. Using the task requires a
+  `HelpInfoUri` in your module manifest; without one it warns and produces
+  nothing, rather than writing a cabinet with no `HelpInfo.xml` to find it by.
+  See the [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
+
 ### Changed
 
 - [**#105**](https://github.com/psake/PowerShellBuild/issues/105)

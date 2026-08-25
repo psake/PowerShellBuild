@@ -155,7 +155,13 @@ $genUpdatableHelpPreReqs = {
 
 # Synopsis: Create updatable help .cab file based on PlatyPS markdown help
 Task GenerateUpdatableHelp -if (. $genUpdatableHelpPreReqs) BuildHelp, {
-    Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
+    $buildUpdatableHelpParams = @{
+        DocsPath   = $PSBPreference.Docs.RootDir
+        OutputPath = $PSBPreference.Help.UpdatableHelpOutDir
+        ModulePath = $PSBPreference.Build.ModuleOutDir
+        Module     = $PSBPreference.General.ModuleName
+    }
+    Build-PSBuildUpdatableHelp @buildUpdatableHelpParams
 }
 
 # Synopsis: Publish module to the defined PowerShell repository
