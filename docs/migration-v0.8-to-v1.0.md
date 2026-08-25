@@ -28,9 +28,16 @@ One line per break; follow the link for details and migration steps.
 - [Unparsable files now fail the script analysis gate](#unparsable-files-now-fail-the-script-analysis-gate)
   — `ParseError` findings are counted with `Error`, so a file that does not
   parse fails every threshold except `None`.
+- [Help generation now uses Microsoft.PowerShell.PlatyPS 1.x, and installs it yourself](#help-generation-now-uses-microsoftpowershellplatyps-1x-and-installs-it-yourself)
+  — the PlatyPS dependency changed module, and is no longer installed for you.
+- [`$PSBPreference.Docs.AlphabeticParamsOrder` is removed](#psbpreferencedocsalphabeticparamsorder-is-removed)
+  — PlatyPS 1.x always sorts alphabetically, so the setting could no longer do anything.
+- [Generated markdown uses the PlatyPS 1.x schema](#generated-markdown-uses-the-platyps-1x-schema)
+  — expect a large diff in `docs/` on the first 1.0.0 build.
+- [Updatable help is temporarily unavailable](#updatable-help-is-temporarily-unavailable)
+  — the cabinet pipeline is migrated before 1.0.0 ships.
 
-> More entries will follow as the Phase 2 migrations to
-> Microsoft.PowerShell.PlatyPS 1.x and psake 5.x land.
+> More entries will follow as the remaining Phase 2 work lands.
 
 ## AI-assisted migration
 
@@ -199,6 +206,125 @@ This is additive — existing values behave as before.
 
 Tracked in issue
 [#144](https://github.com/psake/PowerShellBuild/issues/144).
+
+### Help generation now uses Microsoft.PowerShell.PlatyPS 1.x, and installs it yourself
+
+`Build-PSBuildMarkdown` and `Build-PSBuildMAMLHelp` are built on
+[`Microsoft.PowerShell.PlatyPS`](https://www.powershellgallery.com/packages/Microsoft.PowerShell.PlatyPS)
+1.x instead of `platyPS` 0.14.x. The `GenerateMarkdown` and `GenerateMAML`
+tasks now check for the new module and skip with a warning if it is
+missing, exactly as they did for the old one.
+
+PlatyPS is **no longer listed in `RequiredModules`**, so
+`Install-Module PowerShellBuild` no longer installs it for you. This is
+deliberate rather than an oversight. The two PlatyPS modules each ship
+their own `YamlDotNet.dll` with different assembly identities, and .NET
+refuses to load both into one process — whichever imports second fails
+with `Assembly with same name is already loaded`. A `RequiredModules`
+entry forces that load into **every** session that imports
+PowerShellBuild, including builds that never generate documentation, so
+any consumer still holding `platyPS` 0.14.x — which is every consumer
+part-way through this upgrade — would be unable to import PowerShellBuild
+at all. Making the dependency optional matches how the docs tasks have
+always behaved: they probe for the module and skip when it is absent.
+
+**Before (0.8.x):**
+
+```powershell
+# platyPS arrived with PowerShellBuild via RequiredModules
+Install-Module -Name PowerShellBuild
+```
+
+**After (1.0.0):**
+
+```powershell
+Install-Module -Name PowerShellBuild
+# Only if you build help; add it to your own requirements/bootstrap
+Install-Module -Name Microsoft.PowerShell.PlatyPS -MinimumVersion 1.0.3
+```
+
+**Detection:** the build prints
+`Microsoft.PowerShell.PlatyPS module is not installed. Skipping [GenerateMarkdown] task.`
+and produces no markdown or MAML.
+
+You can uninstall `platyPS` 0.14.x once nothing else on the machine needs
+it. Leaving it installed is safe — it is only a problem if something
+loads it into the same session that loads PlatyPS 1.x.
+
+Tracked in PRs [#150](https://github.com/psake/PowerShellBuild/issues/150)
+and [#151](https://github.com/psake/PowerShellBuild/issues/151); chain
+context in [#105](https://github.com/psake/PowerShellBuild/issues/105).
+
+### `$PSBPreference.Docs.AlphabeticParamsOrder` is removed
+
+PlatyPS 1.x always orders parameters alphabetically and offers no option
+to restore declaration order, so the setting could no longer do anything.
+Rather than keep a setting that silently lies, it is gone, along with the
+`AlphabeticParamsOrder` parameter on `Build-PSBuildMarkdown`.
+
+**Before (0.8.x):**
+
+```powershell
+$PSBPreference.Docs.AlphabeticParamsOrder = $true
+```
+
+**After (1.0.0):**
+
+```powershell
+# Remove the line. Alphabetical ordering is now the only behavior.
+```
+
+**Detection:** setting the property no longer fails (it is a plain
+hashtable), so this will not error — grep your build file for
+`AlphabeticParamsOrder` and delete the assignment. Calling
+`Build-PSBuildMarkdown` with `-AlphabeticParamsOrder` **does** fail, with
+`A parameter cannot be found that matches parameter name 'AlphabeticParamsOrder'`.
+
+`ExcludeDontShow` and `UseFullTypeName` are unchanged and keep their
+existing behavior.
+
+### Generated markdown uses the PlatyPS 1.x schema
+
+Markdown written into `$PSBPreference.Docs.RootDir` now carries
+`PlatyPS schema version: 2024-05-01` and a `document type:` key where
+0.14.x wrote `schema: 2.0.0`. Command documents also gain an `## ALIASES`
+section and per-parameter-set `### __AllParameterSets` headings inside
+`SYNTAX`.
+
+The on-disk layout is unchanged: documents stay at
+`<Docs.RootDir>/<locale>/<Command>.md`, and MAML still lands at
+`<ModuleOutDir>/<locale>/<ModuleName>-help.xml`. PlatyPS 1.x would
+otherwise nest both a level deeper under a `<ModuleName>` directory;
+PowerShellBuild flattens that back out so existing docs trees, static
+site configuration, and `.ExternalHelp` directives keep working.
+
+**Detection:** your first 1.0.0 build produces a large diff in `docs/`.
+
+If you **commit** your `docs/` tree, review that diff for lost prose
+before committing it. Existing documents are refreshed in place with
+`Update-MarkdownCommandHelp`, which preserves hand-written content, so
+this should be schema churn rather than content loss — but verify.
+Consumer guidance for converting a committed tree is
+[#154](https://github.com/psake/PowerShellBuild/issues/154).
+
+### Updatable help is temporarily unavailable
+
+`Build-PSBuildUpdatableHelp` and the `GenerateUpdatableHelp` task write a
+warning and return without producing a cabinet. The 1.x cabinet pipeline
+is migrated in [#152](https://github.com/psake/PowerShellBuild/issues/152)
+before 1.0.0 ships.
+
+This costs nothing in practice: the function could never succeed in
+0.8.x either. It required a module landing page that
+`Build-PSBuildMarkdown` never generated, and it passed an undefined
+variable as the cabinet source folder — three separate defects, recorded
+in [#169](https://github.com/psake/PowerShellBuild/issues/169). The task
+is opt-in and is not part of the default build, so most consumers never
+reached it.
+
+**Detection:** `Updatable help was skipped. The cabinet pipeline has not
+been migrated to Microsoft.PowerShell.PlatyPS 1.x yet` in the build
+output, where 0.8.x raised a parameter-binding error.
 
 ## Adding an entry (for PR contributors)
 

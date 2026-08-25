@@ -115,17 +115,14 @@ function New-PSBuildMarkdownParameter {
     .SYNOPSIS
         Build the Build-PSBuildMarkdown parameter set for a docs scenario.
     .DESCRIPTION
-        Build-PSBuildMarkdown takes four mandatory [bool] parameters that most tests do not care
-        about but cannot omit. This supplies them at their build.properties.ps1 defaults so a
+        Build-PSBuildMarkdown takes three mandatory [bool] parameters that most tests do not
+        care about but cannot omit. This supplies them at their build.properties.ps1 defaults so a
         test only has to name the ones it is actually exercising.
     .PARAMETER Scenario
         Scenario object from New-PSBuildDocsScenario.
     .PARAMETER Overwrite
         Whether comment-based help overwrites existing markdown. Defaults to $false, matching
         $PSBPreference.Docs.Overwrite.
-    .PARAMETER AlphabeticParamsOrder
-        Whether parameters are ordered alphabetically. Defaults to $false, matching
-        $PSBPreference.Docs.AlphabeticParamsOrder.
     .PARAMETER ExcludeDontShow
         Whether parameters marked DontShow are excluded. Defaults to $false, matching
         $PSBPreference.Docs.ExcludeDontShow.
@@ -154,9 +151,6 @@ function New-PSBuildMarkdownParameter {
         $Overwrite = $false,
 
         [bool]
-        $AlphabeticParamsOrder = $false,
-
-        [bool]
         $ExcludeDontShow = $false,
 
         [bool]
@@ -169,7 +163,6 @@ function New-PSBuildMarkdownParameter {
         DocsPath              = $Scenario.DocsPath
         Locale                = $Scenario.Locale
         Overwrite             = $Overwrite
-        AlphabeticParamsOrder = $AlphabeticParamsOrder
         ExcludeDontShow       = $ExcludeDontShow
         UseFullTypeName       = $UseFullTypeName
     }

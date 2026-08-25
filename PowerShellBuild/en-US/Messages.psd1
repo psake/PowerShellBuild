@@ -3,6 +3,7 @@ NoCommandsExported=No commands have been exported. Skipping markdown generation.
 FailedToGenerateMarkdownHelp=Failed to generate markdown help. : {0}
 AddingFileToPsm1=Adding [{0}] to PSM1
 MakeCabNotAvailable=MakeCab.exe is not available. Cannot create help cab.
+UpdatableHelpNotMigrated=Updatable help was skipped. The cabinet pipeline has not been migrated to Microsoft.PowerShell.PlatyPS 1.x yet; see psake/PowerShellBuild#152.
 DirectoryAlreadyExists=Directory already exists [{0}].
 PathLongerThan3Chars=Path [{0}] must be longer than 3 characters.
 BuildSystemDetails=Build System Details:

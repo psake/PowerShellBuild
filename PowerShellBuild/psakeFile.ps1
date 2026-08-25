@@ -174,8 +174,8 @@ Task BuildHelp -Depends $PSBBuildHelpDependency {} -Description 'Builds help doc
 
 $genMarkdownPreReqs = {
     $result = $true
-    if (-not (Get-Module platyPS -ListAvailable)) {
-        Write-Warning "platyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
+    if (-not (Get-Module Microsoft.PowerShell.PlatyPS -ListAvailable)) {
+        Write-Warning "Microsoft.PowerShell.PlatyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
         $result = $false
     }
     $result
@@ -187,7 +187,6 @@ Task GenerateMarkdown -Depends $PSBGenerateMarkdownDependency -PreCondition $gen
         DocsPath              = $PSBPreference.Docs.RootDir
         Locale                = $PSBPreference.Help.DefaultLocale
         Overwrite             = $PSBPreference.Docs.Overwrite
-        AlphabeticParamsOrder = $PSBPreference.Docs.AlphabeticParamsOrder
         ExcludeDontShow       = $PSBPreference.Docs.ExcludeDontShow
         UseFullTypeName       = $PSBPreference.Docs.UseFullTypeName
         Verbose               = $VerbosePreference -eq 'Continue'
@@ -197,8 +196,8 @@ Task GenerateMarkdown -Depends $PSBGenerateMarkdownDependency -PreCondition $gen
 
 $genHelpFilesPreReqs = {
     $result = $true
-    if (-not (Get-Module platyPS -ListAvailable)) {
-        Write-Warning "platyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
+    if (-not (Get-Module Microsoft.PowerShell.PlatyPS -ListAvailable)) {
+        Write-Warning "Microsoft.PowerShell.PlatyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
         $result = $false
     }
     $result
@@ -209,8 +208,8 @@ Task GenerateMAML -Depends $PSBGenerateMAMLDependency -PreCondition $genHelpFile
 
 $genUpdatableHelpPreReqs = {
     $result = $true
-    if (-not (Get-Module platyPS -ListAvailable)) {
-        Write-Warning "platyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
+    if (-not (Get-Module Microsoft.PowerShell.PlatyPS -ListAvailable)) {
+        Write-Warning "Microsoft.PowerShell.PlatyPS module is not installed. Skipping [$($psake.context.currentTaskName)] task."
         $result = $false
     }
     $result

@@ -232,7 +232,7 @@ versions — and installed via **PSDepend** when `./build.ps1 -Bootstrap` runs:
 | psake            | Task runner for this repo's own build                      |
 | PSScriptAnalyzer | Static analysis of the built module                        |
 | InvokeBuild      | Alternate task runner (consumer-facing `IB.tasks.ps1`)     |
-| platyPS          | Help and documentation generation                          |
+| Microsoft.PowerShell.PlatyPS | Help and documentation generation (optional; not a required module) |
 
 ## Testing
 
