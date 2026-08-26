@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [**#166**](https://github.com/psake/PowerShellBuild/issues/166)
+  **Breaking:** the consumer psake floor in `RequiredModules` is raised from
+  `4.9.0` to `5.0.4`. psake 4.x is no longer supported. `RequiredModules` is
+  enforced at import, so a consumer with only psake 4.x installed cannot import
+  the module at all. The lower floor was untested — CI has exercised only 5.0.4
+  since the toolchain moved there in #162 — so it asserted support nothing
+  verified. Invoke-Build users are unaffected. See the
+  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md); most v4 build
+  scripts work under v5 unchanged.
+
 - [**#105**](https://github.com/psake/PowerShellBuild/issues/105)
   **Breaking:** help generation moved from `platyPS` 0.14.x to
   [`Microsoft.PowerShell.PlatyPS`](https://www.powershellgallery.com/packages/Microsoft.PowerShell.PlatyPS)

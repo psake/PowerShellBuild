@@ -41,6 +41,8 @@ One line per break; follow the link for details and migration steps.
 - [A committed `docs/` tree converts itself on the first build](#a-committed-docs-tree-converts-itself-on-the-first-build)
   — the schema conversion is automatic; review the diff for the prose it
   drops, and convert orphaned documents by hand.
+- [psake 4.x is no longer supported; the floor is now 5.0.4](#psake-4x-is-no-longer-supported-the-floor-is-now-504)
+  — psake users must upgrade to 5.0.4+; Invoke-Build users are unaffected.
 
 > More entries will follow as the remaining Phase 2 work lands.
 
@@ -590,6 +592,69 @@ if you compare old and new output yourself, use two separate PowerShell
 processes.
 
 Related: [#154](https://github.com/psake/PowerShellBuild/issues/154).
+
+### psake 4.x is no longer supported; the floor is now 5.0.4
+
+`RequiredModules` requires **psake 5.0.4 or newer**, previously 4.9.0. If you
+use Invoke-Build rather than psake, nothing here applies to you.
+
+`RequiredModules` is enforced when the module is imported, so this is not a
+degraded experience — with only psake 4.x installed,
+`Import-Module PowerShellBuild` fails outright.
+
+**Migration:**
+
+```powershell
+Install-Module -Name psake -MinimumVersion 5.0.4 -Repository PSGallery
+```
+
+If you pin psake in a `requirements.psd1` or equivalent, raise the pin there
+too — installing PowerShellBuild will pull a satisfying psake, but a pinned
+4.9.x will still be the one your build imports.
+
+**Detection:** `Import-Module PowerShellBuild` fails with a message that the
+required module `psake` is not installed, naming version `5.0.4`.
+
+**What upgrading psake costs you.** Per
+[psake's own v4-to-v5 migration guide](https://github.com/psake/psake/blob/main/docs/migration-v4-to-v5.md),
+most v4 build scripts work unchanged. The `Task ... -Depends` syntax,
+`-FromModule`, and `$psake.build_success` are all explicitly retained — this
+repository still uses all three. The breaks are:
+
+- `default.ps1` is no longer auto-detected — rename it to `psakefile.ps1`, or
+  pass `-BuildFile`. PowerShellBuild's own convention has always been
+  `psakeFile.ps1`, so this is unlikely to affect you.
+- The standalone `psake.ps1` and `psake.cmd` runners are gone — use
+  `Import-Module psake; Invoke-psake`. Again unlikely, since the documented
+  PowerShellBuild pattern is a `build.ps1` wrapper.
+- `Invoke-psake` now returns a `PsakeBuildResult` where v4 returned nothing.
+  This only matters if your wrapper assigns or pipes the result;
+  `$psake.build_success` still works.
+- The `OutputHandler`, `OutputHandlers`, and `ColoredOutput` configuration
+  options are removed. Use `$env:NO_COLOR`, `-OutputFormat`, or `-Quiet`.
+- .NET Framework older than 4.0 is unsupported and the default `Framework`
+  moved from `4.0` to `4.7.2`, and the `$framework` global is gone. Neither
+  affects PowerShell module builds.
+- psake 5 requires PowerShell 5.1 (v4 declared 3.0) — already the
+  PowerShellBuild floor, so no additional constraint.
+
+**Why the floor moved.** The floors this module declares were not all earned
+the same way. Pester's floor is lower than the version we build with, and that
+is deliberate: `Test-PSBuildPester` supports both Pester majors and CI proves
+it on every run. The psake floor was lower *and untested* — CI has exercised
+only 5.0.4 since the toolchain moved there, so 4.9.0 was a claim rather than a
+guarantee. Rather than keep asserting support nothing verifies, the floor now
+matches what is tested.
+
+**One thing you gain.** psake 5 stops silently swallowing an escaping `break`.
+Under 4.9.x, a `break` leaking out of a Pester `BeforeAll` — which
+BuildHelpers' `Get-BuildVariable` does — is absorbed, so the test container
+fails invisibly and the build still passes. In this repository that was twelve
+tests that had not been running. If your Pester tests call
+`Set-BuildEnvironment`, upgrading may surface failures that were always there.
+
+Decision and evidence in
+[#166](https://github.com/psake/PowerShellBuild/issues/166).
 
 ## Adding an entry (for PR contributors)
 
