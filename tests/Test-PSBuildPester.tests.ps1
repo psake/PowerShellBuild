@@ -32,6 +32,72 @@ BeforeDiscovery {
     }
 }
 
+Describe 'Pester version floor' {
+
+    # The floor is stated in three places: the manifest's RequiredModules, and twice inside
+    # Test-PSBuildPester. They must agree, and for months they did not -- the manifest said
+    # 5.6.1 while the function said 5.0.0, a version that cannot run the function at all
+    # because Pester 5.0.0 has no New-PesterConfiguration (psake/PowerShellBuild#172).
+    #
+    # The function deliberately keeps a literal rather than reading the manifest at runtime.
+    # Reading it would introduce a lookup that returns nothing when the module is loaded from
+    # an unusual path, and a floor of $null makes "$version -lt $null" false -- the guard would
+    # vanish silently. This test enforces the agreement at the only moment anyone can act on
+    # it: when the drift is introduced.
+
+    BeforeAll {
+        $script:moduleRoot = Split-Path -Path $PSScriptRoot -Parent
+        $script:sourceManifestPath = [IO.Path]::Combine(
+            $script:moduleRoot, 'PowerShellBuild', 'PowerShellBuild.psd1'
+        )
+        $script:sourceFunctionPath = [IO.Path]::Combine(
+            $script:moduleRoot, 'PowerShellBuild', 'Public', 'Test-PSBuildPester.ps1'
+        )
+
+        $script:declaredFloor = (
+            (Import-PowerShellDataFile -Path $script:sourceManifestPath).RequiredModules |
+                Where-Object { $_.ModuleName -eq 'Pester' }
+        ).ModuleVersion
+
+        # Both forms the floor takes in the function: the -MinimumVersion argument on the
+        # import, and the [version] literal in the comparison.
+        $functionSource = Get-Content -Path $script:sourceFunctionPath -Raw
+        $script:guardVersion = @(
+            [regex]::Matches($functionSource, "-MinimumVersion\s+(?<version>\d+\.\d+\.\d+)") +
+            [regex]::Matches($functionSource, "\[version\]'(?<version>\d+\.\d+\.\d+)'")
+        ).ForEach({ $_.Groups['version'].Value })
+    }
+
+    It 'declares a Pester floor in the module manifest' {
+        $script:declaredFloor | Should -Not -BeNullOrEmpty
+    }
+
+    It 'states the floor in Test-PSBuildPester at least twice' {
+        # Guards the test itself: if the function is refactored so neither pattern matches,
+        # an empty set would otherwise satisfy the comparison below and prove nothing.
+        $script:guardVersion.Count | Should -BeGreaterOrEqual 2
+    }
+
+    It 'uses the manifest floor everywhere the function states it' {
+        foreach ($version in $script:guardVersion) {
+            $version | Should -Be $script:declaredFloor
+        }
+    }
+
+    It 'names the same floor in the message the guard throws' {
+        # Read as text rather than with Import-PowerShellDataFile: Messages.psd1 is a
+        # ConvertFrom-StringData document, not a hashtable literal.
+        $messagesPath = [IO.Path]::Combine(
+            $script:moduleRoot, 'PowerShellBuild', 'en-US', 'Messages.psd1'
+        )
+        $messageLine = Get-Content -Path $messagesPath |
+            Where-Object { $_ -like 'PesterVersionNotSupported=*' }
+
+        $messageLine | Should -Not -BeNullOrEmpty
+        $messageLine | Should -Match ([regex]::Escape($script:declaredFloor))
+    }
+}
+
 Describe 'Test-PSBuildPester' {
 
     BeforeAll {
@@ -240,6 +306,13 @@ Describe 'Coverage target' {
             # Regression: an unconditional Import-Module Pester -MinimumVersion 5.0.0 loaded the
             # newest installed Pester on top of an already-loaded older one, which crashes with a
             # Pester.dll version conflict when 5.x and 6.x are installed side by side.
+            #
+            # This skips in CI as of #172. It needs two installed Pester versions to tell
+            # "used the loaded one" apart from "imported the newest", and dropping the 5.x
+            # matrix left exactly one. It still runs on a developer machine with more than one
+            # Pester installed. Restoring it in CI would mean installing a second version that
+            # is never imported -- the machinery #172 deleted -- so it is left skipped
+            # deliberately rather than by oversight.
             $result = Invoke-TestPSBuildPesterInJob -ModulePath $script:builtModulePath -InnerPesterVersion $script:oldestInnerVersion -Path $script:healthyPath
 
             $result.Threw | Should -BeFalse
