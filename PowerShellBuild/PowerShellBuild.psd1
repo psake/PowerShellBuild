@@ -10,7 +10,7 @@
     CompatiblePSEditions = @('Desktop', 'Core')
     RequiredModules      = @(
         @{ModuleName = 'BuildHelpers'; ModuleVersion = '2.0.16' }
-        @{ModuleName = 'Pester'; ModuleVersion = '5.6.1' }
+        @{ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
         @{ModuleName = 'psake'; ModuleVersion = '5.0.4' }
     )
     FunctionsToExport    = @(

@@ -40,7 +40,7 @@ PowerShellBuild/
 │   ├── build.properties.ps1    # $PSBPreference (canonical config hashtable)
 │   ├── psakeFile.ps1           # Tasks consumers import
 │   └── IB.tasks.ps1            # Invoke-Build entry (aliased as PowerShellBuild.IB.Tasks)
-├── tests/                      # Pester 5+ tests
+├── tests/                      # Pester 6+ tests
 │   └── TestModule/             # Sample module exercised by the test suite
 ├── build.ps1                   # Main build entry point for THIS repo
 ├── build.settings.ps1          # Build settings for THIS repo's own psake build
@@ -236,11 +236,11 @@ versions — and installed via **PSDepend** when `./build.ps1 -Bootstrap` runs:
 
 ## Testing
 
-Tests live in `tests/` and run on **Pester 6.0.0** (pinned exactly in `requirements.psd1`;
-see psake/PowerShellBuild#17 for the targeting decision). Write assertions with the classic
-`Should -Be` syntax — valid in both Pester 5 and 6 — rather than the Pester 6-only `Should-*`
-assertion family, so tests remain backportable. The shipped module's own Pester compatibility
-floor (5.0.0 in `Test-PSBuildPester`) is a separate contract and is unchanged.
+Tests live in `tests/` and run on **Pester 6.1.0** (pinned in `requirements.psd1`; see
+psake/PowerShellBuild#17 for the targeting decision). Write assertions with the classic
+`Should -Be` syntax rather than the Pester 6-only `Should-*` assertion family — Pester 6
+still accepts it, and it keeps the diff against existing tests small. The shipped module's
+own floor is **Pester 6.0.0** as of psake/PowerShellBuild#172, matching what CI tests.
 
 - Always build the module before running Pester directly — running against source can produce
   incorrect results. Prefer `./build.ps1 -Task Test` over a raw `Invoke-Pester` call.

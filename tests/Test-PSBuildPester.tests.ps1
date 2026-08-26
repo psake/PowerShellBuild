@@ -1,21 +1,23 @@
 # Integration tests for Test-PSBuildPester (psake/PowerShellBuild#102).
 #
 # Test-PSBuildPester wraps Invoke-Pester, so these tests are Pester-testing-Pester. Every
-# invocation runs in a Start-Job subprocess: two Pester versions cannot coexist in one session,
-# and the subprocess lets each test pin the inner Pester version independently of the outer
-# framework. The scenarios run against every installed Pester major (5.x and 6.x) to verify the
-# shipped function keeps supporting Pester 5 consumers. The job runner itself lives in
-# fixtures/FixtureHelpers.psm1, shared with the other test files that need a fresh session.
+# invocation runs in a Start-Job subprocess, which keeps the inner run's Pester state out of the
+# outer framework's. The job runner lives in fixtures/FixtureHelpers.psm1, shared with the other
+# test files that need a fresh session.
+#
+# This was a two-major matrix until #172 raised the floor to Pester 6. It still discovers the
+# version rather than hardcoding one, so the loop below is what would grow back if a second
+# supported major ever returned.
 #
 # The crash fixtures are generated into $TestDrive at runtime, never checked in, so the
 # repository's own Pester run can never discover them (see #97 for the convention).
 
 BeforeDiscovery {
-    # Newest installed Pester of each supported major version. CI installs 6.x (Pester) and
-    # 5.x (PesterLegacy) via requirements.psd1; locally, absent majors simply produce fewer
-    # matrix legs.
+    # Newest installed Pester of each supported major. Pester 6 is the only supported major
+    # since #172; an absent one simply produces no matrix legs, which fails loudly below rather
+    # than passing with nothing run.
     $script:innerPesterVersions = @(
-        foreach ($majorVersion in 5, 6) {
+        foreach ($majorVersion in 6) {
             $newestOfMajor = Get-Module -Name 'Pester' -ListAvailable |
                 Where-Object { $_.Version.Major -eq $majorVersion } |
                 Sort-Object -Property 'Version' -Descending |
@@ -25,6 +27,9 @@ BeforeDiscovery {
             }
         }
     )
+    if ($script:innerPesterVersions.Count -eq 0) {
+        throw 'No supported Pester major (6.x) is installed; Test-PSBuildPester cannot be verified.'
+    }
 }
 
 Describe 'Test-PSBuildPester' {

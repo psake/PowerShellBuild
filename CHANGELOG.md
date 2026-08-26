@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [**#172**](https://github.com/psake/PowerShellBuild/issues/172)
+  **Breaking:** the consumer Pester floor in `RequiredModules` is raised from
+  `5.6.1` to `6.0.0`, and `Test-PSBuildPester` refuses to run under anything
+  older. Pester 5.x is no longer supported. As with the psake floor, the lower
+  minimum asserted support nothing verified — CI runs Pester 6 and nothing
+  exercised a 5.x consumer. Pester 6 keeps the v5 `Should -Be` assertions
+  (`Should.DisableV5` defaults to `$false`), so most suites need no changes; the
+  one behavioral change to watch is `Run.FailOnNullOrEmptyForEach`, which now
+  defaults to `$true`. Also fixes a guard that could never work:
+  `Test-PSBuildPester` declared a `5.0.0` minimum while calling
+  `New-PesterConfiguration` and `Run.SkipRemainingOnFailure`, neither of which
+  exists in 5.0.0. See the
+  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
+
 - [**#166**](https://github.com/psake/PowerShellBuild/issues/166)
   **Breaking:** the consumer psake floor in `RequiredModules` is raised from
   `4.9.0` to `5.0.4`. psake 4.x is no longer supported. `RequiredModules` is

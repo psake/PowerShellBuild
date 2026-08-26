@@ -43,6 +43,8 @@ One line per break; follow the link for details and migration steps.
   drops, and convert orphaned documents by hand.
 - [psake 4.x is no longer supported; the floor is now 5.0.4](#psake-4x-is-no-longer-supported-the-floor-is-now-504)
   — psake users must upgrade to 5.0.4+; Invoke-Build users are unaffected.
+- [Pester 5.x is no longer supported; the floor is now 6.0.0](#pester-5x-is-no-longer-supported-the-floor-is-now-600)
+  — Pester 6 keeps the `Should -Be` syntax, so most suites need no changes.
 
 > More entries will follow as the remaining Phase 2 work lands.
 
@@ -655,6 +657,59 @@ tests that had not been running. If your Pester tests call
 
 Decision and evidence in
 [#166](https://github.com/psake/PowerShellBuild/issues/166).
+
+### Pester 5.x is no longer supported; the floor is now 6.0.0
+
+`RequiredModules` requires **Pester 6.0.0 or newer**, previously 5.6.1, and
+`Test-PSBuildPester` refuses to run under anything older.
+
+`RequiredModules` is enforced when the module is imported, so with only
+Pester 5.x installed, `Import-Module PowerShellBuild` fails outright.
+
+**Migration:**
+
+```powershell
+Install-Module -Name Pester -MinimumVersion 6.0.0 -Repository PSGallery -SkipPublisherCheck
+```
+
+`-SkipPublisherCheck` is needed on Windows PowerShell, where an older
+Microsoft-signed Pester ships in the box.
+
+**Detection:** `Import-Module PowerShellBuild` fails naming `Pester` and
+version `6.0.0`. If a Pester 5.x is already loaded in the session when
+`Test-PSBuildPester` runs, it throws instead: `Pester version [5.9.1] is
+loaded, but Test-PSBuildPester requires Pester 6.0.0 or newer.`
+
+**What upgrading Pester costs you.** Less than a major version bump usually
+implies, because Pester 6 kept the v5 assertion syntax:
+
+- **`Should -Be` and the rest of the v5 assertions still work.** Pester 6's
+  `Should.DisableV5` configuration option defaults to `$false`, so existing
+  tests keep running unchanged. You are not required to adopt the new
+  `Should-Be` family.
+- **An empty or `$null` `-ForEach` now fails.** `Run.FailOnNullOrEmptyForEach`
+  defaults to `$true` in Pester 6, where Pester 5 skipped silently. If a
+  data-driven test is fed an empty collection, discovery now errors instead of
+  quietly generating no tests. That is usually a bug being surfaced — a test
+  that never ran and never said so — but it can turn a green suite red.
+  Set `-AllowNullOrEmptyForEach` on the specific `It`/`Context` that can
+  legitimately be empty.
+- Pester 6 supports Windows PowerShell 5.1 and PowerShell 7.4+, matching
+  PowerShellBuild's own support floor, so it adds no engine constraint.
+
+**Why the floor moved.** The same reason as the psake floor: the declared
+minimum should be what is actually tested. CI runs Pester 6 and nothing else
+verifies a 5.x consumer, so 5.6.1 asserted support nothing proved.
+
+Two related defects are fixed in the same change. `Test-PSBuildPester`
+declared a `5.0.0` minimum it could never honor — Pester 5.0.0 does not export
+`New-PesterConfiguration` and has no `Run.SkipRemainingOnFailure`, both of
+which the function calls — so the guard admitted versions that failed later
+with a confusing `CommandNotFoundException`. And the exact pin in
+`requirements.psd1` moved to the current release.
+
+Decision and evidence in
+[#172](https://github.com/psake/PowerShellBuild/issues/172).
 
 ## Adding an entry (for PR contributors)
 
