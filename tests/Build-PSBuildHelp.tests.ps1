@@ -98,6 +98,38 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
             $markdown | Should -Not -Match 'schema:\s*2\.0\.0'
         }
 
+        It 'replaces the landing page on rebuild rather than leaving it stale' {
+            # The cabinet's .cab file name is stamped from this page's module GUID, so a copy
+            # left in place after the GUID changes names the cabinet for a module that no
+            # longer exists and Update-Help cannot match it. The page is also the command
+            # index, which goes stale as soon as a command is added or removed. Command help
+            # is deliberately not replaced this way -- that is the assertion below.
+            $landingPagePath = Join-Path -Path $script:markdownScenario.LocalePath -ChildPath (
+                '{0}.md' -f $script:markdownScenario.ModuleName
+            )
+            $originalGuid = ([regex]::Match(
+                    (Get-Content -Path $landingPagePath -Raw), 'Module Guid:\s*(\S+)'
+                )).Groups[1].Value
+            $originalGuid | Should -Not -BeNullOrEmpty
+
+            $manifestPath = Join-Path -Path $script:markdownScenario.ModulePath -ChildPath (
+                '{0}.psd1' -f $script:markdownScenario.ModuleName
+            )
+            $newGuid = [guid]::NewGuid().ToString()
+            (Get-Content -Path $manifestPath -Raw) -replace [regex]::Escape($originalGuid), $newGuid |
+                Set-Content -Path $manifestPath
+
+            $rebuildJobParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildMarkdown'
+                Parameter   = New-PSBuildMarkdownParameter -Scenario $script:markdownScenario
+            }
+            $rebuild = Invoke-PSBuildCommandInJob @rebuildJobParameter
+            $rebuild.Threw | Should -BeFalse
+
+            Get-Content -Path $landingPagePath -Raw | Should -Match ([regex]::Escape($newGuid))
+        }
+
         It 'keeps the markdown directly under the locale directory' {
             # New-MarkdownCommandHelp writes to <OutputFolder>/<ModuleName>. The function
             # flattens that back out, so a nested module directory here means the flattening

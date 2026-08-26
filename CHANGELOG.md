@@ -7,20 +7,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### Fixed
-
-- [**#169**](https://github.com/psake/PowerShellBuild/issues/169)
-  `Build-PSBuildUpdatableHelp` produces a help cabinet. It never could before:
-  it needed a module landing page that `Build-PSBuildMarkdown` did not
-  generate, passed an undefined variable as the cabinet source folder, and was
-  never given the module name — so any build that reached the
-  `GenerateUpdatableHelp` task failed with a parameter-binding error.
-  `Build-PSBuildMarkdown` now writes the landing page, and the task passes the
-  module name and output path it always should have. Using the task requires a
-  `HelpInfoUri` in your module manifest; without one it warns and produces
-  nothing, rather than writing a cabinet with no `HelpInfo.xml` to find it by.
-  See the [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
-
 ### Changed
 
 - [**#105**](https://github.com/psake/PowerShellBuild/issues/105)
@@ -33,12 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   yourself if you build help. `$PSBPreference.Docs.AlphabeticParamsOrder` is
   removed, because PlatyPS 1.x always sorts parameters alphabetically and
   offers no way back. Generated markdown carries the 1.x schema, though its
-  on-disk layout is unchanged. `Build-PSBuildUpdatableHelp` warns and returns
-  until the cabinet pipeline migrates in
-  [#152](https://github.com/psake/PowerShellBuild/issues/152); it could never
-  succeed in 0.8.x either, see
-  [#169](https://github.com/psake/PowerShellBuild/issues/169). See the
-  [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
+  on-disk layout is unchanged, and now includes a module landing page that
+  0.14.x never produced. Updatable help is covered separately under **Fixed**.
+  See the [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
 
 - [**#144**](https://github.com/psake/PowerShellBuild/issues/144)
   **Breaking:** `Test-PSBuildScriptAnalysis` now counts PSScriptAnalyzer
@@ -69,6 +52,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   parameter binding instead of working as documented.
 
 ### Fixed
+
+- [**#169**](https://github.com/psake/PowerShellBuild/issues/169)
+  `Build-PSBuildUpdatableHelp` produces a help cabinet. It never could before:
+  it needed a module landing page that `Build-PSBuildMarkdown` did not
+  generate, passed an undefined variable as the cabinet source folder, and was
+  never given the module name — so any build that reached the
+  `GenerateUpdatableHelp` task failed with a parameter-binding error.
+  `Build-PSBuildMarkdown` now writes the landing page, and the task passes the
+  module name and output path it always should have. Using the task requires a
+  `HelpInfoUri` in your module manifest; without one it warns and produces
+  nothing, rather than writing a cabinet with no `HelpInfo.xml` to find it by.
+  See the [v0.8 → v1.0 migration guide](docs/migration-v0.8-to-v1.0.md).
 
 - [**#147**](https://github.com/psake/PowerShellBuild/issues/147)
   `Test-PSBuildScriptAnalysis` retries the analysis when a PSScriptAnalyzer rule
