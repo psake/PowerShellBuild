@@ -14,11 +14,10 @@ consistency ultimately helps the community in building high-quality PowerShell
 modules.
 
 > If using [psake](https://github.com/psake/psake) as your task runner, version
-> `4.8.0` or greater is required to make use of shared tasks distributed in
-> separate modules. To install psake `4.8.0` you can run:
+> `5.0.4` or greater is required. To install psake you can run:
 
 ```powershell
-Install-Module -Name psake -RequiredVersion 4.8.0 -Repository PSGallery
+Install-Module -Name psake -MinimumVersion 5.0.4 -Repository PSGallery
 ```
 
 > For [Invoke-Build](https://github.com/nightroman/Invoke-Build), see the

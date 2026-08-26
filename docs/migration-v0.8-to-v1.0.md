@@ -38,6 +38,11 @@ One line per break; follow the link for details and migration steps.
   — it could never succeed in 0.8.x; using it now needs a `HelpInfoUri` in your manifest.
 - [Your `docs/` tree gains a module landing page](#your-docs-tree-gains-a-module-landing-page)
   — a new `<Module>.md` appears alongside the per-command documents.
+- [A committed `docs/` tree converts itself on the first build](#a-committed-docs-tree-converts-itself-on-the-first-build)
+  — the schema conversion is automatic; review the diff for the prose it
+  drops, and convert orphaned documents by hand.
+- [psake 4.x is no longer supported; the floor is now 5.0.4](#psake-4x-is-no-longer-supported-the-floor-is-now-504)
+  — psake users must upgrade to 5.0.4+; Invoke-Build users are unaffected.
 
 > More entries will follow as the remaining Phase 2 work lands.
 
@@ -306,8 +311,8 @@ If you **commit** your `docs/` tree, review that diff for lost prose
 before committing it. Existing documents are refreshed in place with
 `Update-MarkdownCommandHelp`, which preserves hand-written content, so
 this should be schema churn rather than content loss — but verify.
-Consumer guidance for converting a committed tree is
-[#154](https://github.com/psake/PowerShellBuild/issues/154).
+Consumer guidance for converting a committed tree is in
+[A committed `docs/` tree converts itself on the first build](#a-committed-docs-tree-converts-itself-on-the-first-build).
 
 ### Updatable help works, and now requires a `HelpInfoUri`
 
@@ -377,6 +382,279 @@ so `Build-PSBuildMAMLHelp` filters it out.
 
 **Detection:** a new `<Module>.md` file appears in your docs tree on the
 first 1.0.0 build. If you commit `docs/`, commit it too.
+
+### A committed `docs/` tree converts itself on the first build
+
+If you commit your `docs/` tree, you do **not** need a manual conversion
+step in the ordinary case. The `GenerateMarkdown` task runs
+`Update-MarkdownCommandHelp` over every existing command document on every
+build, and that cmdlet rewrites a 0.14.x document into the 1.x schema in
+place. A tree that went into the first 1.0.0 build as `V1Schema` comes out
+of it as `V2Schema`, in the same files, with no staging directory and no
+leftovers:
+
+```console
+=== docs tree BEFORE the build (genuine 0.14.x) ===
+  Get-ScratchWidget.md         CommandHelp, V1Schema
+  New-ScratchWidget.md         CommandHelp, V1Schema
+  Remove-ScratchWidget.md      CommandHelp, V1Schema
+  ScratchModule.md             ModuleFile, V1Schema
+
+=== docs tree AFTER the build ===
+  Get-ScratchWidget.md         CommandHelp, V2Schema
+  New-ScratchWidget.md         CommandHelp, V2Schema
+  Remove-ScratchWidget.md      CommandHelp, V2Schema
+  ScratchModule.md             ModuleFile, V2Schema
+```
+
+`Measure-PlatyPSMarkdown` is how you check which schema a tree is on:
+
+```powershell
+Measure-PlatyPSMarkdown -Path ./docs/en-US/*.md |
+    Select-Object FileType, FilePath
+```
+
+So the work is not running a conversion. It is **reading the diff the build
+produces before you commit it**, and handling the few documents the build
+cannot convert.
+
+#### What the conversion keeps and what it drops
+
+Verified by round-tripping a 0.14.x tree whose markdown had been edited by
+hand beyond what comment-based help contained:
+
+| Hand-written content                                    | Result                  |
+| ------------------------------------------------------- | ----------------------- |
+| Extra prose paragraph in `## DESCRIPTION`                | Survives                |
+| A whole `### EXAMPLE` block added only to the markdown   | Survives                |
+| An edited parameter description                          | Survives, but see below |
+| Bodies under `## INPUTS` and `## OUTPUTS`                | Survives                |
+| Extra paragraph in `## NOTES`                            | Survives                |
+| A heading that is not part of the schema (`## CAVEATS`)  | **Silently dropped**    |
+
+The last row is the one to grep for. PlatyPS parses a command document into
+a fixed set of sections; anything outside them has nowhere to go and is
+discarded with no warning and no error. If your documents carry custom
+sections, move that content into `## NOTES` — or into the module landing
+page — before your first 1.0.0 build.
+
+**Edited parameter descriptions are appended to, not replaced.** Where the
+description in the markdown differs from the one in the module's
+comment-based help, `Update-MarkdownCommandHelp` adds the comment-based help
+text underneath the markdown text rather than reconciling them — and it does
+so again on every subsequent build. After one build:
+
+```text
+### -IncludeHidden
+
+Include widgets that are marked as hidden. HANDWRITTEN-PARAMETER text.
+Include widgets that are marked as hidden.
+```
+
+After two:
+
+```text
+Include widgets that are marked as hidden. HANDWRITTEN-PARAMETER text.
+Include widgets that are marked as hidden.
+Include widgets that are marked as hidden.
+```
+
+Parameter descriptions unchanged from comment-based help are not affected.
+The fix is to keep comment-based help as the single source of truth for
+parameter descriptions and delete the divergent markdown text; prose in
+`DESCRIPTION`, `EXAMPLES`, and `NOTES` does not behave this way.
+
+#### What the front matter becomes
+
+```yaml
+# Before (0.14.x)
+external help file: ScratchModule-help.xml
+Module Name: ScratchModule
+online version: https://example.com/scratch-widget
+schema: 2.0.0
+```
+
+```yaml
+# After (1.0.0)
+document type: cmdlet
+external help file: ScratchModule-help.xml
+HelpUri: https://example.com/scratch-widget
+Module Name: ScratchModule
+ms.date: 08/26/2026
+PlatyPS schema version: 2024-05-01
+```
+
+`schema:` becomes `PlatyPS schema version:`, `online version:` becomes
+`HelpUri:`, `document type:` and `ms.date:` are new, and the keys are
+re-sorted. `external help file:` is carried across **byte for byte**, which
+is what you want: the value names the MAML file, PowerShellBuild pins it to
+the 0.14.x lowercase `<Module>-help.xml` spelling, and an existing
+`.ExternalHelp` directive keeps resolving — including on case-sensitive file
+systems.
+
+#### The documents the build cannot convert
+
+`Update-MarkdownCommandHelp` looks each document's command up in the current
+session. A document for a command your module no longer exports has nothing
+to look up, so the cmdlet writes a non-terminating error whose message is
+just the command name, and leaves the file on the 0.14.x schema:
+
+```text
+Update-MarkdownCommandHelp: Get-ScratchWidget
+```
+
+The error identifier is
+`FailedToImportMarkdown,Microsoft.PowerShell.PlatyPS.UpdateMarkdownHelpCommand`
+and the category reason is `CommandNotFoundException`. **Detection:** after
+the build, `Measure-PlatyPSMarkdown` still reports `V1Schema` for those
+files. Delete them if the command is gone, or rename them to match the
+command that replaced it.
+
+#### Converting by hand, without a build
+
+You need the one-shot below only when you want the conversion as its own
+reviewable commit, separate from a build. Import your module first — the
+same session lookup applies:
+
+```powershell
+Import-Module ./Output/MyModule/1.0.0/MyModule.psd1 -Force
+
+$commandDocument = Measure-PlatyPSMarkdown -Path ./docs/en-US/*.md |
+    Where-Object FileType -match 'CommandHelp'
+Update-MarkdownCommandHelp -Path $commandDocument.FilePath -NoBackup
+```
+
+That converts the command documents only. If your 0.14.x tree has a module
+landing page, it stays on the old schema — `Update-MarkdownModuleFile`
+cannot refresh one on its own, because it requires the imported
+`-CommandHelp` objects the page indexes. Leave it: your next build replaces
+the landing page wholesale and stamps the 1.x front matter on it.
+
+Three details in that snippet are load-bearing:
+
+- **Filter to `CommandHelp`.** Your tree contains a module landing page
+  (`<Module>.md`), and it is a different document type. Fed to
+  `Update-MarkdownCommandHelp` it is at least rejected loudly —
+  `'…\MyModule.md' is not a CommandHelp file.` — and left alone while the
+  command documents still convert. The other two entry points are not so
+  safe. `Import-MarkdownCommandHelp` accepts the landing page without
+  complaint, hands back a `CommandHelp` object titled after the module, and
+  `Export-MarkdownCommandHelp` then writes it back out as an empty cmdlet
+  document whose front matter has the landing page's
+  `{{ Update Download Link }}` placeholders embedded as malformed YAML. Feed
+  the same object to `Export-MamlCommandHelp` and it aborts the whole export
+  and writes **nothing**, not even for the command documents that were fine
+  ([PowerShell/platyPS#862](https://github.com/PowerShell/platyPS/issues/862)).
+- **Pass `-NoBackup`.** Without it the cmdlet writes a `<Command>.md.bak`
+  beside every document, and a second run fails on all of them with
+  `IOException: Cannot create a file when that file already exists.`
+  ([PowerShell/platyPS#863](https://github.com/PowerShell/platyPS/issues/863)).
+  With `-NoBackup` the command is repeatable. Your version control is the
+  backup.
+- **Update in place; do not export.** The export pipeline that looks like
+  the natural one-shot does not do what it appears to:
+
+  ```powershell
+  # Does NOT convert ./docs/en-US in place
+  Measure-PlatyPSMarkdown -Path ./docs/en-US/*.md |
+      Where-Object FileType -match 'CommandHelp' |
+      Import-MarkdownCommandHelp -Path { $_.FilePath } |
+      Export-MarkdownCommandHelp -OutputFolder ./docs/en-US -Force
+  ```
+
+  `Export-MarkdownCommandHelp` always appends the module name to
+  `-OutputFolder`, so that writes `./docs/en-US/MyModule/*.md` and leaves
+  every original file untouched on the 0.14.x schema. If you use the export
+  pipeline anyway, send it to a staging folder and move
+  `<staging>/<Module>/*.md` back over your tree. Dropping `-Force` does not
+  help either: the export then skips each existing file with only a warning
+  — `'Get-ScratchWidget' exists, skipping. Use -Force to overwrite.` —
+  writes nothing, and returns success.
+
+#### Recommended sequence
+
+1. Commit or stash everything, so the conversion diff stands alone.
+2. Grep your documents for headings outside the PlatyPS schema and relocate
+   that content.
+3. Run your normal 1.0.0 build.
+4. Run `Measure-PlatyPSMarkdown` and confirm every command document reports
+   `V2Schema`. Anything still on `V1Schema` is an orphaned document.
+5. Read the diff for prose, not just for schema churn — in particular
+   doubled parameter descriptions and missing custom sections.
+6. Commit the converted tree together with the new `<Module>.md` landing
+   page.
+
+Verified against Microsoft.PowerShell.PlatyPS 1.0.3 on PowerShell 7 with a
+throwaway module whose 0.14.x markdown was generated by platyPS 0.14.2.
+Note that platyPS 0.14.2 and Microsoft.PowerShell.PlatyPS cannot be loaded
+into the same session — they ship conflicting `YamlDotNet` assemblies — so
+if you compare old and new output yourself, use two separate PowerShell
+processes.
+
+Related: [#154](https://github.com/psake/PowerShellBuild/issues/154).
+
+### psake 4.x is no longer supported; the floor is now 5.0.4
+
+`RequiredModules` requires **psake 5.0.4 or newer**, previously 4.9.0. If you
+use Invoke-Build rather than psake, nothing here applies to you.
+
+`RequiredModules` is enforced when the module is imported, so this is not a
+degraded experience — with only psake 4.x installed,
+`Import-Module PowerShellBuild` fails outright.
+
+**Migration:**
+
+```powershell
+Install-Module -Name psake -MinimumVersion 5.0.4 -Repository PSGallery
+```
+
+If you pin psake in a `requirements.psd1` or equivalent, raise the pin there
+too — installing PowerShellBuild will pull a satisfying psake, but a pinned
+4.9.x will still be the one your build imports.
+
+**Detection:** `Import-Module PowerShellBuild` fails with a message that the
+required module `psake` is not installed, naming version `5.0.4`.
+
+**What upgrading psake costs you.** Per
+[psake's own v4-to-v5 migration guide](https://github.com/psake/psake/blob/main/docs/migration-v4-to-v5.md),
+most v4 build scripts work unchanged. The `Task ... -Depends` syntax,
+`-FromModule`, and `$psake.build_success` are all explicitly retained — this
+repository still uses all three. The breaks are:
+
+- `default.ps1` is no longer auto-detected — rename it to `psakefile.ps1`, or
+  pass `-BuildFile`. PowerShellBuild's own convention has always been
+  `psakeFile.ps1`, so this is unlikely to affect you.
+- The standalone `psake.ps1` and `psake.cmd` runners are gone — use
+  `Import-Module psake; Invoke-psake`. Again unlikely, since the documented
+  PowerShellBuild pattern is a `build.ps1` wrapper.
+- `Invoke-psake` now returns a `PsakeBuildResult` where v4 returned nothing.
+  This only matters if your wrapper assigns or pipes the result;
+  `$psake.build_success` still works.
+- The `OutputHandler`, `OutputHandlers`, and `ColoredOutput` configuration
+  options are removed. Use `$env:NO_COLOR`, `-OutputFormat`, or `-Quiet`.
+- .NET Framework older than 4.0 is unsupported and the default `Framework`
+  moved from `4.0` to `4.7.2`, and the `$framework` global is gone. Neither
+  affects PowerShell module builds.
+- psake 5 requires PowerShell 5.1 (v4 declared 3.0) — already the
+  PowerShellBuild floor, so no additional constraint.
+
+**Why the floor moved.** The floors this module declares were not all earned
+the same way. Pester's floor is lower than the version we build with, and that
+is deliberate: `Test-PSBuildPester` supports both Pester majors and CI proves
+it on every run. The psake floor was lower *and untested* — CI has exercised
+only 5.0.4 since the toolchain moved there, so 4.9.0 was a claim rather than a
+guarantee. Rather than keep asserting support nothing verifies, the floor now
+matches what is tested.
+
+**One thing you gain.** psake 5 stops silently swallowing an escaping `break`.
+Under 4.9.x, a `break` leaking out of a Pester `BeforeAll` — which
+BuildHelpers' `Get-BuildVariable` does — is absorbed, so the test container
+fails invisibly and the build still passes. In this repository that was twelve
+tests that had not been running. If your Pester tests call
+`Set-BuildEnvironment`, upgrading may surface failures that were always there.
+
+Decision and evidence in
+[#166](https://github.com/psake/PowerShellBuild/issues/166).
 
 ## Adding an entry (for PR contributors)
 
