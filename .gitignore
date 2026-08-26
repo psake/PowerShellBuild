@@ -1,2 +1,8 @@
 Output/
 tests/out/
+
+# Claude Code drops per-developer settings and agent worktrees in here. settings.json is
+# deliberately tracked -- it pre-approves the github-projects MCP server for every clone
+# (#131) -- so ignore the directory's contents and keep that one file.
+.claude/*
+!.claude/settings.json
