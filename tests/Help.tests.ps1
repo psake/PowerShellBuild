@@ -8,21 +8,26 @@ BeforeDiscovery {
         $params | Where-Object { $_.Name -notin $commonParams } | Sort-Object -Property Name -Unique
     }
 
-    # BuildHelpers' Set-BuildEnvironment populates these during the psake build. When Pester is
-    # invoked directly they are absent, and every lookup below then degrades silently instead of
-    # failing: Get-Module with an empty name returns $null, and Get-Command -Module $null applies
-    # no filter at all, so this file would generate a Describe -- and two Get-Help lookups -- for
-    # every command installed on the machine. Fail fast instead. See psake/PowerShellBuild#174.
-    $requiredEnvironmentVariableName = @('BHProjectName', 'BHProjectPath', 'BHPSModuleManifest')
-    $missingEnvironmentVariableName  = $requiredEnvironmentVariableName | Where-Object {
-        [string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($_))
-    }
-    if ($missingEnvironmentVariableName) {
-        throw (
-            'The BuildHelpers build environment variables are not set: ' +
-            "$($missingEnvironmentVariableName -join ', '). Run './build.ps1 -Task Test', or run " +
-            "'Import-Module BuildHelpers; Set-BuildEnvironment -Force' before invoking Pester directly."
-        )
+    # This file needs two things the psake build produces: BuildHelpers' BH* variables, and the
+    # built module under Output/. When Pester is invoked directly neither exists, so build once
+    # rather than failing -- psake/psake's own Help.tests.ps1 takes the same approach, and
+    # Manifest.tests.ps1 does the environment half of it here. Inside a build this is a no-op,
+    # because build.ps1 has already called Set-BuildEnvironment.
+    #
+    # The check stays conditional deliberately. Calling Set-BuildEnvironment unconditionally lets
+    # an escaping 'break' from BuildHelpers' Get-BuildVariable switch blocks unwind out of this
+    # block, which psake 4.9.x absorbs and psake 5.x does not -- Pester then fails the whole
+    # container. Manifest.tests.ps1 carries the same guard for the same reason.
+    if (-not $env:BHProjectName) {
+        $repositoryRoot = Split-Path -Path $PSScriptRoot -Parent
+        Push-Location -LiteralPath $repositoryRoot
+        try {
+            # Resolved from $PSScriptRoot rather than the current directory, so this works
+            # wherever Pester was invoked from.
+            & ([IO.Path]::Combine($repositoryRoot, 'build.ps1')) -Task Build
+        } finally {
+            Pop-Location
+        }
     }
 
     $manifest             = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
