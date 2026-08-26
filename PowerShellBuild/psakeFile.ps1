@@ -215,7 +215,14 @@ $genUpdatableHelpPreReqs = {
     $result
 }
 Task GenerateUpdatableHelp -Depends $PSBGenerateUpdatableHelpDependency -PreCondition $genUpdatableHelpPreReqs {
-    Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir -Verbose:($VerbosePreference -eq 'Continue')
+    $buildUpdatableHelpParameters = @{
+        DocsPath   = $PSBPreference.Docs.RootDir
+        OutputPath = $PSBPreference.Help.UpdatableHelpOutDir
+        ModulePath = $PSBPreference.Build.ModuleOutDir
+        Module     = $PSBPreference.General.ModuleName
+        Verbose    = ($VerbosePreference -eq 'Continue')
+    }
+    Build-PSBuildUpdatableHelp @buildUpdatableHelpParameters
 } -Description 'Create updatable help .cab file based on PlatyPS markdown help'
 
 Task Publish -Depends $PSBPublishDependency {

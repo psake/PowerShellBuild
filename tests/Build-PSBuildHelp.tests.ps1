@@ -1,12 +1,15 @@
-# Baseline coverage for the three help-building functions (psake/PowerShellBuild#149).
+# Unit coverage for the three help-building functions (psake/PowerShellBuild#149).
 #
-# Build-PSBuildMarkdown, Build-PSBuildMAMLHelp, and Build-PSBuildUpdatableHelp have had no
-# tests. The repository does not run its own docs tasks either -- the root psakeFile.ps1 goes
-# Init -> Clean -> Build -> Analyze -> Pester -> Publish and never invokes GenerateMarkdown,
-# GenerateMAML, or GenerateUpdatableHelp -- so nothing observes these functions today. That
-# makes the PlatyPS 1.x migration (#105) a rewrite of three uncovered functions. This file is
-# the red-before-green baseline they regress against, written against the CURRENT platyPS
-# 0.14.2 behavior.
+# These functions had no tests of their own before #149. They were not entirely unobserved,
+# though: build.tests.ps1 builds tests/TestModule through -FromModule PowerShellBuild, whose
+# Build task depends on BuildHelp, so GenerateMarkdown and GenerateMAML have been exercised
+# end to end all along and "Has MAML help XML" pinned the output layout. What was missing was
+# coverage of the functions directly, with specific options, and anything at all for
+# GenerateUpdatableHelp -- which is not in the default Build chain.
+#
+# The file began as a red-before-green baseline against platyPS 0.14.2 and now asserts the
+# PlatyPS 1.x behavior the migration produces. The task wiring, which no function-level test
+# can reach, is covered in build.tests.ps1.
 #
 # Every invocation runs in a background job. That is not incidental: platyPS 0.14.2 and
 # Microsoft.PowerShell.PlatyPS 1.x each load their own YamlDotNet.dll through NestedModules,
@@ -71,10 +74,9 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
             }
         }
 
-        It 'writes a module landing page named for the module' -Skip {
-            # Skipped: New-MarkdownHelp is called without -WithModulePage, so the landing page
-            # is never produced. That is defect 1 of psake/PowerShellBuild#169 and the reason
-            # Build-PSBuildUpdatableHelp cannot run at all. Unskip when #169 is fixed.
+        It 'writes a module landing page named for the module' {
+            # The cabinet step reads the module GUID, locale, and help version from this page.
+            # Its absence was defect 1 of psake/PowerShellBuild#169.
             $landingPageName = '{0}.md' -f $script:markdownScenario.ModuleName
             Join-Path -Path $script:markdownScenario.LocalePath -ChildPath $landingPageName |
                 Should -Exist
@@ -94,6 +96,38 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
             $markdown | Should -Match 'PlatyPS schema version:'
             $markdown | Should -Match 'document type:\s*cmdlet'
             $markdown | Should -Not -Match 'schema:\s*2\.0\.0'
+        }
+
+        It 'replaces the landing page on rebuild rather than leaving it stale' {
+            # The cabinet's .cab file name is stamped from this page's module GUID, so a copy
+            # left in place after the GUID changes names the cabinet for a module that no
+            # longer exists and Update-Help cannot match it. The page is also the command
+            # index, which goes stale as soon as a command is added or removed. Command help
+            # is deliberately not replaced this way -- that is the assertion below.
+            $landingPagePath = Join-Path -Path $script:markdownScenario.LocalePath -ChildPath (
+                '{0}.md' -f $script:markdownScenario.ModuleName
+            )
+            $originalGuid = ([regex]::Match(
+                    (Get-Content -Path $landingPagePath -Raw), 'Module Guid:\s*(\S+)'
+                )).Groups[1].Value
+            $originalGuid | Should -Not -BeNullOrEmpty
+
+            $manifestPath = Join-Path -Path $script:markdownScenario.ModulePath -ChildPath (
+                '{0}.psd1' -f $script:markdownScenario.ModuleName
+            )
+            $newGuid = [guid]::NewGuid().ToString()
+            (Get-Content -Path $manifestPath -Raw) -replace [regex]::Escape($originalGuid), $newGuid |
+                Set-Content -Path $manifestPath
+
+            $rebuildJobParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildMarkdown'
+                Parameter   = New-PSBuildMarkdownParameter -Scenario $script:markdownScenario
+            }
+            $rebuild = Invoke-PSBuildCommandInJob @rebuildJobParameter
+            $rebuild.Threw | Should -BeFalse
+
+            Get-Content -Path $landingPagePath -Raw | Should -Match ([regex]::Escape($newGuid))
         }
 
         It 'keeps the markdown directly under the locale directory' {
@@ -143,34 +177,101 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
         }
     }
 
-    Context 'Build-PSBuildUpdatableHelp' {
+    Context 'Build-PSBuildUpdatableHelp' -Skip:(-not $script:onWindows) {
 
         BeforeAll {
             $script:cabScenario = New-PSBuildDocsScenario -Path $TestDrive -Name 'cab'
+
+            $cabMarkdownJobParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildMarkdown'
+                Parameter   = New-PSBuildMarkdownParameter -Scenario $script:cabScenario
+            }
+            $null = Invoke-PSBuildCommandInJob @cabMarkdownJobParameter
+
+            # MAML has to land in the module directory, because that is where the cabinet step
+            # reads it from -- the same path the GenerateUpdatableHelp task supplies.
+            $cabMamlJobParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildMAMLHelp'
+                Parameter   = @{
+                    Path            = $script:cabScenario.DocsPath
+                    DestinationPath = $script:cabScenario.ModulePath
+                }
+            }
+            $null = Invoke-PSBuildCommandInJob @cabMamlJobParameter
+
             $cabJobParameter = @{
                 ModulePath  = $script:builtModulePath
                 CommandName = 'Build-PSBuildUpdatableHelp'
                 Parameter   = @{
                     DocsPath   = $script:cabScenario.DocsPath
                     OutputPath = $script:cabScenario.UpdatableHelpPath
+                    ModulePath = $script:cabScenario.ModulePath
                     Module     = $script:cabScenario.ModuleName
                 }
             }
             $script:cabResult = Invoke-PSBuildCommandInJob @cabJobParameter
         }
 
-        # Pins the documented intermediate state, not the destination. The cabinet pipeline
-        # migrates in #152 together with the three defects in #169 that stopped this function
-        # ever succeeding. Until then it must fail quietly rather than throw, and above all it
-        # must not name a platyPS 0.14.2 command: resolving one autoloads that module, and a
-        # session holding it can no longer import Microsoft.PowerShell.PlatyPS at all.
-        It 'returns without throwing' {
-            $script:cabResult.Threw | Should -BeFalse
+        It 'completes without error' {
             $script:cabResult.ErrorMessage | Should -BeNullOrEmpty
+            $script:cabResult.Threw | Should -BeFalse
         }
 
-        It 'writes nothing' {
-            $script:cabScenario.UpdatableHelpPath | Should -Not -Exist
+        It 'produces a cabinet file' {
+            Get-ChildItem -Path $script:cabScenario.UpdatableHelpPath -Filter '*.cab' |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It 'produces the help info manifest' {
+            # Written only when the manifest declares a HelpInfoUri. Without one the cabinet is
+            # still produced and this file is not, which is output that looks complete and is
+            # useless to Update-Help.
+            Get-ChildItem -Path $script:cabScenario.UpdatableHelpPath -Filter '*HelpInfo.xml' |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It 'names the cabinet for the module, its GUID, and the locale' {
+            $manifestPath = Join-Path -Path $script:cabScenario.ModulePath -ChildPath (
+                '{0}.psd1' -f $script:cabScenario.ModuleName
+            )
+            $moduleGuid = (Import-PowerShellDataFile -Path $manifestPath).GUID
+            $expectedName = '{0}_{1}_{2}_HelpContent.cab' -f
+                $script:cabScenario.ModuleName, $moduleGuid, $script:cabScenario.Locale
+
+            @(Get-ChildItem -Path $script:cabScenario.UpdatableHelpPath -Filter '*.cab')[0].Name |
+                Should -Be $expectedName
+        }
+    }
+
+    Context 'Build-PSBuildUpdatableHelp refuses to half-produce' -Skip:(-not $script:onWindows) {
+
+        It 'declines when the manifest declares no HelpInfoUri' {
+            # New-HelpCabinetFile writes the cabinet and its zip, then fails before writing the
+            # HelpInfo.xml that Update-Help needs to find them. Stopping first is the whole
+            # point of the guard, so this asserts nothing at all was written.
+            $scenario = New-PSBuildDocsScenario -Path $TestDrive -Name 'nouri'
+            $manifestPath = Join-Path -Path $scenario.ModulePath -ChildPath (
+                '{0}.psd1' -f $scenario.ModuleName
+            )
+            (Get-Content -Path $manifestPath -Raw) -replace "(?m)^\s*HelpInfoUri.*$", '' |
+                Set-Content -Path $manifestPath
+
+            $guardJobParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildUpdatableHelp'
+                Parameter   = @{
+                    DocsPath   = $scenario.DocsPath
+                    OutputPath = $scenario.UpdatableHelpPath
+                    ModulePath = $scenario.ModulePath
+                    Module     = $scenario.ModuleName
+                }
+            }
+            $result = Invoke-PSBuildCommandInJob @guardJobParameter
+
+            $result.Threw | Should -BeFalse
+            $scenario.UpdatableHelpPath | Should -Not -Exist
         }
     }
 }

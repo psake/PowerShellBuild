@@ -95,6 +95,10 @@ function Build-PSBuildMarkdown {
                 ModuleInfo   = $moduleInfo
                 OutputFolder = $stagingPath
                 Locale       = $Locale
+                # The landing page is what carries the module GUID, locale, and help
+                # version into the updatable-help cabinet. 0.14.x never produced one,
+                # which is why Build-PSBuildUpdatableHelp could not work.
+                WithModulePage = $true
                 # PlatyPS 1.x defaults this front matter key to "<Module>-Help.xml", where
                 # 0.14.x wrote "<Module>-help.xml". The key is what Export-MamlCommandHelp
                 # names the MAML file after, so pinning it here keeps the markdown, the MAML
@@ -124,10 +128,19 @@ function Build-PSBuildMarkdown {
             )
             foreach ($markdownFile in $generatedMarkdown) {
                 $destinationPath = Join-Path -Path $localePath -ChildPath $markdownFile.Name
-                if ((Test-Path -LiteralPath $destinationPath) -and -not $Overwrite) {
-                    # Already refreshed above; regenerating would discard hand-written prose.
+                $isModuleLandingPage = $markdownFile.BaseName -eq $ModuleName
+
+                # The landing page is always replaced. It is generated content -- an index of
+                # the module's commands, plus the module GUID and locale that the cabinet step
+                # stamps its .cab name from -- so a copy left in place goes stale the moment a
+                # command is added or removed. PlatyPS has no refresh that would preserve an
+                # edited body either: Update-MarkdownModuleFile rewrites it wholesale. Command
+                # help is different, and is skipped here because it was already refreshed in
+                # place above, where hand-written prose survives.
+                if (-not $isModuleLandingPage -and (Test-Path -LiteralPath $destinationPath) -and -not $Overwrite) {
                     continue
                 }
+
                 Move-Item -LiteralPath $markdownFile.FullName -Destination $destinationPath -Force
             }
         } finally {

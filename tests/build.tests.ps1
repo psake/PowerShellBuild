@@ -1,4 +1,10 @@
 # spell-checker:ignore excludeme
+BeforeDiscovery {
+    # Cabinet generation shells out to makecab.exe. $IsWindows does not exist on Windows
+    # PowerShell 5.1, so its absence also means Windows.
+    $script:onWindows = $IsWindows -or $null -eq $IsWindows
+}
+
 Describe 'Build' {
 
     BeforeAll {
@@ -113,6 +119,45 @@ Describe 'Build' {
 
         It 'Has MAML help XML' {
             "$script:testModuleOutputPath/en-US/TestModule-help.xml" | Should -Exist
+        }
+    }
+
+    Context 'Updatable help task' -Skip:(-not $script:onWindows) {
+
+        # Exercises the GenerateUpdatableHelp TASK, not just Build-PSBuildUpdatableHelp.
+        # psake/PowerShellBuild#169 defect 3 lived in the wiring rather than the function: the
+        # task passed neither the module name nor the module output path, so every
+        # function-level fix could pass while the task stayed broken. Only running the task
+        # catches that, and psake cannot nest, so it runs in a job like the builds above.
+        BeforeAll {
+            $script:updatableHelpOutputPath = if ($env:GITHUB_ACTION) {
+                [IO.Path]::Combine($env:BHProjectPath, 'Output', 'UpdatableHelp')
+            } else {
+                [IO.Path]::Combine($script:testModuleSource, 'Output', 'UpdatableHelp')
+            }
+
+            # Not received, matching the contexts above -- psake writes its task banner and
+            # build report to the host, and receiving them here would interleave that with
+            # Pester's own output.
+            Start-Job -ScriptBlock {
+                Set-Location -Path $using:testModuleSource
+                ./build.ps1 -Task GenerateUpdatableHelp
+            } | Wait-Job > $null
+        }
+
+        AfterAll {
+            Remove-Item $script:updatableHelpOutputPath -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item $script:testModuleOutputPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        It 'Produces a help cabinet' {
+            Get-ChildItem -Path $script:updatableHelpOutputPath -Filter '*.cab' -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It 'Produces the help info manifest' {
+            Get-ChildItem -Path $script:updatableHelpOutputPath -Filter '*HelpInfo.xml' -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
         }
     }
 }

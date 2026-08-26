@@ -14,6 +14,11 @@
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()
+    # Updatable help is resolved through this URI. It is a placeholder: the fixture
+    # is never published, but New-HelpCabinetFile refuses to write a HelpInfo.xml
+    # without one, so the cabinet tests need it present.
+    HelpInfoUri       = 'https://example.com/psbuildtestfixture/help'
+
     PrivateData       = @{
         PSData = @{
             Tags = @('PowerShellBuild', 'TestFixture')
