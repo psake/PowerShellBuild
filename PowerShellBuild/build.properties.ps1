@@ -126,16 +126,13 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Whether to overwrite existing markdown files and use comment based help as the source of truth
         Overwrite             = $false
 
-        # Whether to order parameters alphabetically by name in PARAMETERS section.
-        # Value passed to New-MarkdownHelp and Update-MarkdownHelp.
-        AlphabeticParamsOrder = $false
-
         # Exclude the parameters marked with `DontShow` in the parameter attribute from the help content.
-        # Value passed to New-MarkdownHelp and Update-MarkdownHelp.
+        # Value passed to New-MarkdownCommandHelp.
         ExcludeDontShow       = $false
 
         # Indicates that the target document will use a full type name instead of a short name for parameters.
-        # Value passed to New-MarkdownHelp and Update-MarkdownHelp.
+        # PlatyPS 1.x writes full type names by default, so $false is passed through as
+        # New-MarkdownCommandHelp's -AbbreviateParameterTypeName switch.
         UseFullTypeName       = $false
     }
     Publish = @{

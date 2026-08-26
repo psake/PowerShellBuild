@@ -109,8 +109,8 @@ Task Pester -If (. $pesterPreReqs) Build, {
 
 $genMarkdownPreReqs = {
     $result = $true
-    if (-not (Get-Module platyPS -ListAvailable)) {
-        Write-Warning "platyPS module is not installed. Skipping [$($task.name)] task."
+    if (-not (Get-Module Microsoft.PowerShell.PlatyPS -ListAvailable)) {
+        Write-Warning "Microsoft.PowerShell.PlatyPS module is not installed. Skipping [$($task.name)] task."
         $result = $false
     }
     $result
@@ -124,7 +124,6 @@ Task GenerateMarkdown -if (. $genMarkdownPreReqs) StageFiles, {
         DocsPath              = $PSBPreference.Docs.RootDir
         Locale                = $PSBPreference.Help.DefaultLocale
         Overwrite             = $PSBPreference.Docs.Overwrite
-        AlphabeticParamsOrder = $PSBPreference.Docs.AlphabeticParamsOrder
         ExcludeDontShow       = $PSBPreference.Docs.ExcludeDontShow
         UseFullTypeName       = $PSBPreference.Docs.UseFullTypeName
     }
@@ -133,8 +132,8 @@ Task GenerateMarkdown -if (. $genMarkdownPreReqs) StageFiles, {
 
 $genHelpFilesPreReqs = {
     $result = $true
-    if (-not (Get-Module platyPS -ListAvailable)) {
-        Write-Warning "platyPS module is not installed. Skipping [$($task.name)] task."
+    if (-not (Get-Module Microsoft.PowerShell.PlatyPS -ListAvailable)) {
+        Write-Warning "Microsoft.PowerShell.PlatyPS module is not installed. Skipping [$($task.name)] task."
         $result = $false
     }
     $result
@@ -147,8 +146,8 @@ Task GenerateMAML -if (. $genHelpFilesPreReqs) GenerateMarkdown, {
 
 $genUpdatableHelpPreReqs = {
     $result = $true
-    if (-not (Get-Module platyPS -ListAvailable)) {
-        Write-Warning "platyPS module is not installed. Skipping [$($task.name)] task."
+    if (-not (Get-Module Microsoft.PowerShell.PlatyPS -ListAvailable)) {
+        Write-Warning "Microsoft.PowerShell.PlatyPS module is not installed. Skipping [$($task.name)] task."
         $result = $false
     }
     $result
@@ -156,7 +155,13 @@ $genUpdatableHelpPreReqs = {
 
 # Synopsis: Create updatable help .cab file based on PlatyPS markdown help
 Task GenerateUpdatableHelp -if (. $genUpdatableHelpPreReqs) BuildHelp, {
-    Build-PSBuildUpdatableHelp -DocsPath $PSBPreference.Docs.RootDir -OutputPath $PSBPreference.Help.UpdatableHelpOutDir
+    $buildUpdatableHelpParameters = @{
+        DocsPath   = $PSBPreference.Docs.RootDir
+        OutputPath = $PSBPreference.Help.UpdatableHelpOutDir
+        ModulePath = $PSBPreference.Build.ModuleOutDir
+        Module     = $PSBPreference.General.ModuleName
+    }
+    Build-PSBuildUpdatableHelp @buildUpdatableHelpParameters
 }
 
 # Synopsis: Publish module to the defined PowerShell repository

@@ -11,7 +11,6 @@
     RequiredModules      = @(
         @{ModuleName = 'BuildHelpers'; ModuleVersion = '2.0.16' }
         @{ModuleName = 'Pester'; ModuleVersion = '5.6.1' }
-        @{ModuleName = 'platyPS'; ModuleVersion = '0.14.1' }
         @{ModuleName = 'psake'; ModuleVersion = '4.9.0' }
     )
     FunctionsToExport    = @(

@@ -12,5 +12,8 @@
     psake            = '5.0.4'
     PSScriptAnalyzer = '1.25.0'
     InvokeBuild      = '5.14.23'
-    platyPS          = '0.14.2'
+    PlatyPS          = @{
+        Name    = 'Microsoft.PowerShell.PlatyPS'
+        Version = '1.0.3'
+    }
 }
