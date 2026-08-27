@@ -4,7 +4,7 @@
     }
     BuildHelpers     = '2.0.16'
     Pester           = @{
-        Version    = '6.0.0'
+        Version    = '6.1.0'
         Parameters = @{
             SkipPublisherCheck = $true
         }

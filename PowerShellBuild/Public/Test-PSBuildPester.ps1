@@ -72,9 +72,9 @@ function Test-PSBuildPester {
     # versions are installed side by side. Only load Pester ourselves when none is loaded.
     $loadedPester = Get-Module -Name Pester
     if (-not $loadedPester) {
-        $loadedPester = Import-Module -Name Pester -MinimumVersion 5.0.0 -ErrorAction Stop -PassThru
+        $loadedPester = Import-Module -Name Pester -MinimumVersion 6.0.0 -ErrorAction Stop -PassThru
     }
-    if ($loadedPester.Version -lt [version]'5.0.0') {
+    if ($loadedPester.Version -lt [version]'6.0.0') {
         throw ($LocalizedData.PesterVersionNotSupported -f $loadedPester.Version)
     }
 
