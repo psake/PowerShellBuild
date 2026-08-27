@@ -168,8 +168,8 @@ well.
 properties {
     # These settings overwrite values supplied from the PowerShellBuild
     # module and govern how those tasks are executed
-    $PSBPreference.Test.ScriptAnalysisEnabled = $false
-    $PSBPreference.Test.CodeCoverage.Enabled  = $true
+    $PSBPreference.Test.ScriptAnalysis.Enabled = $false
+    $PSBPreference.Test.CodeCoverage.Enabled   = $true
 }
 
 task default -depends Build
@@ -195,8 +195,8 @@ Import-Module PowerShellBuild
 . PowerShellBuild.IB.Tasks
 
 # Overwrite build settings contained in PowerShellBuild
-$PSBPreference.Test.ScriptAnalysisEnabled = $true
-$PSBPreference.Test.CodeCoverage.Enabled  = $false
+$PSBPreference.Test.ScriptAnalysis.Enabled = $true
+$PSBPreference.Test.CodeCoverage.Enabled   = $false
 ```
 
 ![Example](./media/ib_example.png)

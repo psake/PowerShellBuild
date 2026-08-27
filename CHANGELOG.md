@@ -77,6 +77,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#191**](https://github.com/psake/PowerShellBuild/issues/191)
+  The README's psake and Invoke-Build examples assigned
+  `$PSBPreference.Test.ScriptAnalysisEnabled`, which is not a setting. The real
+  one is nested, `$PSBPreference.Test.ScriptAnalysis.Enabled`, as the README's
+  own settings table has always said. `$PSBPreference` is a plain hashtable, so
+  the unrecognized name added a key nothing reads and neither errored nor
+  warned. **Check your own build file**: if you copied either example, script
+  analysis has been running when you asked for it off, or skipped when you asked
+  for it on. Correcting the name is the whole fix; no module behavior changed.
+
 - [**#124**](https://github.com/psake/PowerShellBuild/issues/124)
   The docs tree can hold documentation that is not generated help. A `README.md`
   at its root, a `CONTRIBUTING.md` beside the generated markdown, an `images/` or
