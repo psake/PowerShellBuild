@@ -77,6 +77,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#191**](https://github.com/psake/PowerShellBuild/issues/191)
+  The README's psake and Invoke-Build examples assigned
+  `$PSBPreference.Test.ScriptAnalysisEnabled`, which is not a setting. The real
+  one is nested, `$PSBPreference.Test.ScriptAnalysis.Enabled`, as the README's
+  own settings table has always said. `$PSBPreference` is a plain hashtable, so
+  the unrecognized name added a key nothing reads and neither errored nor
+  warned. **Check your own build file if you copied the psake example**: it
+  assigned `$false`, so script analysis has been running on every build even
+  though you asked for it off. The Invoke-Build example assigned `$true`, which
+  is already the default, so that one did nothing either way. Correcting the
+  name is the whole fix; no module behavior changed.
+
 - [**#185**](https://github.com/psake/PowerShellBuild/issues/185)
   Consumers on a non-English Windows PowerShell 5.1 host get the module's
   real messages. `PowerShellBuild.psm1` carried a hand-maintained second copy
