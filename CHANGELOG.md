@@ -96,6 +96,42 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   private key is still required in every case, because a certificate without one
   cannot sign.
 
+- [**#191**](https://github.com/psake/PowerShellBuild/issues/191)
+  The README's psake and Invoke-Build examples assigned
+  `$PSBPreference.Test.ScriptAnalysisEnabled`, which is not a setting. The real
+  one is nested, `$PSBPreference.Test.ScriptAnalysis.Enabled`, as the README's
+  own settings table has always said. `$PSBPreference` is a plain hashtable, so
+  the unrecognized name added a key nothing reads and neither errored nor
+  warned. **Check your own build file if you copied the psake example**: it
+  assigned `$false`, so script analysis has been running on every build even
+  though you asked for it off. The Invoke-Build example assigned `$true`, which
+  is already the default, so that one did nothing either way. Correcting the
+  name is the whole fix; no module behavior changed.
+
+- [**#185**](https://github.com/psake/PowerShellBuild/issues/185)
+  Consumers on a non-English Windows PowerShell 5.1 host get the module's
+  real messages. `PowerShellBuild.psm1` carried a hand-maintained second copy
+  of every string, bound whenever `Import-LocalizedData` resolved nothing, and
+  it had drifted sixteen strings behind `en-US/Messages.psd1` — every
+  certificate and signing message was absent, and the Pester floor was still
+  reported as `5.0.0`. That lookup resolves by UI culture and the module ships
+  `en-US` only: PowerShell 7 falls back to `en-US` and never saw the drift,
+  but Windows PowerShell 5.1 does not fall back at all, so a French or
+  Japanese install bound the stale copy. A missing string does not throw, so
+  the symptom was a blank `WARNING:` line, or a bare `ScriptHalted` where the
+  signing tasks meant to say no certificate was found. The copy is gone,
+  `en-US` is now requested by name when the culture lookup misses, and an
+  import that cannot find the strings at all fails outright rather than
+  blanking every message.
+
+  The same sweep found one string the module read and never shipped:
+  `Publish-PSBuildModule` validated `-Path` against `PathDoesNotExist`, which
+  `en-US/Messages.psd1` did not define, so passing a path that does not exist
+  failed with a blank message on **every** host and culture while the very
+  next check in the same validation block reported itself properly. The string
+  is now defined, and a test asserts that every string the module reads is one
+  it ships.
+
 - [**#124**](https://github.com/psake/PowerShellBuild/issues/124)
   The docs tree can hold documentation that is not generated help. A `README.md`
   at its root, a `CONTRIBUTING.md` beside the generated markdown, an `images/` or

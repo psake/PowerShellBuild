@@ -61,6 +61,7 @@ PowerShell module development.
 | Pester  | Build                 | Run Pester tests                                |
 | Test    | Analyze, Pester       | Run combined tests                              |
 | Publish | Test                  | Publish module to defined PowerShell repository |
+| Sign    | SignCatalog           | Sign module files and catalog (meta task)       |
 
 ### Secondary Tasks
 
@@ -74,6 +75,9 @@ also be called directly.
 | GenerateMarkdown      | StageFiles                     | Build markdown-based help        |
 | GenerateMAML          | GenerateMarkdown               | Build MAML help                  |
 | GenerateUpdatableHelp | BuildHelp                      | Build updatable help cab         |
+| SignModule            | Build                          | Authenticode-sign module files   |
+| BuildCatalog          | SignModule                     | Build module catalog (.cat) file |
+| SignCatalog           | BuildCatalog                   | Authenticode-sign the catalog    |
 
 ## Task customization
 
@@ -91,7 +95,6 @@ match your environment.
 | $PSBPreference.General.ModuleVersion                        | `\<computed>`                               | The version of the module                                                                                                                                                    |
 | $PSBPreference.General.ModuleManifestPath                   | `$env:BHPSModuleManifest`                   | Path to the module manifest (PSD1)                                                                                                                                           |
 | $PSBPreference.Build.OutDir                                 | `$projectRoot/Output`                       | Output directory when building the module                                                                                                                                    |
-| $PSBPreference.Build.Dependencies                           | 'StageFiles, 'BuildHelp'                    | Default task dependencies for the `Build` task                                                                                                                               |
 | $PSBPreference.Build.ModuleOutDir                           | `$outDir/$moduleName/$moduleVersion`        | `For internal use only. Do not overwrite. Use '$PSBPreference.Build.OutDir' to set output directory`                                                                         |
 | $PSBPreference.Build.CompileModule                          | `$false`                                    | Controls whether to "compile" module into single PSM1 or not                                                                                                                 |
 | $PSBPreference.Build.CompileDirectories                     | `@('Enum', 'Classes', 'Private', 'Public')` | List of directories to "compile" into monolithic PSM1. Only valid when `$PSBPreference.Build.CompileModule` is `$true`.                                                      |
@@ -103,16 +106,16 @@ match your environment.
 | $PSBPreference.Build.Exclude                                | `<empty>`                                   | Array of files (regular expressions) to exclude when building module                                                                                                         |
 | $PSBPreference.Test.Enabled                                 | `$true`                                     | Enable/disable Pester tests                                                                                                                                                  |
 | $PSBPreference.Test.RootDir                                 | `$projectRoot/tests`                        | Directory containing Pester tests                                                                                                                                            |
-| $PSBPreference.Test.OutputFile                              | `$null`                                     | Output file path Pester will save test results to                                                                                                                            |
+| $PSBPreference.Test.OutputFile                              | `$projectRoot/testResults.xml`              | Output file path Pester will save test results to                                                                                                                            |
 | $PSBPreference.Test.OutputFormat                            | `NUnitXml`                                  | Test output format to use when saving Pester test results                                                                                                                    |
 | $PSBPreference.Test.ScriptAnalysis.Enabled                  | `$true`                                     | Enable/disable use of PSScriptAnalyzer to perform script analysis                                                                                                            |
 | $PSBPreference.Test.ScriptAnalysis.FailBuildOnSeverityLevel | `Error`                                     | PSScriptAnalyzer threshold to fail the build on                                                                                                                              |
 | $PSBPreference.Test.ScriptAnalysis.SettingsPath             | `./ScriptAnalyzerSettings.psd1`             | Path to the PSScriptAnalyzer settings file                                                                                                                                   |
 | $PSBPreference.Test.CodeCoverage.Enabled                    | `$false`                                    | Enable/disable Pester code coverage reporting                                                                                                                                |
 | $PSBPreference.Test.CodeCoverage.Threshold                  | `.75`                                       | Fail Pester code coverage test if below this threshold                                                                                                                       |
-| $PSBPreference.Test.CodeCoverage.Files                      | `*.ps1, *.psm1`                             | Files to perform code coverage analysis on                                                                                                                                   |
-| $PSBPreference.Test.CodeCoverage.OutputFile                 | `coverage.xml`                              | Output file path (relative to Pester test directory) where Pester will save code coverage results to                                                                         |
-| $PSBPreference.Test.CodeCoverage.OutputFileFormat           | `$null`                                     | Test output format to use when saving Pester code coverage results                                                                                                           |
+| $PSBPreference.Test.CodeCoverage.Files                      | `@()`                                       | Files to perform code coverage analysis on                                                                                                                                   |
+| $PSBPreference.Test.CodeCoverage.OutputFile                 | `$projectRoot/codeCoverage.xml`             | Output file path where Pester will save code coverage results to. A relative path resolves against the Pester test directory.                                                |
+| $PSBPreference.Test.CodeCoverage.OutputFileFormat           | `JaCoCo`                                    | Test output format to use when saving Pester code coverage results                                                                                                           |
 | $PSBPreference.Test.ImportModule                            | `$false`                                    | Import module from output directory prior to running Pester tests                                                                                                            |
 | $PSBPreference.Test.SkipRemainingOnFailure                  | `None`                                      | Skip remaining tests after failure for selected scope. Options are None, Run, Container and Block.                                                                           |
 | $PSBPreference.Test.OutputVerbosity                         | `Detailed`                                  | Set verbosity of output. Options are None, Normal, Detailed and Diagnostic.                                                                                                  |
@@ -121,12 +124,27 @@ match your environment.
 | $PSBPreference.Help.ConvertReadMeToAboutHelp                | `$false`                                    | Convert project readme into the module about file                                                                                                                            |
 | $PSBPreference.Docs.RootDir                                 | `$projectRoot/docs`                         | Directory PlatyPS markdown documentation will be saved to. Other content in this directory, such as a README or an images folder, is left alone.                             |
 | $PSBPreference.Docs.Overwrite                               | `$false`                                    | Overwrite the markdown files in the docs folder using the comment based help as the source of truth.                                                                         |
-| $PSBPreference.Docs.AlphabeticParamsOrder                   | `$false`                                    | Order parameters alphabetically by name in PARAMETERS section. There are 5 exceptions: -Confirm, -WhatIf, -IncludeTotalCount, -Skip, and -First parameters will be the last. |
 | $PSBPreference.Docs.ExcludeDontShow                         | `$false`                                    | Exclude the parameters marked with `DontShow` in the parameter attribute from the help content.                                                                              |
 | $PSBPreference.Docs.UseFullTypeName                         | `$false`                                    | Indicates that the target document will use a full type name instead of a short name for parameters.                                                                         |
 | $PSBPreference.Publish.PSRepository                         | `PSGallery`                                 | PowerShell repository name to publish                                                                                                                                        |
 | $PSBPreference.Publish.PSRepositoryApiKey                   | `$env:PSGALLERY_API_KEY`                    | API key to authenticate to PowerShell repository with                                                                                                                        |
 | $PSBPreference.Publish.PSRepositoryCredential               | `$null`                                     | Credential to authenticate to PowerShell repository with. Overrides `$psRepositoryApiKey` if defined                                                                         |
+| $PSBPreference.Sign.Enabled                                 | `$false`                                    | Enable/disable Authenticode signing of the built module. Must be `$true` for any of the signing or catalog tasks to run.                                                     |
+| $PSBPreference.Sign.CertificateSource                       | `Auto`                                      | How the code-signing certificate is resolved. Valid values are `Auto`, `Store`, `Thumbprint`, `EnvVar`, and `PfxFile`. See [Code signing](#code-signing).                    |
+| $PSBPreference.Sign.CertStoreLocation                       | `Cert:\CurrentUser\My`                      | Windows certificate store path searched by the `Store` and `Thumbprint` certificate sources.                                                                                 |
+| $PSBPreference.Sign.Thumbprint                              | `$null`                                     | Thumbprint of the certificate to select from the store. Required by the `Thumbprint` certificate source and ignored by the others.                                           |
+| $PSBPreference.Sign.CertificateEnvVar                       | `SIGNCERTIFICATE`                           | Name of the environment variable holding the Base64-encoded PFX. Read by the `EnvVar` source, and used by `Auto` to detect whether a certificate is present.                 |
+| $PSBPreference.Sign.CertificatePasswordEnvVar               | `CERTIFICATEPASSWORD`                       | Name of the environment variable holding the password for the Base64-encoded PFX. Read by the `EnvVar` certificate source.                                                   |
+| $PSBPreference.Sign.PfxFilePath                             | `$null`                                     | File system path to a PFX/P12 certificate file. Required by the `PfxFile` certificate source.                                                                                |
+| $PSBPreference.Sign.PfxFilePassword                         | `$null`                                     | Password for the PFX/P12 file as a `SecureString`. Used by the `PfxFile` certificate source.                                                                                 |
+| $PSBPreference.Sign.Certificate                             | `$null`                                     | A pre-resolved `X509Certificate2` object to sign with. When set, `CertificateSource` is ignored, which suits Azure Key Vault, an HSM, or another custom provider.            |
+| $PSBPreference.Sign.SkipCertificateValidation               | `$false`                                    | Skip the private key, expiration, and Code Signing EKU checks made on certificates loaded by the `EnvVar` and `PfxFile` sources. Not recommended in production.              |
+| $PSBPreference.Sign.TimestampServer                         | `http://timestamp.digicert.com`             | RFC 3161 timestamp server URI embedded in the signature so that it stays valid after the certificate expires.                                                                |
+| $PSBPreference.Sign.HashAlgorithm                           | `SHA256`                                    | Authenticode hash algorithm. Valid values are `SHA256`, `SHA384`, `SHA512`, and `SHA1`. `SHA1` is deprecated.                                                                |
+| $PSBPreference.Sign.FilesToSign                             | `@('*.psd1', '*.psm1', '*.ps1')`            | Glob patterns of file names to sign, searched recursively under the module output directory.                                                                                 |
+| $PSBPreference.Sign.Catalog.Enabled                         | `$false`                                    | Enable/disable creation and signing of a Windows catalog (`.cat`) file. Also requires `$PSBPreference.Sign.Enabled` to be `$true`.                                           |
+| $PSBPreference.Sign.Catalog.Version                         | `2`                                         | Catalog hash version. `1` is SHA1, compatible with Windows 7 and Windows Server 2008 R2. `2` is SHA2, required for Windows 8 and Windows Server 2012 and newer.              |
+| $PSBPreference.Sign.Catalog.FileName                        | `$null`                                     | Name of the catalog file created in the module output directory. When `$null`, `<ModuleName>.cat` is used.                                                                   |
 
 ## Modifying Task Dependencies
 
@@ -147,6 +165,46 @@ outside the `properties` block, before you reference any PowerShellBuild tasks.
 | $PSBGenerateMAMLDependency          | 'GenerateMarkdown'                 | Tasks the 'GenerateMAML' task depends on.          |
 | $PSBGenerateUpdatableHelpDependency | 'BuildHelp'                        | Tasks the 'GenerateUpdatableHelp' task depends on. |
 | $PSBPublishDependency               | 'Test'                             | Tasks the 'Publish' task depends on.               |
+| $PSBSignModuleDependency            | 'Build'                            | Tasks the 'SignModule' task depends on.            |
+| $PSBBuildCatalogDependency          | 'SignModule'                       | Tasks the 'BuildCatalog' task depends on.          |
+| $PSBSignCatalogDependency           | 'BuildCatalog'                     | Tasks the 'SignCatalog' task depends on.           |
+| $PSBSignDependency                  | 'SignCatalog'                      | Tasks the 'Sign' task depends on.                  |
+
+## Code signing
+
+PowerShellBuild can Authenticode-sign the staged module and wrap it in a Windows
+catalog (`.cat`) file. The `SignModule`, `BuildCatalog`, `SignCatalog`, and
+`Sign` tasks are opt-in: they skip with a warning unless
+`$PSBPreference.Sign.Enabled` is `$true`, and the two catalog tasks additionally
+require `$PSBPreference.Sign.Catalog.Enabled`. They also skip when
+`Set-AuthenticodeSignature` or `New-FileCatalog` is unavailable, so a build that
+enables signing still runs on Linux and macOS; it just does not sign there.
+
+Where the code-signing certificate comes from is controlled by
+`$PSBPreference.Sign.CertificateSource`:
+
+- `Store` selects the first valid, unexpired code-signing certificate that has a
+  private key from `$PSBPreference.Sign.CertStoreLocation`.
+- `Thumbprint` selects a specific certificate from that same store by
+  `$PSBPreference.Sign.Thumbprint`, which is what you want when more than one
+  code-signing certificate is installed.
+- `EnvVar` decodes a Base64-encoded PFX from the environment variable named by
+  `$PSBPreference.Sign.CertificateEnvVar`, optionally decrypting it with the
+  password in the variable named by
+  `$PSBPreference.Sign.CertificatePasswordEnvVar`. This is the usual approach
+  for GitHub Actions, Azure Pipelines, and GitLab CI, where the certificate is
+  held as a masked secret.
+- `PfxFile` loads a PFX/P12 file from `$PSBPreference.Sign.PfxFilePath` using
+  `$PSBPreference.Sign.PfxFilePassword`.
+- `Auto`, the default, uses `EnvVar` when the certificate environment variable
+  is populated and falls back to `Store` when it is not. One build script can
+  therefore sign with the developer's own certificate locally and with the
+  pipeline secret in CI.
+
+Setting `$PSBPreference.Sign.Certificate` to an already-resolved
+`X509Certificate2` object bypasses all of the above, which is how to sign with a
+certificate that comes from Azure Key Vault, a hardware security module, or
+another custom provider.
 
 ## Examples
 
@@ -168,8 +226,8 @@ well.
 properties {
     # These settings overwrite values supplied from the PowerShellBuild
     # module and govern how those tasks are executed
-    $PSBPreference.Test.ScriptAnalysisEnabled = $false
-    $PSBPreference.Test.CodeCoverage.Enabled  = $true
+    $PSBPreference.Test.ScriptAnalysis.Enabled = $false
+    $PSBPreference.Test.CodeCoverage.Enabled   = $true
 }
 
 task default -depends Build
@@ -195,8 +253,8 @@ Import-Module PowerShellBuild
 . PowerShellBuild.IB.Tasks
 
 # Overwrite build settings contained in PowerShellBuild
-$PSBPreference.Test.ScriptAnalysisEnabled = $true
-$PSBPreference.Test.CodeCoverage.Enabled  = $false
+$PSBPreference.Test.ScriptAnalysis.Enabled = $true
+$PSBPreference.Test.CodeCoverage.Enabled   = $false
 ```
 
 ![Example](./media/ib_example.png)
