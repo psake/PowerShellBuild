@@ -110,8 +110,9 @@ Describe 'Settings documented in the README' {
     # psake/PowerShellBuild#105 there, and $PSBPreference.Build.Dependencies survived being
     # replaced by the $PSB{TaskName}Dependency variables in #72, back in 0.7.0.
     #
-    # Only the documented-to-defined direction is asserted. The reverse direction would fail
-    # today on the whole Sign section, which the README has never covered.
+    # Both directions are asserted. The reverse one -- every defined setting is documented --
+    # only became assertable once the sixteen $PSBPreference.Sign settings were added to the
+    # table; the whole Sign section had shipped in 0.8.0 with no entry in the README at all.
 
     BeforeAll {
         # Documented settings that are deliberately absent from the defaults. Both task files
@@ -124,22 +125,55 @@ Describe 'Settings documented in the README' {
             'Build.CompileScriptHeader'
             'Build.CompileScriptFooter'
         )
-    }
 
-    It 'every setting the README table lists resolves against build.properties.ps1' {
+        # There is no matching allow-list for the reverse direction: every leaf of the defaults
+        # is currently in the table. Build.ModuleOutDir is the one setting consumers must not
+        # set, and it is documented anyway, with a description saying so -- which is the pattern
+        # to follow for anything else that turns out to be internal. Silencing a setting here
+        # instead would hide it from the very readers the table exists for.
+
+        function script:Get-PreferenceLeafPath {
+            # Walks the defaults and returns the dotted path of every leaf value. A nested
+            # hashtable (Test.ScriptAnalysis, Test.CodeCoverage, Sign.Catalog) is a container
+            # rather than a setting, so only the leaves beneath it are returned -- that is what
+            # the README table documents, one row per settable value.
+            param($Node, [string]$Prefix)
+
+            foreach ($name in $Node.Keys) {
+                $path = if ($Prefix) { "$Prefix.$name" } else { $name }
+                if ($Node[$name] -is [System.Collections.IDictionary]) {
+                    Get-PreferenceLeafPath -Node $Node[$name] -Prefix $path
+                } else {
+                    $path
+                }
+            }
+        }
+
         $readMePath = [IO.Path]::Combine((Split-Path -Path $PSScriptRoot -Parent), 'README.md')
-        $documentedPath = [regex]::Matches(
+        $script:documentedPath = [regex]::Matches(
             (Get-Content -Path $readMePath -Raw),
             '(?m)^\|\s*\$PSBPreference((?:\.[A-Za-z_][A-Za-z0-9_]*)+)'
         ).ForEach({ $_.Groups[1].Value.TrimStart('.') }) | Sort-Object -Unique
+    }
 
-        $documentedPath | Should -Not -BeNullOrEmpty -Because 'the regex must still match the table'
+    It 'every setting the README table lists resolves against build.properties.ps1' {
+        $script:documentedPath | Should -Not -BeNullOrEmpty -Because 'the regex must still match the table'
 
-        $undefined = $documentedPath.Where({
+        $undefined = $script:documentedPath.Where({
                 $_ -notin $script:documentedWithoutDefault -and
                 -not (Test-PreferencePath -Root $script:defaultPreference -Segment ($_ -split '\.'))
             })
 
         $undefined -join ', ' | Should -BeNullOrEmpty
+    }
+
+    It 'every setting build.properties.ps1 defines is listed in the README table' {
+        $definedPath = Get-PreferenceLeafPath -Node $script:defaultPreference | Sort-Object -Unique
+
+        $definedPath | Should -Not -BeNullOrEmpty -Because 'the defaults must still be walkable'
+
+        $undocumented = $definedPath.Where({ $_ -notin $script:documentedPath })
+
+        $undocumented -join ', ' | Should -BeNullOrEmpty
     }
 }
