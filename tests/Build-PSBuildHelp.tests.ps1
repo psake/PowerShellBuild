@@ -1,4 +1,4 @@
-# Unit coverage for the three help-building functions (psake/PowerShellBuild#149).
+﻿# Unit coverage for the three help-building functions (psake/PowerShellBuild#149).
 #
 # These functions had no tests of their own before #149. They were not entirely unobserved,
 # though: build.tests.ps1 builds tests/TestModule through -FromModule PowerShellBuild, whose
@@ -272,6 +272,110 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
 
             $result.Threw | Should -BeFalse
             $scenario.UpdatableHelpPath | Should -Not -Exist
+        }
+    }
+
+    Context 'A docs tree holding more than generated help' {
+
+        # psake/PowerShellBuild#124: docs/ is where a project keeps its documentation, not
+        # only the help PlatyPS generates, so it routinely holds a README, a guides
+        # directory, images. The reported symptom was a hard failure on markdown without
+        # MAML metadata; the PlatyPS 1.x migration ended that by selecting documents with
+        # Measure-PlatyPSMarkdown instead of globbing *.md. What was left was the docs root
+        # itself -- every subdirectory was taken for a help locale, so the cabinet step
+        # reported a missing landing page for each one. These pin both halves.
+
+        BeforeAll {
+            $script:strayScenario = New-PSBuildDocsScenario -Path $TestDrive -Name 'stray'
+
+            $firstPassParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildMarkdown'
+                Parameter   = New-PSBuildMarkdownParameter -Scenario $script:strayScenario
+            }
+            $null = Invoke-PSBuildCommandInJob @firstPassParameter
+
+            # Everything a real project puts under docs/ that is not command help: prose at
+            # the root, prose inside the locale directory, and sibling directories that were
+            # never meant for PlatyPS at all.
+            Set-Content -Path (
+                Join-Path -Path $script:strayScenario.DocsPath -ChildPath 'README.md'
+            ) -Value '# Read me'
+            Set-Content -Path (
+                Join-Path -Path $script:strayScenario.LocalePath -ChildPath 'CONTRIBUTING.md'
+            ) -Value '# Contributing'
+            foreach ($directoryName in 'images', 'guides') {
+                New-Item -ItemType Directory -Force -Path (
+                    Join-Path -Path $script:strayScenario.DocsPath -ChildPath $directoryName
+                ) > $null
+            }
+            Set-Content -Path (
+                [IO.Path]::Combine($script:strayScenario.DocsPath, 'guides', 'getting-started.md')
+            ) -Value '# Getting started'
+
+            $script:strayMarkdownResult = Invoke-PSBuildCommandInJob @firstPassParameter
+
+            $strayMamlParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildMAMLHelp'
+                Parameter   = @{
+                    Path            = $script:strayScenario.DocsPath
+                    DestinationPath = $script:strayScenario.ModulePath
+                }
+            }
+            $script:strayMamlResult = Invoke-PSBuildCommandInJob @strayMamlParameter
+
+            $strayCabParameter = @{
+                ModulePath  = $script:builtModulePath
+                CommandName = 'Build-PSBuildUpdatableHelp'
+                Parameter   = @{
+                    DocsPath   = $script:strayScenario.DocsPath
+                    OutputPath = $script:strayScenario.UpdatableHelpPath
+                    ModulePath = $script:strayScenario.ModulePath
+                    Module     = $script:strayScenario.ModuleName
+                }
+            }
+            $script:strayCabResult = Invoke-PSBuildCommandInJob @strayCabParameter
+        }
+
+        It 'refreshes markdown without tripping over documentation that is not command help' {
+            $script:strayMarkdownResult.Threw | Should -BeFalse
+            $script:strayMarkdownResult.ErrorMessage | Should -BeNullOrEmpty
+        }
+
+        It 'leaves the documentation that is not command help alone' {
+            Join-Path -Path $script:strayScenario.LocalePath -ChildPath 'CONTRIBUTING.md' |
+                Should -Exist
+            Get-Content -Path (
+                Join-Path -Path $script:strayScenario.LocalePath -ChildPath 'CONTRIBUTING.md'
+            ) -Raw | Should -Match '# Contributing'
+        }
+
+        It 'exports MAML for the locale and nothing for the other directories' {
+            $script:strayMamlResult.Threw | Should -BeFalse
+            $script:strayMamlResult.ErrorMessage | Should -BeNullOrEmpty
+
+            [IO.Path]::Combine(
+                $script:strayScenario.ModulePath,
+                $script:strayScenario.Locale,
+                'PSBuildTestFixture-help.xml'
+            ) | Should -Exist
+            foreach ($directoryName in 'images', 'guides') {
+                Join-Path -Path $script:strayScenario.ModulePath -ChildPath $directoryName |
+                    Should -Not -Exist
+            }
+        }
+
+        It 'builds the cabinet without reporting on directories that are not locales' -Skip:(-not $script:onWindows) {
+            $script:strayCabResult.Threw | Should -BeFalse
+            $script:strayCabResult.ErrorMessage | Should -BeNullOrEmpty
+
+            # The whole of the defect: one warning per non-locale directory, naming a landing
+            # page the consumer was never going to write.
+            $script:strayCabResult.Warning -join ' ' | Should -BeNullOrEmpty
+
+            Get-ChildItem -Path $script:strayScenario.UpdatableHelpPath -Filter '*.cab' |
+                Should -Not -BeNullOrEmpty
         }
     }
 }

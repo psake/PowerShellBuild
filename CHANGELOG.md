@@ -77,6 +77,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#124**](https://github.com/psake/PowerShellBuild/issues/124)
+  The docs tree can hold documentation that is not generated help. A `README.md`
+  at its root, a `CONTRIBUTING.md` beside the generated markdown, an `images/` or
+  `guides/` directory alongside the locale — none of it interferes with the help
+  tasks any more. Markdown without PlatyPS metadata used to fail the build
+  outright; the move to PlatyPS 1.x ended that, because the markdown and MAML
+  steps now select documents by type rather than taking every `*.md` in the
+  directory. What remained was `Build-PSBuildUpdatableHelp` treating every
+  subdirectory of the docs tree as a help locale and warning, once per
+  directory, about a module landing page that was never going to be there. It
+  now considers only directories that are actually locales.
+
 - [**#178**](https://github.com/psake/PowerShellBuild/issues/178)
   Invoke-Build consumers get the code coverage output format they configured.
   `IB.tasks.ps1` read `$PSBPreference.Test.CodeCoverage.OutputFormat`, but the
