@@ -1,5 +1,26 @@
 #requires -module InvokeBuild,Psake
 
+# Shared by both of the drift guards below, so each stays runnable on its own filter.
+BeforeAll {
+    $script:moduleSourcePath = [IO.Path]::Combine(
+        (Split-Path -Path $PSScriptRoot -Parent), 'PowerShellBuild'
+    )
+    $script:defaultPreference = . ([IO.Path]::Combine($script:moduleSourcePath, 'build.properties.ps1'))
+
+    function script:Test-PreferencePath {
+        param($Root, [string[]]$Segment)
+        $node = $Root
+        foreach ($name in $Segment) {
+            if ($node -is [System.Collections.IDictionary] -and $node.Contains($name)) {
+                $node = $node[$name]
+            } else {
+                return $false
+            }
+        }
+        $true
+    }
+}
+
 Describe 'Invoke-Build Tasks' {
     BeforeAll {
         $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
@@ -54,24 +75,6 @@ Describe 'Settings referenced by the task files' {
     # task NAME, which cannot see a divergence inside a task body.
 
     BeforeAll {
-        $script:moduleSourcePath = [IO.Path]::Combine(
-            (Split-Path -Path $PSScriptRoot -Parent), 'PowerShellBuild'
-        )
-        $script:defaultPreference = . ([IO.Path]::Combine($script:moduleSourcePath, 'build.properties.ps1'))
-
-        function script:Test-PreferencePath {
-            param($Root, [string[]]$Segment)
-            $node = $Root
-            foreach ($name in $Segment) {
-                if ($node -is [System.Collections.IDictionary] -and $node.Contains($name)) {
-                    $node = $node[$name]
-                } else {
-                    return $false
-                }
-            }
-            $true
-        }
-
         # Two references are expected not to resolve, both deliberately:
         #   Build.Keys           - the hashtable's own Keys property, used to enumerate it
         #   Build.Dependencies   - removed from the defaults on purpose; IB.tasks.ps1 reads it
@@ -97,5 +100,46 @@ Describe 'Settings referenced by the task files' {
             })
 
         $unresolvable -join ', ' | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Settings documented in the README' {
+
+    # The README settings table is what consumers actually read, and until now nothing tied it
+    # back to the defaults. $PSBPreference.Docs.AlphabeticParamsOrder survived its removal in
+    # psake/PowerShellBuild#105 there, and $PSBPreference.Build.Dependencies survived being
+    # replaced by the $PSB{TaskName}Dependency variables in #72, back in 0.7.0.
+    #
+    # Only the documented-to-defined direction is asserted. The reverse direction would fail
+    # today on the whole Sign section, which the README has never covered.
+
+    BeforeAll {
+        # Documented settings that are deliberately absent from the defaults. Both task files
+        # forward these to Build-PSBuildModule only when the consumer has added the key, so
+        # defining them in build.properties.ps1 would inject empty strings into every
+        # compiled PSM1 instead of leaving the parameter defaults alone.
+        $script:documentedWithoutDefault = @(
+            'Build.CompileHeader'
+            'Build.CompileFooter'
+            'Build.CompileScriptHeader'
+            'Build.CompileScriptFooter'
+        )
+    }
+
+    It 'every setting the README table lists resolves against build.properties.ps1' {
+        $readMePath = [IO.Path]::Combine((Split-Path -Path $PSScriptRoot -Parent), 'README.md')
+        $documentedPath = [regex]::Matches(
+            (Get-Content -Path $readMePath -Raw),
+            '(?m)^\|\s*\$PSBPreference((?:\.[A-Za-z_][A-Za-z0-9_]*)+)'
+        ).ForEach({ $_.Groups[1].Value.TrimStart('.') }) | Sort-Object -Unique
+
+        $documentedPath | Should -Not -BeNullOrEmpty -Because 'the regex must still match the table'
+
+        $undefined = $documentedPath.Where({
+                $_ -notin $script:documentedWithoutDefault -and
+                -not (Test-PreferencePath -Root $script:defaultPreference -Segment ($_ -split '\.'))
+            })
+
+        $undefined -join ', ' | Should -BeNullOrEmpty
     }
 }
