@@ -1,4 +1,4 @@
-ConvertFrom-StringData @'
+﻿ConvertFrom-StringData @'
 NoCommandsExported=No commands have been exported. Skipping markdown generation.
 FailedToGenerateMarkdownHelp=Failed to generate markdown help. : {0}
 AddingFileToPsm1=Adding [{0}] to PSM1
@@ -13,6 +13,7 @@ PowerShellVersion=PowerShell Version: {0}
 EnvironmentVariables={0}Environment variables:
 PublishingVersionToRepository=Publishing version [{0}] to repository [{1}]...
 FolderDoesNotExist=Folder does not exist: {0}
+PathDoesNotExist=Path does not exist: {0}
 PathArgumentMustBeAFolder=The Path argument must be a folder. File paths are not allowed.
 UnableToFindModuleManifest=Unable to find module manifest [{0}]. Can't import module
 PesterTestsFailed=One or more Pester tests failed

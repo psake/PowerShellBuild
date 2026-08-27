@@ -1,4 +1,4 @@
-# Coverage for how the module resolves its user-facing strings at import
+﻿# Coverage for how the module resolves its user-facing strings at import
 # (psake/PowerShellBuild#185).
 #
 # PowerShellBuild.psm1 used to carry a second, hand-written copy of every string in an inline
@@ -114,6 +114,35 @@ $resolvedString | ConvertTo-Json -Depth 2 -Compress
         # module file cannot be kept in step by hand, which is the whole of #185.
         $moduleSource = Get-Content -Path $script:sourceModulePath -Raw
         $moduleSource | Should -Not -Match 'ConvertFrom-StringData'
+    }
+
+    It 'ships every string the module asks for' {
+        # The guard above keeps a second copy from existing. This one keeps the single copy
+        # complete, which is the other half of the same promise and fails differently: a key
+        # the module reads but Messages.psd1 never defines resolves to $null, and $null -f
+        # $argument is an empty string rather than an error. The message simply comes out
+        # blank -- on every host and every culture, not just the ones the Context below
+        # covers.
+        #
+        # That is not hypothetical. Publish-PSBuildModule read PathDoesNotExist from a
+        # ValidateScript on a mandatory parameter while Messages.psd1 never defined it, so
+        # passing a path that did not exist failed validation with no text at all, while the
+        # very next check in the same script block reported itself properly.
+        $sourceFile = Get-ChildItem -Path (
+            [IO.Path]::Combine($script:repositoryRoot, 'PowerShellBuild')
+        ) -Include '*.ps1', '*.psm1' -File -Recurse
+
+        $referencedKey = @(
+            $sourceFile |
+                Select-String -Pattern '\$LocalizedData\.(\w+)' -AllMatches |
+                ForEach-Object { $_.Matches } |
+                ForEach-Object { $_.Groups[1].Value } |
+                Sort-Object -Unique
+        )
+        $referencedKey | Should -Not -BeNullOrEmpty -Because 'the pattern must still match something'
+
+        $undefined = @($referencedKey.Where({ $_ -notin $script:shippedString.Keys }))
+        $undefined -join ', ' | Should -BeNullOrEmpty
     }
 
     Context 'Imported by <_.HostName> under a non-English UI culture' -ForEach $script:localizationHost {

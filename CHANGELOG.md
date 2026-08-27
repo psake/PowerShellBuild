@@ -93,6 +93,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   import that cannot find the strings at all fails outright rather than
   blanking every message.
 
+  The same sweep found one string the module read and never shipped:
+  `Publish-PSBuildModule` validated `-Path` against `PathDoesNotExist`, which
+  `en-US/Messages.psd1` did not define, so passing a path that does not exist
+  failed with a blank message on **every** host and culture while the very
+  next check in the same validation block reported itself properly. The string
+  is now defined, and a test asserts that every string the module reads is one
+  it ships.
+
 - [**#124**](https://github.com/psake/PowerShellBuild/issues/124)
   The docs tree can hold documentation that is not generated help. A `README.md`
   at its root, a `CONTRIBUTING.md` beside the generated markdown, an `images/` or
