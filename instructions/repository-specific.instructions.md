@@ -72,7 +72,7 @@ Sections:
 | `Build`        | OutDir, ModuleOutDir, CompileModule, CompileDirectories, CopyDirectories, Exclude                                  |
 | `Test`         | Enabled, RootDir, OutputFile/Format, ScriptAnalysis, CodeCoverage, ImportModule, etc.                              |
 | `Help`         | UpdatableHelpOutDir, DefaultLocale, ConvertReadMeToAboutHelp                                                       |
-| `Docs`         | RootDir, Overwrite, AlphabeticParamsOrder, ExcludeDontShow, UseFullTypeName                                        |
+| `Docs`         | RootDir, Overwrite, ExcludeDontShow, UseFullTypeName                                                               |
 | `Publish`      | PSRepository, PSRepositoryApiKey, PSRepositoryCredential                                                           |
 | `Sign`         | Enabled, CertificateSource, CertStoreLocation, Thumbprint, EnvVar/PfxFile sources, TimestampServer, HashAlgorithm, FilesToSign, Catalog |
 | `Sign.Catalog` | Enabled, Version, FileName                                                                                         |
