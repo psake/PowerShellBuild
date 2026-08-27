@@ -194,5 +194,146 @@ Describe 'Code Signing Functions' {
           Should -BeFalse
       }
     }
+
+    # The Store and Thumbprint sources select one certificate out of many, so validity is part
+    # of the selection rather than a gate applied to a single loaded certificate. SkipValidation
+    # therefore relaxes the selection only as a fallback: a valid certificate is preferred
+    # whenever one exists, and an expired one is accepted only when nothing valid was found.
+    # See psake/PowerShellBuild#193.
+    #
+    # These tests mock Get-ChildItem inside the module session state, which is the only way the
+    # mock reaches the call made by Get-PSBuildCertificate. They are Windows-only because the
+    # -CodeSigningCert dynamic parameter comes from the certificate provider, which exists only
+    # on Windows, and because the Store source throws on other platforms by design.
+    Context 'SkipValidation for store-backed sources' {
+
+      BeforeAll {
+        $script:validCertificate = [PSCustomObject]@{
+          Subject       = 'CN=Valid Test Certificate'
+          Thumbprint    = 'AAAA111122223333444455556666777788889999'
+          HasPrivateKey = $true
+          NotAfter      = (Get-Date).AddDays(30)
+        }
+        $script:expiredCertificate = [PSCustomObject]@{
+          Subject       = 'CN=Expired Test Certificate'
+          Thumbprint    = 'BBBB111122223333444455556666777788889999'
+          HasPrivateKey = $true
+          NotAfter      = (Get-Date).AddDays(-1)
+        }
+        $script:noPrivateKeyCertificate = [PSCustomObject]@{
+          Subject       = 'CN=No Private Key Test Certificate'
+          Thumbprint    = 'CCCC111122223333444455556666777788889999'
+          HasPrivateKey = $false
+          NotAfter      = (Get-Date).AddDays(30)
+        }
+      }
+
+      Context 'Store source' {
+        It 'Prefers a valid certificate over an expired one even when SkipValidation is set' -Skip:(-not $IsWindows) {
+          # The expired certificate is returned first so that a naive implementation, one that
+          # hoists the validity checks out of the selection filter, would pick it.
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:expiredCertificate
+            $script:validCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Store -SkipValidation
+
+          $certificate.Subject | Should -Be 'CN=Valid Test Certificate'
+        }
+
+        It 'Returns an expired certificate when SkipValidation is set and nothing valid is available' -Skip:(-not $IsWindows) {
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:expiredCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Store -SkipValidation -WarningAction SilentlyContinue
+
+          $certificate.Subject | Should -Be 'CN=Expired Test Certificate'
+        }
+
+        It 'Warns when SkipValidation causes an expired certificate to be selected' -Skip:(-not $IsWindows) {
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:expiredCertificate
+          }
+
+          Get-PSBuildCertificate -CertificateSource Store -SkipValidation `
+            -WarningVariable warningRecord -WarningAction SilentlyContinue | Out-Null
+
+          $warningRecord -join ' ' | Should -Match 'expired'
+        }
+
+        It 'Does not return an expired certificate when SkipValidation is not set' -Skip:(-not $IsWindows) {
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:expiredCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Store
+
+          $certificate | Should -BeNullOrEmpty
+        }
+
+        It 'Does not return a certificate without a private key even when SkipValidation is set' -Skip:(-not $IsWindows) {
+          # A certificate with no private key cannot sign anything, so relaxing that check
+          # would only defer the failure to Set-AuthenticodeSignature with a worse message.
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:noPrivateKeyCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Store -SkipValidation -WarningAction SilentlyContinue
+
+          $certificate | Should -BeNullOrEmpty
+        }
+      }
+
+      Context 'Thumbprint source' {
+        It 'Returns an expired certificate when SkipValidation is set and nothing valid is available' -Skip:(-not $IsWindows) {
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:expiredCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Thumbprint `
+            -Thumbprint $script:expiredCertificate.Thumbprint -SkipValidation -WarningAction SilentlyContinue
+
+          $certificate.Subject | Should -Be 'CN=Expired Test Certificate'
+        }
+
+        It 'Still honours the requested thumbprint when SkipValidation relaxes the selection' -Skip:(-not $IsWindows) {
+          # A valid certificate is present, but it is not the one the consumer named. Returning
+          # it would sign with a different identity than the build asked for.
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:validCertificate
+            $script:expiredCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Thumbprint `
+            -Thumbprint $script:expiredCertificate.Thumbprint -SkipValidation -WarningAction SilentlyContinue
+
+          $certificate.Thumbprint | Should -Be $script:expiredCertificate.Thumbprint
+        }
+
+        It 'Does not return an expired certificate when SkipValidation is not set' -Skip:(-not $IsWindows) {
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:expiredCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Thumbprint `
+            -Thumbprint $script:expiredCertificate.Thumbprint
+
+          $certificate | Should -BeNullOrEmpty
+        }
+
+        It 'Does not return a certificate without a private key even when SkipValidation is set' -Skip:(-not $IsWindows) {
+          Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+            $script:noPrivateKeyCertificate
+          }
+
+          $certificate = Get-PSBuildCertificate -CertificateSource Thumbprint `
+            -Thumbprint $script:noPrivateKeyCertificate.Thumbprint -SkipValidation -WarningAction SilentlyContinue
+
+          $certificate | Should -BeNullOrEmpty
+        }
+      }
+    }
   }
 }

@@ -219,6 +219,7 @@ Task SignModule -If {
         CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
         CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
         CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+        SkipValidation            = $PSBPreference.Sign.SkipCertificateValidation
     }
     if ($PSBPreference.Sign.Thumbprint) {
         $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint
@@ -294,6 +295,7 @@ Task SignCatalog -If {
         CertStoreLocation         = $PSBPreference.Sign.CertStoreLocation
         CertificateEnvVar         = $PSBPreference.Sign.CertificateEnvVar
         CertificatePasswordEnvVar = $PSBPreference.Sign.CertificatePasswordEnvVar
+        SkipValidation            = $PSBPreference.Sign.SkipCertificateValidation
     }
     if ($PSBPreference.Sign.Thumbprint) {
         $certParams.Thumbprint = $PSBPreference.Sign.Thumbprint

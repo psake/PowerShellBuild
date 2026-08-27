@@ -99,3 +99,49 @@ Describe 'Settings referenced by the task files' {
         $unresolvable -join ', ' | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Signing settings referenced by the task files' {
+
+    # Both task files build a certificate parameter hashtable and splat it onto
+    # Get-PSBuildCertificate, and until psake/PowerShellBuild#193 nothing compared the two
+    # bodies. IB.tasks.ps1 never passed SkipValidation, so
+    # $PSBPreference.Sign.SkipCertificateValidation was dead for every Invoke-Build consumer
+    # while it worked for psake consumers. The task-name comparison above cannot see that,
+    # because both files define the same tasks.
+    #
+    # The comparison is scoped to the $PSBPreference.Sign settings rather than every
+    # $PSBPreference setting because the two files legitimately differ elsewhere: only
+    # IB.tasks.ps1 reads Build.Dependencies, and only psakeFile.ps1 uses the
+    # $PSB{TaskName}Dependency variables.
+
+    BeforeAll {
+        $script:moduleSourcePath = [IO.Path]::Combine(
+            (Split-Path -Path $PSScriptRoot -Parent), 'PowerShellBuild'
+        )
+
+        function script:Get-SignSettingName {
+            param([string]$FileName)
+
+            $taskFileContent = Get-Content -Path (
+                [IO.Path]::Combine($script:moduleSourcePath, $FileName)
+            ) -Raw
+
+            [regex]::Matches(
+                $taskFileContent, '\$PSBPreference\.Sign((?:\.[A-Za-z_][A-Za-z0-9_]*)+)'
+            ).ForEach({ $_.Groups[1].Value.TrimStart('.') }) | Sort-Object -Unique
+        }
+    }
+
+    It 'reads the same $PSBPreference.Sign settings in both task files' {
+        $psakeSetting = Get-SignSettingName -FileName 'psakeFile.ps1'
+        $invokeBuildSetting = Get-SignSettingName -FileName 'IB.tasks.ps1'
+
+        $psakeSetting | Should -Not -BeNullOrEmpty -Because 'the regex must still match something'
+
+        $missingFromInvokeBuild = $psakeSetting.Where({ $_ -notin $invokeBuildSetting })
+        $missingFromPsake = $invokeBuildSetting.Where({ $_ -notin $psakeSetting })
+
+        $missingFromInvokeBuild -join ', ' | Should -BeNullOrEmpty -Because 'IB.tasks.ps1 must honour every signing setting psakeFile.ps1 honours'
+        $missingFromPsake -join ', ' | Should -BeNullOrEmpty -Because 'psakeFile.ps1 must honour every signing setting IB.tasks.ps1 honours'
+    }
+}

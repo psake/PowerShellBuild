@@ -51,9 +51,14 @@ function Get-PSBuildCertificate {
     .PARAMETER PfxFilePassword
         Password for the PFX file as a SecureString. Used by PfxFile source.
     .PARAMETER SkipValidation
-        Skip validation checks (private key presence, expiration, Code Signing EKU) for certificates
-        loaded from EnvVar or PfxFile sources. Use with caution; invalid certificates will fail during
-        actual signing operations with less descriptive errors.
+        Relax the certificate validity checks. For the EnvVar and PfxFile sources, which load
+        exactly one certificate, this skips the private key, expiration, and Code Signing EKU
+        checks outright. For the Store and Thumbprint sources, which select one certificate out
+        of many, an unexpired certificate is still preferred whenever one exists; an expired
+        certificate is returned only when no unexpired one was found, and a warning is emitted
+        when that happens. A private key is required in every case, because a certificate
+        without one cannot sign. Use with caution; invalid certificates will fail during actual
+        signing operations with less descriptive errors.
     .OUTPUTS
         System.Security.Cryptography.X509Certificates.X509Certificate2
         Returns the resolved certificate, or $null if none was found (Store/Thumbprint sources).
@@ -129,9 +134,30 @@ function Get-PSBuildCertificate {
             if ($null -ne $IsWindows -and -not $IsWindows) {
                 throw $LocalizedData.CertificateSourceStoreNotSupported
             }
-            $cert = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert |
+            $candidateCertificate = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert
+
+            # The store holds many certificates, so validity is part of how the right one is
+            # selected rather than a gate applied to a single loaded certificate. Prefer a valid
+            # certificate first, always.
+            $cert = $candidateCertificate |
                 Where-Object { $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) } |
                 Select-Object -First 1
+
+            # Only when the consumer explicitly opted out of validation does an expired
+            # certificate become acceptable, and only as a fallback, so a valid certificate is
+            # never passed over in favour of an expired one further down the store.
+            # HasPrivateKey stays required: a certificate without one cannot sign anything, so
+            # relaxing that check would buy nothing and only defer the failure to
+            # Set-AuthenticodeSignature with a less descriptive error.
+            if (-not $cert -and $SkipValidation) {
+                $cert = $candidateCertificate |
+                    Where-Object { $_.HasPrivateKey } |
+                    Select-Object -First 1
+                if ($cert) {
+                    Write-Warning ($LocalizedData.CertificateValidationRelaxed -f $cert.NotAfter, $cert.Subject)
+                }
+            }
+
             if ($cert) {
                 Write-Verbose ($LocalizedData.CertificateResolvedFromStore -f $CertStoreLocation, $cert.Subject)
             }
@@ -144,13 +170,34 @@ function Get-PSBuildCertificate {
             # Normalize thumbprint input by removing whitespace for robust matching
             $normalizedThumbprint = ($Thumbprint -replace '\s', '')
 
-            $cert = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert |
+            $candidateCertificate = Get-ChildItem -Path $CertStoreLocation -CodeSigningCert
+
+            # As with the Store source, validity is part of the selection. Prefer a valid
+            # certificate first, always.
+            $cert = $candidateCertificate |
                 Where-Object {
                     ($_.Thumbprint -replace '\s', '') -ieq $normalizedThumbprint -and
                     $_.HasPrivateKey -and
                     $_.NotAfter -gt (Get-Date)
                 } |
                 Select-Object -First 1
+
+            # The fallback relaxes only the expiry check. The thumbprint match is kept, because
+            # returning a certificate other than the one the consumer named would sign with a
+            # different identity than the build asked for, and HasPrivateKey is kept for the
+            # same reason it is kept in the Store source.
+            if (-not $cert -and $SkipValidation) {
+                $cert = $candidateCertificate |
+                    Where-Object {
+                        ($_.Thumbprint -replace '\s', '') -ieq $normalizedThumbprint -and
+                        $_.HasPrivateKey
+                    } |
+                    Select-Object -First 1
+                if ($cert) {
+                    Write-Warning ($LocalizedData.CertificateValidationRelaxed -f $cert.NotAfter, $cert.Subject)
+                }
+            }
+
             if ($cert) {
                 Write-Verbose ($LocalizedData.CertificateResolvedFromThumbprint -f $Thumbprint, $cert.Subject)
             }
