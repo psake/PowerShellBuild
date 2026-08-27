@@ -77,6 +77,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#185**](https://github.com/psake/PowerShellBuild/issues/185)
+  Consumers on a non-English Windows PowerShell 5.1 host get the module's
+  real messages. `PowerShellBuild.psm1` carried a hand-maintained second copy
+  of every string, bound whenever `Import-LocalizedData` resolved nothing, and
+  it had drifted sixteen strings behind `en-US/Messages.psd1` — every
+  certificate and signing message was absent, and the Pester floor was still
+  reported as `5.0.0`. That lookup resolves by UI culture and the module ships
+  `en-US` only: PowerShell 7 falls back to `en-US` and never saw the drift,
+  but Windows PowerShell 5.1 does not fall back at all, so a French or
+  Japanese install bound the stale copy. A missing string does not throw, so
+  the symptom was a blank `WARNING:` line, or a bare `ScriptHalted` where the
+  signing tasks meant to say no certificate was found. The copy is gone,
+  `en-US` is now requested by name when the culture lookup misses, and an
+  import that cannot find the strings at all fails outright rather than
+  blanking every message.
+
 - [**#124**](https://github.com/psake/PowerShellBuild/issues/124)
   The docs tree can hold documentation that is not generated help. A `README.md`
   at its root, a `CONTRIBUTING.md` beside the generated markdown, an `images/` or
