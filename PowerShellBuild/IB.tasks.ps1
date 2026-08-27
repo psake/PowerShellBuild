@@ -97,7 +97,7 @@ Task Pester -If (. $pesterPreReqs) Build, {
         CodeCoverageThreshold        = $PSBPreference.Test.CodeCoverage.Threshold
         CodeCoverageFiles            = $PSBPreference.Test.CodeCoverage.Files
         CodeCoverageOutputFile       = $PSBPreference.Test.CodeCoverage.OutputFile
-        CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFormat
+        CodeCoverageOutputFileFormat = $PSBPreference.Test.CodeCoverage.OutputFileFormat
         ImportModule                 = $PSBPreference.Test.ImportModule
         SkipRemainingOnFailure       = $PSBPreference.Test.SkipRemainingOnFailure
         OutputVerbosity              = $PSBPreference.Test.OutputVerbosity
