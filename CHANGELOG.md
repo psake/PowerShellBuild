@@ -77,6 +77,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#178**](https://github.com/psake/PowerShellBuild/issues/178)
+  Invoke-Build consumers get the code coverage output format they configured.
+  `IB.tasks.ps1` read `$PSBPreference.Test.CodeCoverage.OutputFormat`, but the
+  setting is `OutputFileFormat`, so the expression evaluated to `$null` and bound
+  to the `[string]` parameter as an empty string rather than falling back to its
+  `JaCoCo` default. Pester accepted the empty format silently, leaving the
+  documented setting inert and the coverage threshold gate unable to find or parse
+  a report. The psake task was unaffected.
+
 - [**#169**](https://github.com/psake/PowerShellBuild/issues/169)
   `Build-PSBuildUpdatableHelp` produces a help cabinet. It never could before:
   it needed a module landing page that `Build-PSBuildMarkdown` did not
