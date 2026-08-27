@@ -9,42 +9,25 @@ foreach ($import in $public + $private) {
     }
 }
 
-data LocalizedData {
-    # Load here in case Import-LocalizedData is not available
-    ConvertFrom-StringData @'
-NoCommandsExported=No commands have been exported. Skipping markdown generation.
-FailedToGenerateMarkdownHelp=Failed to generate markdown help. : {0}
-AddingFileToPsm1=Adding [{0}] to PSM1
-MakeCabNotAvailable=MakeCab.exe is not available. Cannot create help cab.
-DirectoryAlreadyExists=Directory already exists [{0}].
-PathLongerThan3Chars=Path [{0}] must be longer than 3 characters.
-BuildSystemDetails=Build System Details:
-BuildModule=Build Module:       {0}:{1}
-PowerShellVersion=PowerShell Version: {0}
-EnvironmentVariables={0}Environment variables:
-PublishingVersionToRepository=Publishing version [{0}] to repository [{1}]...
-FolderDoesNotExist=Folder does not exist: {0}
-PathArgumentMustBeAFolder=The Path argument must be a folder. File paths are not allowed.
-UnableToFindModuleManifest=Unable to find module manifest [{0}]. Can't import module
-PesterTestsFailed=One or more Pester tests failed
-PesterVersionNotSupported=Pester version [{0}] is loaded, but Test-PSBuildPester requires Pester 5.0.0 or newer.
-CodeCoverage=Code Coverage
-Type=Type
-CodeCoverageLessThanThreshold=Code coverage: [{0}] is [{1:p}], which is less than the threshold of [{2:p}]
-CodeCoverageCodeCoverageFileNotFound=Code coverage file [{0}] not found.
-SeverityThresholdSetTo=SeverityThreshold set to: {0}
-PSScriptAnalyzerResults=PSScriptAnalyzer results:
-ScriptAnalyzerErrors=One or more ScriptAnalyzer errors were found!
-ScriptAnalyzerWarnings=One or more ScriptAnalyzer warnings were found!
-ScriptAnalyzerIssues=One or more ScriptAnalyzer issues were found!
-'@
-}
-$importLocalizedDataSplat = @{
+# Every user-facing string lives in en-US/Messages.psd1 and nowhere else. Import-LocalizedData
+# resolves that file through the current UI culture and the culture's parent chain, so the lookup
+# misses whenever the machine's UI culture has no directory of its own -- and this module ships
+# en-US only. PowerShell 7 has a final en-US fallback that hides the miss; Windows PowerShell 5.1
+# has none and binds nothing at all, which is why a French or Japanese Windows install got no
+# strings. Ask for en-US by name when the culture lookup comes up empty, and fail the import if
+# even that is not there: silent, missing strings turn every message into an empty warning or a
+# bare ScriptHalted (psake/PowerShellBuild#185).
+$importLocalizedDataParameters = @{
     BindingVariable = 'LocalizedData'
     FileName        = 'Messages.psd1'
     ErrorAction     = 'SilentlyContinue'
 }
-Import-LocalizedData @importLocalizedDataSplat
+Import-LocalizedData @importLocalizedDataParameters
+if (-not $LocalizedData) {
+    $importLocalizedDataParameters['UICulture'] = 'en-US'
+    $importLocalizedDataParameters['ErrorAction'] = 'Stop'
+    Import-LocalizedData @importLocalizedDataParameters
+}
 
 
 Export-ModuleMember -Function $public.Basename
