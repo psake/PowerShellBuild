@@ -31,10 +31,13 @@ BeforeDiscovery {
             Select-Object -First 1
     ).Source
 
+    # Sort-Object -Unique rather than Select-Object -Unique: when the suite is running under
+    # Windows PowerShell the two lookups return the same executable spelled differently
+    # (powershell.EXE and powershell.exe), and only Sort-Object collapses that by default.
     $script:localizationHost = @(
         $currentHostPath, $windowsPowerShellPath |
             Where-Object { $_ } |
-            Select-Object -Unique |
+            Sort-Object -Unique |
             ForEach-Object { @{ HostName = [IO.Path]::GetFileName($_); HostPath = $_ } }
     )
     if ($script:localizationHost.Count -eq 0) {
