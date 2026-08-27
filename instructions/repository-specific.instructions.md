@@ -22,7 +22,8 @@ tasks for other PowerShell module projects. It supports two task-runner framewor
   — decided in the v1.0.0 roadmap (psake/PowerShellBuild#120). The support floor is Windows
   PowerShell 5.1 or PowerShell 7.4+; CI runs Windows PowerShell 5.1 and the runners' current
   PowerShell 7 release across Linux/Windows/macOS
-- Cross-platform: Windows, Linux, macOS (CI matrix in `.github/workflows/test.yml`)
+- Cross-platform: Windows, Linux, macOS (`.github/workflows/test.yml` delegates to the psake
+  organization's shared `ModuleCI.yml`, which holds the matrix)
 - The module is **psake/PowerShellBuild** on PSGallery and GitHub; maintained by the psake org
 
 ## Repository Layout
@@ -137,7 +138,10 @@ pattern — keep new public functions consistent with this):
 | `Invoke-PSBuildModuleSigning`  | Signs module files with an Authenticode certificate                    |
 | `New-PSBuildFileCatalog`       | Generates a `.cat` file catalog for the module                         |
 
-Private helper: `Remove-ExcludedItem` — filters file system items by regex patterns during builds.
+Private helpers in `PowerShellBuild/Private/`:
+
+- `Remove-ExcludedItem` — filters file system items by regular expression patterns during builds
+- `Get-PSBuildHelpLocale` — resolves the locale used for help generation
 
 ### Invoke-Build alias
 
@@ -247,22 +251,38 @@ own floor is **Pester 6.0.0** as of psake/PowerShellBuild#172, matching what CI 
 - `tests/TestModule/` is a complete example module used to exercise PowerShellBuild's tasks.
   It has its own `build.ps1`, `psakeFile.ps1`, `.build.ps1` (Invoke-Build), and Pester tests.
 
-| Test file              | Tests                                                                   |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `build.tests.ps1`      | Module compilation, file staging, exclusion, header/footer injection    |
-| `Help.tests.ps1`       | Help documentation completeness                                         |
-| `IBTasks.tests.ps1`    | Invoke-Build task definitions                                           |
-| `Manifest.tests.ps1`   | Module manifest validity                                                |
-| `Meta.tests.ps1`       | Script analysis, best practices across module source                    |
+| Test file                                | Tests                                                                |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| `build.tests.ps1`                        | Module compilation, file staging, exclusion, header/footer injection |
+| `Build-PSBuildHelp.tests.ps1`            | Markdown and MAML help generation (skipped without PlatyPS)          |
+| `Clear-PSBuildOutputFolder.tests.ps1`    | Output directory removal                                             |
+| `Fixtures.tests.ps1`                     | The shared test fixture helpers themselves                           |
+| `Get-PSBuildCertificate.tests.ps1`       | Signing certificate resolution                                       |
+| `Get-PSBuildHelpLocale.tests.ps1`        | Help locale resolution                                               |
+| `Help.tests.ps1`                         | Help documentation completeness                                      |
+| `IBTasks.tests.ps1`                      | Invoke-Build task definitions and the settings they reference        |
+| `Initialize-PSBuild.tests.ps1`           | Build environment initialization                                     |
+| `Invoke-PSBuildModuleSigning.tests.ps1`  | Authenticode signing of module files                                 |
+| `Manifest.tests.ps1`                     | Module manifest validity                                             |
+| `Meta.tests.ps1`                         | Text file formatting across the repository                           |
+| `New-PSBuildFileCatalog.tests.ps1`       | Catalog (`.cat`) file creation                                       |
+| `Test-PSBuildPester.tests.ps1`           | Pester invocation and the Pester version floor                       |
+| `Test-PSBuildScriptAnalysis.tests.ps1`   | PSScriptAnalyzer invocation and severity handling                    |
+
+Supporting files: `tests/MetaFixers.psm1` (helpers for `Meta.tests.ps1`) and `tests/fixtures/`
+(`FixtureHelpers.psm1` plus the `PSBuildTestFixture` sample module it copies).
 
 ## CI / CD (GitHub Actions)
 
 ### Test workflow (`.github/workflows/test.yml`)
 
-- Triggers: push to default branch, pull requests, manual dispatch
-- Matrix: `ubuntu-latest`, `windows-latest`, `macOS-latest`
-- Command: `./build.ps1 -Task Test -Bootstrap`
-- Supports a `DEBUG` runner flag for verbose output
+- Triggers: push to `main`, pull requests, manual dispatch
+- The workflow itself defines no jobs of its own — it delegates to the psake organization's
+  shared workflow, `psake/.github/.github/workflows/ModuleCI.yml@main`. Change the shared
+  workflow, not `test.yml`, to change what CI runs
+- The shared workflow lints (cspell plus PSScriptAnalyzer fix suggestions), then runs
+  `./build.ps1 -Task Test -Bootstrap` across a `ubuntu-latest`, `windows-latest`, `macOS-latest`
+  matrix on PowerShell 7 and again on Windows PowerShell 5.1, and publishes the test results
 
 ### Publish workflow (`.github/workflows/publish.yaml`)
 
@@ -300,8 +320,8 @@ don't replace them.
 properties {
     # These settings overwrite values supplied from the PowerShellBuild
     # module and govern how those tasks are executed
-    $PSBPreference.Test.ScriptAnalysisEnabled = $false
-    $PSBPreference.Test.CodeCoverage.Enabled  = $true
+    $PSBPreference.Test.ScriptAnalysis.Enabled = $false
+    $PSBPreference.Test.CodeCoverage.Enabled   = $true
 }
 
 task default -depends Build
@@ -363,7 +383,7 @@ After a successful build:
 ```text
 Output/
 └── PowerShellBuild/
-    └── 0.8.0/
+    └── <ModuleVersion>/              # the manifest's ModuleVersion, e.g. 0.8.2
         ├── Public/                   # (when CompileModule = $false)
         ├── Private/
         ├── en-US/
@@ -384,7 +404,7 @@ decisions include: PRs directly to `main`, `1.0.0-preview.N` prereleases after e
 hard cut + migration guide (no deprecation cycle), psake 5.x in scope. Phase-by-phase
 breakdown lives in the tracking issue.
 
-Migration guide path (created in Phase 1): `docs/migration/v0.8-to-v1.0.md`.
+Migration guide path (created in Phase 1): `docs/migration-v0.8-to-v1.0.md`.
 
 ## Notes for AI Agents
 
