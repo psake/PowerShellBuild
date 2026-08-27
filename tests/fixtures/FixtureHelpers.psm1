@@ -1,4 +1,4 @@
-function Copy-PSBuildTestFixture {
+﻿function Copy-PSBuildTestFixture {
     <#
     .SYNOPSIS
         Copy the PSBuildTestFixture module to a destination directory.
@@ -203,7 +203,8 @@ function Invoke-PSBuildCommandInJob {
     .EXAMPLE
         PS> $result = Invoke-PSBuildCommandInJob -ModulePath $builtModulePath -CommandName 'Build-PSBuildMarkdown' -Parameter $parameter
 
-        Runs Build-PSBuildMarkdown in a job and returns Threw, ErrorMessage, and Output.
+        Runs Build-PSBuildMarkdown in a job and returns Threw, ErrorMessage, Output, and
+        Warning.
     .OUTPUTS
         System.Management.Automation.PSCustomObject
     #>
@@ -260,6 +261,13 @@ function Invoke-PSBuildCommandInJob {
         if (-not $invokeParameter.ContainsKey('ErrorAction')) {
             $invokeParameter['ErrorAction'] = 'Stop'
         }
+        # Captured rather than left to the job's warning stream, where the caller can see it
+        # scroll past but cannot assert on it. Set through the splat for the same reason
+        # ErrorAction is.
+        $commandWarning = @()
+        if (-not $invokeParameter.ContainsKey('WarningVariable')) {
+            $invokeParameter['WarningVariable'] = 'commandWarning'
+        }
 
         $threw = $false
         $errorMessage = $null
@@ -286,6 +294,7 @@ function Invoke-PSBuildCommandInJob {
             Threw               = $threw
             ErrorMessage        = $errorMessage
             Output              = $commandOutput
+            Warning             = @($commandWarning.ForEach({ $_.ToString() }))
             LoadedModuleVersion = $loadedModuleVersion
         }
     } -ArgumentList $ModulePath, $CommandName, $Parameter, $RequiredModule
@@ -298,6 +307,7 @@ function Invoke-PSBuildCommandInJob {
             Threw               = $true
             ErrorMessage        = "$CommandName did not complete within $TimeoutSecond seconds."
             Output              = @()
+            Warning             = @()
             LoadedModuleVersion = @{}
         }
     }
