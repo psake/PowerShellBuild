@@ -178,13 +178,25 @@ function Invoke-PSBuildCommandInJob {
         throwing keeps a failure legible: the test asserts on ErrorMessage instead of an opaque
         job error.
 
-        A job is used because some commands cannot be exercised in the caller's session. The
-        docs pipeline is the current example: platyPS 0.14.2 and Microsoft.PowerShell.PlatyPS
-        1.x each load their own YamlDotNet.dll through NestedModules with different assembly
-        identities, so whichever imports second fails with "Assembly with same name is already
-        loaded". A separate runspace does not escape that; only a separate process does. Pester
-        recommends the same technique for session isolation, see
-        https://pester.dev/docs/usage/mocking.
+        A job is used because these commands leave the session different from how they found
+        it, and the session they would otherwise run in is Pester's. Every docs command loads
+        Microsoft.PowerShell.PlatyPS, which stays loaded once the command returns. That is a
+        declared, idempotent dependency rather than a hazard by itself, but it means the first
+        docs test silently changes the conditions every later test runs under, and a test that
+        needs the module absent has no way to get there.
+
+        A separate runspace is not enough, because assemblies load per process rather than per
+        runspace, so unloading the module does not unload what it brought with it. Only a
+        separate process starts clean. Pester recommends the same technique for session
+        isolation, see https://pester.dev/docs/usage/mocking.
+
+        This helper was originally written for a stronger reason that no longer applies:
+        during the migration in #105 the suite had to exercise platyPS 0.14.2 and
+        Microsoft.PowerShell.PlatyPS 1.x in one run, and the two cannot coexist at all --
+        each loads its own YamlDotNet.dll through NestedModules with a different assembly
+        identity, so whichever imports second fails with "Assembly with same name is already
+        loaded" (PowerShell/platyPS#579). Only 1.x is a dependency now, so that conflict is
+        history; the session hygiene above is why the jobs stay.
     .PARAMETER ModulePath
         Path to the built PowerShellBuild module to import inside the job.
     .PARAMETER CommandName
@@ -329,7 +341,10 @@ function Invoke-TestPSBuildPesterInJob {
         Testing Test-PSBuildPester means Pester testing Pester, so the job is doing two jobs at
         once: it gives the inner run its own session, and it lets that session pin a Pester
         version independently of the outer framework. Two Pester majors cannot coexist in one
-        session, so without the job the matrix could only ever cover the version already loaded.
+        session, so without the job the matrix could only ever cover the version already
+        loaded. Since #172 raised the floor to 6.0.0 the matrix spans one major, so today the
+        job buys isolation rather than reach -- but it is what would let a second major be
+        added back without the two runs interfering.
     .PARAMETER ModulePath
         Path to the built PowerShellBuild module to import inside the job.
     .PARAMETER InnerPesterVersion
