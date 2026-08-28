@@ -264,6 +264,7 @@ own floor is **Pester 6.0.0** as of psake/PowerShellBuild#172, matching what CI 
 | `IBTasks.tests.ps1`                      | Invoke-Build task definitions and the settings they reference        |
 | `Initialize-PSBuild.tests.ps1`           | Build environment initialization                                     |
 | `Invoke-PSBuildModuleSigning.tests.ps1`  | Authenticode signing of module files                                 |
+| `LocalizedData.tests.ps1`                | How the module resolves its user-facing strings at import            |
 | `Manifest.tests.ps1`                     | Module manifest validity                                             |
 | `Meta.tests.ps1`                         | Text file formatting across the repository                           |
 | `New-PSBuildFileCatalog.tests.ps1`       | Catalog (`.cat`) file creation                                       |
