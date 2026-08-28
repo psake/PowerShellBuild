@@ -59,6 +59,17 @@ on a `pull_request` event the checked-out merge commit has a short message, so
 the build is green, and the real message only becomes HEAD on the push to your
 default branch.
 
+**If a build is already hung**, shortening the message releases it —
+`git commit --amend` locally, or fast-forward a checkout that is sitting on the
+offending commit. There is nothing to clean up; the build never started.
+
+**Size is not the only trigger.** `Invoke-Git` also deadlocks inside a
+PowerShell background job *whatever* the output size — an 85-byte commit
+message and a five-byte `git rev-parse` both hang. So calling
+`Initialize-PSBuild` or `Set-BuildEnvironment` from `Start-Job` hangs
+unconditionally, short messages included, and no message-length discipline
+helps. Run them in the foreground, or in a child process you can time out.
+
 Tracked upstream as
 [RamblingCookieMonster/BuildHelpers#86](https://github.com/RamblingCookieMonster/BuildHelpers/issues/86)
 and here as
