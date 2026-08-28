@@ -108,6 +108,20 @@ Everything below is the detail, one entry per issue.
 
 ### Fixed
 
+- [**#203**](https://github.com/psake/PowerShellBuild/issues/203)
+  A publish that fails now fails the build. `Publish-Module` reports a failed
+  publish as a non-terminating error — an unregistered repository, a rejected
+  API key, a repository the credential cannot authenticate to — and
+  `Publish-PSBuildModule` called it at the default preference, so the error was
+  written to the error stream and the command returned normally. The `Publish`
+  task in both `psakeFile.ps1` and `IB.tasks.ps1` then reported success for a
+  module that was never published, which on a release workflow means a green
+  build and no artifact in the gallery. `Publish-Module` is now called with
+  `-ErrorAction Stop`, and an explicit `-ErrorAction` passed to
+  `Publish-PSBuildModule` is forwarded so a consumer who wants the old behavior
+  can still ask for it. **If your publish has been quietly failing, this is the
+  release where you find out.**
+
 - [**#201**](https://github.com/psake/PowerShellBuild/issues/201)
   `$PSBPreference.Build.CompileModule = $true` now warns when the source
   `.psm1` calls `Export-ModuleMember`. Compiling appends the source root
