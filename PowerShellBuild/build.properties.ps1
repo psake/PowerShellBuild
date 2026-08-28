@@ -207,7 +207,18 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # rather than a check layered on afterwards.
         SkipCertificateValidation = $false
 
-        # RFC 3161 timestamp server URI embedded in Authenticode signatures.
+        # Timestamp server URI embedded in Authenticode signatures, so a signature
+        # stays valid after the signing certificate expires.
+        #
+        # This is passed to Set-AuthenticodeSignature -TimestampServer, which uses the
+        # legacy Authenticode timestamp protocol -- the timestamp lands in the signature
+        # as a PKCS#9 counter-signature (1.2.840.113549.1.9.6), not as an RFC 3161 token
+        # (1.3.6.1.4.1.311.3.3.1). That is signtool's /t rather than /tr. Verified on both
+        # PowerShell 7 and Windows PowerShell 5.1; see psake/PowerShellBuild#196.
+        #
+        # It matters when choosing a different provider: several publish separate
+        # endpoints for the two protocols, and an RFC 3161 only endpoint will not answer
+        # this request. The default below serves both.
         TimestampServer           = 'http://timestamp.digicert.com'
 
         # Authenticode hash algorithm. Valid values: SHA256, SHA384, SHA512, SHA1.
