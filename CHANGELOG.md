@@ -246,7 +246,7 @@ Everything below is the detail, one entry per issue.
   gating at all. The comparison is now strictly more permissive than before,
   so a build that passed with a coverage threshold set still passes.
 
-## [0.8.2] 2026-07-08
+## [0.8.2] - 2026-07-08
 
 ### Fixed
 
@@ -260,7 +260,7 @@ Everything below is the detail, one entry per issue.
   Companion to [#128](https://github.com/psake/PowerShellBuild/pull/128),
   which fixes the same gap in this repository's own build file.
 
-## [0.8.1] 2026-06-03
+## [0.8.1] - 2026-06-03
 
 ### Fixed
 
@@ -273,7 +273,7 @@ Everything below is the detail, one entry per issue.
   Windows (matching the existing pattern in `Build-PSBuildUpdatableHelp`). Behavior
   on PowerShell 7+ is unchanged.
 
-## [0.8.0] 2026-02-20
+## [0.8.0] - 2026-02-20
 
 ### Added
 
@@ -297,7 +297,7 @@ Everything below is the detail, one entry per issue.
 
 - Remove extra backticks during localization text migration.
 
-## [0.7.3] 2025-08-01
+## [0.7.3] - 2025-08-01
 
 ### Added
 
@@ -305,7 +305,7 @@ Everything below is the detail, one entry per issue.
   run.
 - Add localization support.
 
-## [0.7.2] 2025-05-21
+## [0.7.2] - 2025-05-21
 
 ### Added
 
@@ -321,13 +321,13 @@ Everything below is the detail, one entry per issue.
   - `$PSBPreference.Test.OutputVerbosity` can be set to **None**, **Normal**,
     **Detailed**, and **Diagnostic**. The default value is **Detailed**.
 
-## [0.7.1] 2025-04-01
+## [0.7.1] - 2025-04-01
 
-### Fixes
+### Fixed
 
 - Fix a bug in `Build-PSBuildMarkdown` where a hashtable item was added twice.
 
-## [0.7.0] 2025-03-31
+## [0.7.0] - 2025-03-31
 
 ### Changed
 
@@ -340,7 +340,7 @@ Everything below is the detail, one entry per issue.
   dependencies by allowing them to be overwritten with
   `$PSBPreference.TaskDependencies`.
 
-## [0.6.2] 2024-10-06
+## [0.6.2] - 2024-10-06
 
 ### Changed
 
@@ -361,13 +361,13 @@ Everything below is the detail, one entry per issue.
   output fle format not working (via
   [@OpsM0nkey](https://github.com/OpsM0nkey))
 
-## [0.6.1] 2021-03-14
+## [0.6.1] - 2021-03-14
 
 ### Fixed
 
 - Fixed bug in IB task `GenerateMarkdown` when dot sourcing precondition
 
-## [0.6.0] 2021-03-14
+## [0.6.0] - 2021-03-14
 
 ### Changed
 
@@ -375,7 +375,7 @@ Everything below is the detail, one entry per issue.
   brought inline with psake equivalents (via
   [@JustinGrote](https://github.com/JustinGrote))
 
-## [0.5.0] 2021-02-27
+## [0.5.0] - 2021-02-27
 
 ### Added
 
@@ -458,11 +458,10 @@ Everything below is the detail, one entry per issue.
   'Public' folder when dot sourcing functions in PSM1 (via
   [@pauby](https://github.com/pauby))
 
-### Breaking changes
-
-- Refactor build properties into a single hashtable `$PSBPreference`
-
 ### Changed
+
+- **Breaking:** Refactor build properties into a single hashtable
+  `$PSBPreference`
 
 - [**#11**](https://github.com/psake/PowerShellBuild/pull/11) The Invoke-Build
   tasks are now auto-generated from the psake tasks via a converter script (via
