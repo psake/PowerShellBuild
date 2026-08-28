@@ -1,4 +1,4 @@
-# spell-checker:ignore SIGNCERTIFICATE CERTIFICATEPASSWORD codesign pfxfile
+﻿# spell-checker:ignore SIGNCERTIFICATE CERTIFICATEPASSWORD codesign pfxfile
 Describe 'Code Signing Functions' {
 
   BeforeAll {
@@ -57,7 +57,7 @@ Describe 'Code Signing Functions' {
       $validateRange.MaxRange | Should -Be 2
     }
 
-    It 'Calls New-FileCatalog with correct parameters' -Skip:(-not $IsWindows) {
+    It 'Calls New-FileCatalog with correct parameters' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
       $testModulePath = Join-Path -Path $TestDrive -ChildPath 'CatalogTest'
       New-Item -Path $testModulePath -ItemType Directory -Force | Out-Null
       'test' | Out-File -FilePath (Join-Path $testModulePath 'test.ps1')
@@ -85,7 +85,7 @@ Describe 'Code Signing Functions' {
       $parameter | Should -Not -BeNullOrEmpty
     }
 
-    It 'Returns a FileInfo object' -Skip:(-not $IsWindows) {
+    It 'Returns a FileInfo object' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
       $testModulePath = Join-Path -Path $TestDrive -ChildPath 'CatalogTest2'
       New-Item -Path $testModulePath -ItemType Directory -Force | Out-Null
       'test' | Out-File -FilePath (Join-Path $testModulePath 'test.ps1')

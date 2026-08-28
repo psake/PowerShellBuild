@@ -1,4 +1,4 @@
-# spell-checker:ignore SIGNCERTIFICATE CERTIFICATEPASSWORD codesign pfxfile
+﻿# spell-checker:ignore SIGNCERTIFICATE CERTIFICATEPASSWORD codesign pfxfile
 Describe 'Code Signing Functions' {
 
   BeforeAll {
@@ -50,7 +50,7 @@ Describe 'Code Signing Functions' {
         Should -Throw
     }
 
-    It 'Searches for files matching Include patterns' -Skip:(-not $IsWindows) {
+    It 'Searches for files matching Include patterns' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
       # Create test files
       $testDir = Join-Path -Path $TestDrive -ChildPath 'SignTest'
       New-Item -Path $testDir -ItemType Directory -Force | Out-Null
@@ -69,7 +69,7 @@ Describe 'Code Signing Functions' {
       $files.Count | Should -Be 3  # Should not include .txt file
     }
 
-    It 'Uses custom Include patterns when specified' -Skip:(-not $IsWindows) {
+    It 'Uses custom Include patterns when specified' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
       $testDir = Join-Path -Path $TestDrive -ChildPath 'SignTest2'
       New-Item -Path $testDir -ItemType Directory -Force | Out-Null
       'test' | Out-File -FilePath (Join-Path $testDir 'test.psd1')

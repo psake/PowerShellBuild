@@ -1,4 +1,4 @@
-# spell-checker:ignore SIGNCERTIFICATE CERTIFICATEPASSWORD codesign pfxfile
+﻿# spell-checker:ignore SIGNCERTIFICATE CERTIFICATEPASSWORD codesign pfxfile
 Describe 'Code Signing Functions' {
 
   BeforeAll {
@@ -20,7 +20,7 @@ Describe 'Code Signing Functions' {
     }
 
     Context 'Auto mode' {
-      It 'Defaults to Auto mode when no CertificateSource is specified' -Skip:(-not $IsWindows) {
+      It 'Defaults to Auto mode when no CertificateSource is specified' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Mock Get-ChildItem {}
         $VerboseOutput = Get-PSBuildCertificate -Verbose -ErrorAction SilentlyContinue 4>&1
         $VerboseOutput[0] | Should -Match "CertificateSource is 'Auto'"
@@ -37,7 +37,7 @@ Describe 'Code Signing Functions' {
         }
       }
 
-      It 'Resolves to Store mode when SIGNCERTIFICATE environment variable is not set' -Skip:(-not $IsWindows) {
+      It 'Resolves to Store mode when SIGNCERTIFICATE environment variable is not set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
         Mock Get-ChildItem {}
         $VerboseOutput = Get-PSBuildCertificate -ErrorAction SilentlyContinue -Verbose *>&1
@@ -47,7 +47,7 @@ Describe 'Code Signing Functions' {
 
     # Store mode only works on Windows
     Context 'Store mode' {
-      It 'Searches the certificate store for a valid code-signing certificate' -Skip:(-not $IsWindows) {
+      It 'Searches the certificate store for a valid code-signing certificate' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         # On Windows, we can test the actual logic without mocking the cert store itself
         # Instead, just verify the function accepts the parameter and attempts the search
         $command = Get-Command Get-PSBuildCertificate
@@ -57,13 +57,13 @@ Describe 'Code Signing Functions' {
         { Get-PSBuildCertificate -CertificateSource Store -ErrorAction SilentlyContinue } | Should -Not -Throw
       }
 
-      It 'Returns $null when no valid certificate is found' -Skip:(-not $IsWindows) {
+      It 'Returns $null when no valid certificate is found' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Mock Get-ChildItem { }
         $cert = Get-PSBuildCertificate -CertificateSource Store
         $cert | Should -BeNullOrEmpty
       }
 
-      It 'Filters out expired certificates' -Skip:(-not $IsWindows) {
+      It 'Filters out expired certificates' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Mock Get-ChildItem {
           # Return nothing (expired cert is filtered by Where-Object)
         }
@@ -72,7 +72,7 @@ Describe 'Code Signing Functions' {
         $cert | Should -BeNullOrEmpty
       }
 
-      It 'Filters out certificates without a private key' -Skip:(-not $IsWindows) {
+      It 'Filters out certificates without a private key' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Mock Get-ChildItem {
           # Return nothing (cert without private key is filtered by Where-Object)
         }
@@ -81,7 +81,7 @@ Describe 'Code Signing Functions' {
         $cert | Should -BeNullOrEmpty
       }
 
-      It 'Uses custom CertStoreLocation when specified' -Skip:(-not $IsWindows) {
+      It 'Uses custom CertStoreLocation when specified' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         # Just verify the parameter is accepted
         { Get-PSBuildCertificate -CertificateSource Store -CertStoreLocation 'Cert:\LocalMachine\My' -ErrorAction SilentlyContinue } |
           Should -Not -Throw
@@ -89,14 +89,14 @@ Describe 'Code Signing Functions' {
     }
 
     Context 'Thumbprint mode' {
-      It 'Searches for a certificate with the specified thumbprint' -Skip:(-not $IsWindows) {
+      It 'Searches for a certificate with the specified thumbprint' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         $testThumbprint = 'ABCD1234EFGH5678'
         # Verify the function accepts the thumbprint parameter
         { Get-PSBuildCertificate -CertificateSource Thumbprint -Thumbprint $testThumbprint -ErrorAction SilentlyContinue } |
           Should -Not -Throw
       }
 
-      It 'Returns $null when the specified thumbprint is not found' -Skip:(-not $IsWindows) {
+      It 'Returns $null when the specified thumbprint is not found' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Mock Get-ChildItem { }
         $cert = Get-PSBuildCertificate -CertificateSource Thumbprint -Thumbprint 'NOTFOUND123'
         $cert | Should -BeNullOrEmpty
@@ -205,6 +205,12 @@ Describe 'Code Signing Functions' {
     # mock reaches the call made by Get-PSBuildCertificate. They are Windows-only because the
     # -CodeSigningCert dynamic parameter comes from the certificate provider, which exists only
     # on Windows, and because the Store source throws on other platforms by design.
+    #
+    # Windows-only means platform, not edition. $IsWindows does not exist on Windows PowerShell
+    # 5.1, so -Skip:(-not $IsWindows) skipped every one of these on the engine where store-based
+    # signing is most common. The guard below is the shape Get-PSBuildCertificate itself uses:
+    # treat the platform as non-Windows only when $IsWindows is explicitly $false. See
+    # psake/PowerShellBuild#197.
     Context 'SkipValidation for store-backed sources' {
 
       BeforeAll {
@@ -229,7 +235,7 @@ Describe 'Code Signing Functions' {
       }
 
       Context 'Store source' {
-        It 'Prefers a valid certificate over an expired one even when SkipValidation is set' -Skip:(-not $IsWindows) {
+        It 'Prefers a valid certificate over an expired one even when SkipValidation is set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           # The expired certificate is returned first so that a naive implementation, one that
           # hoists the validity checks out of the selection filter, would pick it.
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
@@ -242,7 +248,7 @@ Describe 'Code Signing Functions' {
           $certificate.Subject | Should -Be 'CN=Valid Test Certificate'
         }
 
-        It 'Returns an expired certificate when SkipValidation is set and nothing valid is available' -Skip:(-not $IsWindows) {
+        It 'Returns an expired certificate when SkipValidation is set and nothing valid is available' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
             $script:expiredCertificate
           }
@@ -252,7 +258,7 @@ Describe 'Code Signing Functions' {
           $certificate.Subject | Should -Be 'CN=Expired Test Certificate'
         }
 
-        It 'Warns when SkipValidation causes an expired certificate to be selected' -Skip:(-not $IsWindows) {
+        It 'Warns when SkipValidation causes an expired certificate to be selected' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
             $script:expiredCertificate
           }
@@ -263,7 +269,7 @@ Describe 'Code Signing Functions' {
           $warningRecord -join ' ' | Should -Match 'expired'
         }
 
-        It 'Does not return an expired certificate when SkipValidation is not set' -Skip:(-not $IsWindows) {
+        It 'Does not return an expired certificate when SkipValidation is not set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
             $script:expiredCertificate
           }
@@ -273,7 +279,7 @@ Describe 'Code Signing Functions' {
           $certificate | Should -BeNullOrEmpty
         }
 
-        It 'Does not return a certificate without a private key even when SkipValidation is set' -Skip:(-not $IsWindows) {
+        It 'Does not return a certificate without a private key even when SkipValidation is set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           # A certificate with no private key cannot sign anything, so relaxing that check
           # would only defer the failure to Set-AuthenticodeSignature with a worse message.
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
@@ -287,7 +293,7 @@ Describe 'Code Signing Functions' {
       }
 
       Context 'Thumbprint source' {
-        It 'Returns an expired certificate when SkipValidation is set and nothing valid is available' -Skip:(-not $IsWindows) {
+        It 'Returns an expired certificate when SkipValidation is set and nothing valid is available' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
             $script:expiredCertificate
           }
@@ -298,7 +304,7 @@ Describe 'Code Signing Functions' {
           $certificate.Subject | Should -Be 'CN=Expired Test Certificate'
         }
 
-        It 'Still honours the requested thumbprint when SkipValidation relaxes the selection' -Skip:(-not $IsWindows) {
+        It 'Still honours the requested thumbprint when SkipValidation relaxes the selection' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           # A valid certificate is present, but it is not the one the consumer named. Returning
           # it would sign with a different identity than the build asked for.
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
@@ -312,7 +318,7 @@ Describe 'Code Signing Functions' {
           $certificate.Thumbprint | Should -Be $script:expiredCertificate.Thumbprint
         }
 
-        It 'Does not return an expired certificate when SkipValidation is not set' -Skip:(-not $IsWindows) {
+        It 'Does not return an expired certificate when SkipValidation is not set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
             $script:expiredCertificate
           }
@@ -323,7 +329,7 @@ Describe 'Code Signing Functions' {
           $certificate | Should -BeNullOrEmpty
         }
 
-        It 'Does not return a certificate without a private key even when SkipValidation is set' -Skip:(-not $IsWindows) {
+        It 'Does not return a certificate without a private key even when SkipValidation is set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
           Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
             $script:noPrivateKeyCertificate
           }
