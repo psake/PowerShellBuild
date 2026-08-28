@@ -122,6 +122,48 @@ Everything below is the detail, one entry per issue.
   can still ask for it. **If your publish has been quietly failing, this is the
   release where you find out.**
 
+- [**#201**](https://github.com/psake/PowerShellBuild/issues/201)
+  `$PSBPreference.Build.CompileModule = $true` now warns when the source
+  `.psm1` calls `Export-ModuleMember`. Compiling appends the source root
+  module after the concatenated function files, and compile mode copies no
+  `Public/` directory to the output, so the dot-sourcing loader that almost
+  every module template generates discovers nothing and the appended call
+  becomes `Export-ModuleMember -Function @()`. A module's effective exports
+  are the intersection of that call and `FunctionsToExport`, so the built
+  module exported nothing while the manifest correctly named every public
+  function, and the build reported success. The only previous symptom was
+  `No commands have been exported. Skipping markdown generation.` from a
+  later task, which names a documentation problem rather than an empty
+  module. The build still produces the same files; what changes is that it
+  now tells you. Guard the call so it does nothing when the function
+  directories are absent, or remove it and let `FunctionsToExport` govern
+  the export set. A mention of `Export-ModuleMember` in a comment does not
+  trigger the warning.
+
+- [**#98**](https://github.com/psake/PowerShellBuild/issues/98)
+  `$PSBPreference.Build.Exclude` no longer aborts the build it is filtering.
+  The exclusion used a labeled `break` aimed at the loop over its whole input,
+  so a caller passing a collection lost every item after the first excluded
+  one; on Windows PowerShell 5.1 the `break` escaped the function entirely and
+  aborted whatever loop the caller was running, silently and with no error.
+  Found while adding the coverage for `Build-PSBuildModule` that #98 asked
+  for, which reaches the filter directly rather than one item at a time
+  through the pipeline.
+
+- [**#98**](https://github.com/psake/PowerShellBuild/issues/98)
+  `$PSBPreference.Build.CompileModule = $true` no longer produces a module
+  with no functions in it when the build runs from a different drive than the
+  module source. The compile loop read each function file through a path
+  resolved relative to the current location, and a current location cannot
+  always express another path relatively: on Windows PowerShell 5.1 a source
+  on another drive resolves to `.\C:\...`, and a source outside the current
+  PSDrive's root to a `..\` path that cannot climb past that root. Neither
+  reads back, so every function was silently dropped and the compiled `.psm1`
+  came out holding only its headers and footers -- and the build reported
+  success. Files are now read through their full path. Also found while
+  adding the #98 coverage; this repository's own Windows PowerShell 5.1 CI
+  job reproduces it, with the checkout on `D:` and the test drive on `C:`.
+
 - [**#193**](https://github.com/psake/PowerShellBuild/issues/193)
   `$PSBPreference.Sign.SkipCertificateValidation` now does something. It was
   read only by `psakeFile.ps1`, and even there `Get-PSBuildCertificate` consulted
@@ -260,7 +302,7 @@ Everything below is the detail, one entry per issue.
   gating at all. The comparison is now strictly more permissive than before,
   so a build that passed with a coverage threshold set still passes.
 
-## [0.8.2] 2026-07-08
+## [0.8.2] - 2026-07-08
 
 ### Fixed
 
@@ -274,7 +316,7 @@ Everything below is the detail, one entry per issue.
   Companion to [#128](https://github.com/psake/PowerShellBuild/pull/128),
   which fixes the same gap in this repository's own build file.
 
-## [0.8.1] 2026-06-03
+## [0.8.1] - 2026-06-03
 
 ### Fixed
 
@@ -287,7 +329,7 @@ Everything below is the detail, one entry per issue.
   Windows (matching the existing pattern in `Build-PSBuildUpdatableHelp`). Behavior
   on PowerShell 7+ is unchanged.
 
-## [0.8.0] 2026-02-20
+## [0.8.0] - 2026-02-20
 
 ### Added
 
@@ -311,7 +353,7 @@ Everything below is the detail, one entry per issue.
 
 - Remove extra backticks during localization text migration.
 
-## [0.7.3] 2025-08-01
+## [0.7.3] - 2025-08-01
 
 ### Added
 
@@ -319,7 +361,7 @@ Everything below is the detail, one entry per issue.
   run.
 - Add localization support.
 
-## [0.7.2] 2025-05-21
+## [0.7.2] - 2025-05-21
 
 ### Added
 
@@ -335,13 +377,13 @@ Everything below is the detail, one entry per issue.
   - `$PSBPreference.Test.OutputVerbosity` can be set to **None**, **Normal**,
     **Detailed**, and **Diagnostic**. The default value is **Detailed**.
 
-## [0.7.1] 2025-04-01
+## [0.7.1] - 2025-04-01
 
-### Fixes
+### Fixed
 
 - Fix a bug in `Build-PSBuildMarkdown` where a hashtable item was added twice.
 
-## [0.7.0] 2025-03-31
+## [0.7.0] - 2025-03-31
 
 ### Changed
 
@@ -354,7 +396,7 @@ Everything below is the detail, one entry per issue.
   dependencies by allowing them to be overwritten with
   `$PSBPreference.TaskDependencies`.
 
-## [0.6.2] 2024-10-06
+## [0.6.2] - 2024-10-06
 
 ### Changed
 
@@ -375,13 +417,13 @@ Everything below is the detail, one entry per issue.
   output fle format not working (via
   [@OpsM0nkey](https://github.com/OpsM0nkey))
 
-## [0.6.1] 2021-03-14
+## [0.6.1] - 2021-03-14
 
 ### Fixed
 
 - Fixed bug in IB task `GenerateMarkdown` when dot sourcing precondition
 
-## [0.6.0] 2021-03-14
+## [0.6.0] - 2021-03-14
 
 ### Changed
 
@@ -389,7 +431,7 @@ Everything below is the detail, one entry per issue.
   brought inline with psake equivalents (via
   [@JustinGrote](https://github.com/JustinGrote))
 
-## [0.5.0] 2021-02-27
+## [0.5.0] - 2021-02-27
 
 ### Added
 
@@ -399,7 +441,7 @@ Everything below is the detail, one entry per issue.
   - `$PSBPreference.Test.CodeCoverage.OutputFileFormat` - Code coverage output
     format
 
-## [0.5.0] (beta1) - 2020-11-15
+## [0.5.0-beta1] - 2020-11-15
 
 ### Added
 
@@ -472,11 +514,10 @@ Everything below is the detail, one entry per issue.
   'Public' folder when dot sourcing functions in PSM1 (via
   [@pauby](https://github.com/pauby))
 
-### Breaking changes
-
-- Refactor build properties into a single hashtable `$PSBPreference`
-
 ### Changed
+
+- **Breaking:** Refactor build properties into a single hashtable
+  `$PSBPreference`
 
 - [**#11**](https://github.com/psake/PowerShellBuild/pull/11) The Invoke-Build
   tasks are now auto-generated from the psake tasks via a converter script (via

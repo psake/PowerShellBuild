@@ -1,4 +1,4 @@
-# spell-checker:ignore modulename
+﻿# spell-checker:ignore modulename
 function Build-PSBuildModule {
     <#
     .SYNOPSIS
@@ -132,6 +132,39 @@ function Build-PSBuildModule {
         # Grab the contents of the copied over PSM1
         # This will be appended to the end of the finished PSM1
         $psm1Contents = Get-Content -Path $rootModule -Raw
+
+        # Because that content is appended last, an Export-ModuleMember call inside it runs
+        # after the concatenated functions, and the module's effective export set is the
+        # intersection of that call and FunctionsToExport in the manifest. Compiling copies no
+        # function directories to the output, so the scaffold loader that almost every module
+        # template generates discovers nothing and exports nothing, while the manifest still
+        # names every public function and the build still succeeds. Warned about rather than
+        # rewritten: what the consumer's root module should do instead depends on the module.
+        # See psake/PowerShellBuild#201.
+        #
+        # Found by parsing rather than by matching text, so that the command named in a
+        # comment or quoted in a here-string -- including a comment explaining why the loader
+        # deliberately does not call it -- is not reported as a call. A line-anchored regex
+        # gets the single-line # comment right and still fires inside a <# #> block or a
+        # here-string, because it cannot see that the line it anchored on is not code.
+        $rootModuleAst = [System.Management.Automation.Language.Parser]::ParseInput(
+            $psm1Contents, [ref] $null, [ref] $null
+        )
+        $exportModuleMemberCall = $rootModuleAst.FindAll(
+            {
+                param($node)
+                $node -is [System.Management.Automation.Language.CommandAst] -and
+                $node.GetCommandName() -eq 'Export-ModuleMember'
+            },
+            $true
+        )
+        if ($exportModuleMemberCall) {
+            $sourceRootModule = [IO.Path]::Combine($Path, "$ModuleName.psm1")
+            Write-Warning (
+                $LocalizedData.ExportModuleMemberInSourceRootModule -f $sourceRootModule
+            )
+        }
+
         '' | Out-File -FilePath $rootModule -Encoding 'utf8'
 
         if ($CompileHeader) {
@@ -157,14 +190,28 @@ function Build-PSBuildModule {
             Encoding = 'utf8'
         }
         $allScripts | ForEach-Object {
-            $srcFile = Resolve-Path $_.FullName -Relative
-            Write-Verbose ($LocalizedData.AddingFileToPsm1 -f $srcFile)
+            # Read through the full path. This used to read through a path resolved relative to
+            # the current location, which is not something every current location can express.
+            # On Windows PowerShell 5.1 a source file on another drive resolves to a path like
+            # .\C:\src\Public\Get-Widget.ps1, and a source outside the current PSDrive's root to
+            # a ..\ path that cannot climb past that root. Neither can be read back, so
+            # Get-Content silently returned nothing for every file and the compiled .psm1 came
+            # out holding its headers and footers and none of the functions -- while the build
+            # reported success. It is reachable whenever the build runs from a different drive
+            # than the module source, which is how the Windows PowerShell 5.1 CI job is laid out.
+            $sourceFilePath = $_.FullName
+            Write-Verbose ($LocalizedData.AddingFileToPsm1 -f $sourceFilePath)
 
             if ($CompileScriptHeader) {
                 Write-Output $CompileScriptHeader
             }
 
-            Get-Content $srcFile
+            # -LiteralPath, not -Path: the value is a FullName, and -Path reads [ ] * ? as
+            # wildcards. A source file named Get-Widget[1].ps1, or any checkout under a
+            # directory like repo[main], would then match nothing and be dropped from the
+            # compiled module in silence -- the same failure this full-path read exists to
+            # prevent, reached a different way.
+            Get-Content -LiteralPath $sourceFilePath
 
             if ($CompileScriptFooter) {
                 Write-Output $CompileScriptFooter
