@@ -23,9 +23,11 @@ BeforeAll {
 
 Describe 'Invoke-Build Tasks' {
 
-    # The oldest of this file's drift guards: a task added to psakeFile.ps1 and forgotten in
-    # IB.tasks.ps1 reaches Invoke-Build consumers only, and neither the settings comparison nor
-    # the signing comparison below can see a task that exists in one file and not the other.
+    # The oldest of this file's drift guards: a task defined in one task file and forgotten in
+    # the other reaches that runner's consumers only -- the same defect as #178 and #193 with
+    # the files swapped -- and neither the settings comparison nor the signing comparison below
+    # can see a task that exists in one file and not the other. The harm is symmetric, so the
+    # comparison is too.
     #
     # Both task runners are asked for their task names in a background job, because loading
     # either task file sets $PSBPreference read-only and calls Set-BuildEnvironment -Force,
@@ -70,16 +72,22 @@ Describe 'Invoke-Build Tasks' {
         $script:invokeBuildTaskName | Should -Not -BeNullOrEmpty -Because 'Invoke-Build must be able to load IB.tasks.ps1 and report its tasks'
     }
 
-    It 'Contains all the tasks that were in the Psake file' {
-        # 'default' and '?' are psake's own entry points rather than tasks converted from the
-        # psake file; Invoke-Build spells its equivalent '.', and it is not compared either.
-        $comparableTaskName = $script:psakeTaskName.Where({ $_ -notmatch '^(default|\?)$' })
+    It 'defines the same tasks in both task files' {
+        # Each runner adds an entry point of its own that is not a task either file defines:
+        # psake answers to 'default' and '?', Invoke-Build to '.'. Neither has, or should have,
+        # a counterpart in the other file, so neither side compares them. Nothing else is
+        # excluded -- every remaining name must appear in both files.
+        $comparablePsakeTaskName = $script:psakeTaskName.Where({ $_ -notmatch '^(default|\?)$' })
+        $comparableInvokeBuildTaskName = $script:invokeBuildTaskName.Where({ $_ -ne '.' })
 
-        $comparableTaskName | Should -Not -BeNullOrEmpty -Because 'psake must still report the tasks psakeFile.ps1 defines'
+        $comparablePsakeTaskName | Should -Not -BeNullOrEmpty -Because 'psake must still report the tasks psakeFile.ps1 defines'
+        $comparableInvokeBuildTaskName | Should -Not -BeNullOrEmpty -Because 'Invoke-Build must still report the tasks IB.tasks.ps1 defines'
 
-        $missingFromInvokeBuild = $comparableTaskName.Where({ $_ -notin $script:invokeBuildTaskName })
+        $missingFromInvokeBuild = $comparablePsakeTaskName.Where({ $_ -notin $comparableInvokeBuildTaskName })
+        $missingFromPsake = $comparableInvokeBuildTaskName.Where({ $_ -notin $comparablePsakeTaskName })
 
         $missingFromInvokeBuild -join ', ' | Should -BeNullOrEmpty -Because 'IB.tasks.ps1 must define every task psakeFile.ps1 defines'
+        $missingFromPsake -join ', ' | Should -BeNullOrEmpty -Because 'psakeFile.ps1 must define every task IB.tasks.ps1 defines'
     }
 }
 
