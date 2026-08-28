@@ -20,6 +20,12 @@
 #     call becomes Export-ModuleMember -Function @() and the built module exports nothing even
 #     though the manifest names every public function. The build still succeeds; the warning
 #     added for #201 is the only thing that says so.
+#
+# The fixture also carries a culture directory -- en-US/Messages.psd1 and a hand-written
+# en-US/about_PSBuildTestFixture.help.txt -- which the staging contexts below read. It had none
+# until psake/PowerShellBuild#210, #211 and #212 were fixed, and that absence is why all three
+# survived since 2018: every one of them needs a culture directory, a .psd1 below the module
+# root, or a source about topic before it can be observed at all.
 
 Describe 'Build-PSBuildModule' {
 
@@ -244,6 +250,22 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
             Join-Path -Path $script:scenario.DestinationPath -ChildPath 'excludeme.txt' | Should -Not -Exist
         }
 
+        It 'Stages <_> in the culture directory' -ForEach @(
+            'about_PSBuildTestFixture.help.txt',
+            'Messages.psd1'
+        ) {
+            [IO.Path]::Combine($script:scenario.DestinationPath, 'en-US', $_) | Should -Exist
+        }
+
+        It 'Does not flatten a culture directory file into the output root' {
+            # The loose-file glob runs in both modes, so the depth-1 recursion that
+            # psake/PowerShellBuild#211 is about copied en-US/Messages.psd1 flat into the root
+            # here too, alongside the correct copy the bulk stage brings. Nothing read the stray
+            # file; it only misled anyone reading the published tree.
+            Join-Path -Path $script:scenario.DestinationPath -ChildPath 'Messages.psd1' |
+                Should -Not -Exist
+        }
+
         It 'Writes the public function names into FunctionsToExport' {
             $manifest = Import-PowerShellDataFile -Path $script:scenario.ManifestPath
 
@@ -278,6 +300,13 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
             $excludedScriptPath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'Private/excludeme.ps1'
             Set-Content -Path $excludedScriptPath -Value 'function Get-ExcludedWidget { }'
 
+            # A directory whose name is a culture the runtime knows -- bin is Bini -- but which
+            # holds no help of any kind. Culture staging must leave it where it is, or every
+            # module that ships compiled binaries in bin/ would carry them into its output.
+            $binaryPath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'bin'
+            New-Item -Path $binaryPath -ItemType Directory -Force > $null
+            Set-Content -Path (Join-Path -Path $binaryPath -ChildPath 'widget-tool.txt') -Value 'not help'
+
             $buildParameter = @{
                 Path                = $script:scenario.SourcePath
                 DestinationPath     = $script:scenario.DestinationPath
@@ -299,9 +328,35 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
         }
 
         It 'Produces only the manifest and a monolithic root module' {
+            # The count is also the psake/PowerShellBuild#211 guard: the fixture's
+            # en-US/Messages.psd1 used to be flattened into the root by the depth-1 glob, which
+            # made this three.
             @(Get-ChildItem -Path $script:scenario.DestinationPath -File).Count | Should -Be 2
             $script:scenario.ManifestPath | Should -Exist
             $script:scenario.RootModulePath | Should -Exist
+        }
+
+        It 'Does not flatten a culture directory file into the output root' {
+            Join-Path -Path $script:scenario.DestinationPath -ChildPath 'Messages.psd1' |
+                Should -Not -Exist
+        }
+
+        It 'Stages <_> in the culture directory without CopyDirectories naming it' -ForEach @(
+            'about_PSBuildTestFixture.help.txt',
+            'Messages.psd1'
+        ) {
+            # psake/PowerShellBuild#210. Compile mode staged the manifest and the root module and
+            # left the culture directory behind, so a hand-written about topic reached the output
+            # only when CopyDirectories happened to name en-US -- and three published modules
+            # surveyed for that issue ship without their about topic for exactly that reason.
+            # CopyDirectories here names 'resources' and nothing else, which is the point.
+            [IO.Path]::Combine($script:scenario.DestinationPath, 'en-US', $_) | Should -Exist
+        }
+
+        It 'Does not stage a directory that only shares a name with a culture' {
+            # Staging by culture name alone would copy bin/ (Bini) and ps/ (Pashto) into every
+            # built module. Content is what makes a directory a culture directory.
+            Join-Path -Path $script:scenario.DestinationPath -ChildPath 'bin' | Should -Not -Exist
         }
 
         It 'Does not copy the <_> compile directory to the output' -ForEach @('Public', 'Private') {
@@ -693,10 +748,18 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
         }
     }
 
-    Context 'Converting the readme into about help' {
+    Context 'Converting the readme into about help when compiling' {
 
         BeforeAll {
             $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'about-help'
+
+            # The fixture ships a hand-written about topic, and psake/PowerShellBuild#212 gives
+            # that precedence over the readme. Removed here so this context still covers the
+            # conversion itself; the precedence is covered by the two contexts below.
+            Remove-Item -LiteralPath ([IO.Path]::Combine(
+                    $script:scenario.SourcePath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+                )) -Force
+
             $script:readMePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'README.md'
             $script:readMeContent = '# PSBuildTestFixture readme content'
             Set-Content -Path $script:readMePath -Value $script:readMeContent
@@ -706,6 +769,57 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
                 DestinationPath = $script:scenario.DestinationPath
                 ModuleName      = $script:scenario.ModuleName
                 Compile         = $true
+                ReadMePath      = $script:readMePath
+                Culture         = 'en-US'
+            }
+            $script:buildWarning = @()
+            Build-PSBuildModule @buildParameter -WarningVariable 'buildWarning' -WarningAction 'SilentlyContinue'
+            $script:buildWarning = @($buildWarning)
+
+            $script:aboutHelpPath = [IO.Path]::Combine(
+                $script:scenario.DestinationPath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+            )
+        }
+
+        It 'Writes the readme as the about help file in the culture directory' {
+            $script:aboutHelpPath | Should -Exist
+        }
+
+        It 'Writes the readme content unchanged' {
+            (Get-Content -Path $script:aboutHelpPath -Raw).Trim() | Should -Be $script:readMeContent
+        }
+
+        It 'Keeps the rest of the source culture directory' {
+            # The readme copy writes into the same directory culture staging just created, so a
+            # module's localized data has to survive alongside its generated about topic.
+            [IO.Path]::Combine($script:scenario.DestinationPath, 'en-US', 'Messages.psd1') |
+                Should -Exist
+        }
+
+        It 'Emits no warning' {
+            $script:buildWarning | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Converting the readme into about help without compiling' {
+
+        # The counterpart of the context above. Both modes can produce the about topic, and
+        # psake/PowerShellBuild#212 is about them agreeing on the result; that is only meaningful
+        # if the readme conversion is pinned on both sides.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'about-help-dot-sourced'
+            Remove-Item -LiteralPath ([IO.Path]::Combine(
+                    $script:scenario.SourcePath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+                )) -Force
+
+            $script:readMePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'README.md'
+            $script:readMeContent = '# PSBuildTestFixture readme content'
+            Set-Content -Path $script:readMePath -Value $script:readMeContent
+
+            $buildParameter = @{
+                Path            = $script:scenario.SourcePath
+                DestinationPath = $script:scenario.DestinationPath
+                ModuleName      = $script:scenario.ModuleName
                 ReadMePath      = $script:readMePath
                 Culture         = 'en-US'
             }
@@ -721,7 +835,89 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
         }
 
         It 'Writes the readme content unchanged' {
+            # The bulk copy runs after the readme block in this mode, so a source tree with no
+            # about topic of its own must not undo the conversion.
             (Get-Content -Path $script:aboutHelpPath -Raw).Trim() | Should -Be $script:readMeContent
+        }
+    }
+
+    Context 'Preferring a source about topic over the readme when compiling' {
+
+        # psake/PowerShellBuild#212. The two modes used to disagree by accident of statement
+        # ordering: the non-compile bulk copy runs after the readme block and overwrote the
+        # readme-derived file, while in compile mode the readme landed last and replaced whatever
+        # CopyDirectories had staged -- so the winner depended on CompileModule, a setting with
+        # nothing to do with help. Source wins now in both modes, because nothing here converts
+        # anything: the readme is copied as-is, and Markdown is not a conformant about topic.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'about-help-source-compiled'
+            $readMePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'README.md'
+            Set-Content -Path $readMePath -Value '# PSBuildTestFixture readme content'
+
+            $buildParameter = @{
+                Path            = $script:scenario.SourcePath
+                DestinationPath = $script:scenario.DestinationPath
+                ModuleName      = $script:scenario.ModuleName
+                Compile         = $true
+                ReadMePath      = $readMePath
+                Culture         = 'en-US'
+            }
+            $script:buildWarning = @()
+            Build-PSBuildModule @buildParameter -WarningVariable 'buildWarning' -WarningAction 'SilentlyContinue'
+            $script:buildWarning = @($buildWarning)
+
+            $script:aboutHelpContent = Get-Content -LiteralPath ([IO.Path]::Combine(
+                    $script:scenario.DestinationPath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+                )) -Raw
+        }
+
+        It 'Ships the hand-written about topic' {
+            $script:aboutHelpContent | Should -Match 'hand-written about topic'
+        }
+
+        It 'Does not write the readme over it' {
+            $script:aboutHelpContent | Should -Not -Match 'PSBuildTestFixture readme content'
+        }
+
+        It 'Warns that the readme was not converted' {
+            $script:buildWarning -join [Environment]::NewLine |
+                Should -BeLike '*about_PSBuildTestFixture.help.txt*'
+        }
+    }
+
+    Context 'Preferring a source about topic over the readme without compiling' {
+
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'about-help-source-dot-sourced'
+            $readMePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'README.md'
+            Set-Content -Path $readMePath -Value '# PSBuildTestFixture readme content'
+
+            $buildParameter = @{
+                Path            = $script:scenario.SourcePath
+                DestinationPath = $script:scenario.DestinationPath
+                ModuleName      = $script:scenario.ModuleName
+                ReadMePath      = $readMePath
+                Culture         = 'en-US'
+            }
+            $script:buildWarning = @()
+            Build-PSBuildModule @buildParameter -WarningVariable 'buildWarning' -WarningAction 'SilentlyContinue'
+            $script:buildWarning = @($buildWarning)
+
+            $script:aboutHelpContent = Get-Content -LiteralPath ([IO.Path]::Combine(
+                    $script:scenario.DestinationPath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+                )) -Raw
+        }
+
+        It 'Ships the hand-written about topic' {
+            $script:aboutHelpContent | Should -Match 'hand-written about topic'
+        }
+
+        It 'Warns that the readme was not converted' {
+            # The outcome was already this in non-compile mode, but silently -- the readme was
+            # written and then overwritten by the bulk copy. The warning is what tells a consumer
+            # that ConvertReadMeToAboutHelp did not do what they asked.
+            $script:buildWarning -join [Environment]::NewLine |
+                Should -BeLike '*about_PSBuildTestFixture.help.txt*'
         }
     }
 
@@ -744,9 +940,20 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
         }
 
         It 'Writes the about help file into the requested culture directory' {
+            # The fixture's hand-written about topic is en-US, and the precedence rule is per
+            # culture: a source topic in one culture says nothing about another, so the readme
+            # is still what fr-FR gets.
             [IO.Path]::Combine(
                 $script:scenario.DestinationPath, 'fr-FR', 'about_PSBuildTestFixture.help.txt'
             ) | Should -Exist
+        }
+
+        It 'Leaves the hand-written topic in its own culture directory alone' {
+            $aboutHelpPath = [IO.Path]::Combine(
+                $script:scenario.DestinationPath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+            )
+
+            Get-Content -LiteralPath $aboutHelpPath -Raw | Should -Match 'hand-written about topic'
         }
     }
 
@@ -758,8 +965,17 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
         # whenever CopyDirectories names the culture directory -- which, in compile mode, is
         # the only way to ship a locale directory at all. Fixed in
         # psake/PowerShellBuild#207; this context asserted Should -Not -Exist beforehand.
+        #
+        # The guard psake/PowerShellBuild#212 adds is strictly narrower than the one #207 removed:
+        # it asks whether the source tree holds an about *file* for this culture, not whether the
+        # destination culture *directory* exists. The empty directory below is exactly the case
+        # #207 is about, so the fixture's own about topic is removed to keep the two apart.
         BeforeAll {
             $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'about-help-existing'
+            Remove-Item -LiteralPath ([IO.Path]::Combine(
+                    $script:scenario.SourcePath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+                )) -Force
+
             $readMePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'README.md'
             Set-Content -Path $readMePath -Value '# PSBuildTestFixture readme content'
 
