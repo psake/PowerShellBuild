@@ -26,6 +26,15 @@ Describe 'PSBuildTestFixture' {
             Join-Path -Path $fixturePath -ChildPath 'Public/Set-Widget.ps1' | Should -Exist
             Join-Path -Path $fixturePath -ChildPath 'Private/Test-WidgetName.ps1' | Should -Exist
             Join-Path -Path $fixturePath -ChildPath 'excludeme.txt' | Should -Exist
+
+            # The culture directory is what psake/PowerShellBuild#210, #211 and #212 are all
+            # about, and the fixture had none until those were fixed -- which is why all three
+            # survived since 2018 with the build tests passing. Both files earn their place:
+            # the about topic is the file compile mode used to drop, and Messages.psd1 is the
+            # file the staging glob used to flatten into the output root.
+            Join-Path -Path $fixturePath -ChildPath 'en-US/about_PSBuildTestFixture.help.txt' |
+                Should -Exist
+            Join-Path -Path $fixturePath -ChildPath 'en-US/Messages.psd1' | Should -Exist
         }
 
         It 'Recopying into the same destination replaces the copy without nesting' {

@@ -372,7 +372,15 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
 
             # The whole of the defect: one warning per non-locale directory, naming a landing
             # page the consumer was never going to write.
-            $script:strayCabResult.Warning -join ' ' | Should -BeNullOrEmpty
+            #
+            # Narrowed from "no warnings at all" when the fixture gained a culture directory.
+            # Microsoft.PowerShell.PlatyPS 1.x warns "File '' is not a valid help file type"
+            # for every file in the module's locale directory that is not the generated MAML --
+            # a hand-written about topic included, and with an empty name in its own message.
+            # That is upstream behavior about what the module ships, and every module with a
+            # culture directory gets it; it says nothing about the docs tree this context is
+            # about.
+            $script:strayCabResult.Warning -join ' ' | Should -Not -Match 'landing page'
 
             Get-ChildItem -Path $script:strayScenario.UpdatableHelpPath -Filter '*.cab' |
                 Should -Not -BeNullOrEmpty

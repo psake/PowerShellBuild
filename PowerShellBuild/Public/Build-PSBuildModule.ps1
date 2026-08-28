@@ -1,4 +1,4 @@
-﻿# spell-checker:ignore modulename
+﻿# spell-checker:ignore modulename Bini Pashto
 function Build-PSBuildModule {
     <#
     .SYNOPSIS
@@ -26,7 +26,10 @@ function Build-PSBuildModule {
         String that will be added to your PSM1 file after each script file.
     .PARAMETER ReadMePath
         Path to project README. If present, this will become the
-        "about_<ModuleName>.help.txt" file in the build module.
+        "about_<ModuleName>.help.txt" file in the build module. A hand-written
+        about topic in the source tree's culture directory takes precedence over
+        it, in both compile and non-compile mode, and a warning reports that the
+        readme was not used.
     .PARAMETER CompileDirectories
         List of directories containing .ps1 files that will also be compiled
         into the PSM1.
@@ -98,17 +101,66 @@ function Build-PSBuildModule {
         New-Item @newItemSplat > $null
     }
 
-    # Copy "non-processed files"
+    # Copy "non-processed files". This stages the module's loose root files -- the manifest, the
+    # root module, and any format or type data -- and nothing else. Anything below the root is
+    # CopyDirectories' job, or the culture staging below.
+    #
+    # Both halves of this splat matter, and either one on its own is wrong. -Depth 1 implied
+    # recursion one level down, so a localized en-US/Messages.psd1 matched and Copy-Item wrote it
+    # flat into the output root, where nothing reads it (psake/PowerShellBuild#211). Windows
+    # PowerShell 5.1 makes that worse: -Depth combined with -Include degrades to a full -Recurse
+    # there, so files at any depth were flattened into the root and same-named files at different
+    # depths collided. Removing -Depth alone matches nothing at all, because without recursion
+    # -Include filters against the leaf of -Path rather than against that directory's children --
+    # so the trailing wildcard has to be added at the same time.
     $getChildItemSplat = @{
-        Path    = $Path
+        Path    = [IO.Path]::Combine($Path, '*')
         Include = '*.psm1', '*.psd1', '*.ps1xml'
-        Depth   = 1
     }
     Get-ChildItem @getChildItemSplat |
         Copy-Item -Destination $DestinationPath -Force
     foreach ($dir in $CopyDirectories) {
         $copyPath = [IO.Path]::Combine($Path, $dir)
         Copy-Item -Path $copyPath -Destination $DestinationPath -Recurse -Force
+    }
+
+    # A module's culture directory carries its localized data and its about topics. Compile mode
+    # stages the loose root files and CopyDirectories and nothing else, so a hand-written
+    # en-US/about_<Module>.help.txt was left behind and the built module shipped without its about
+    # topic while the build reported success. Naming the culture directory in CopyDirectories was
+    # the only way to ship one, and that setting reads as an escape hatch for extra content rather
+    # than as the mechanism help travels by. See psake/PowerShellBuild#210.
+    #
+    # Non-compile mode needs none of this: the bulk copy below already brings the whole source
+    # tree, culture directories included.
+    if ($Compile.IsPresent) {
+        foreach ($localeName in (Get-PSBuildHelpLocale -Path $Path)) {
+            # Already staged verbatim by the loop above.
+            if ($localeName -in $CopyDirectories) {
+                continue
+            }
+
+            # Get-PSBuildHelpLocale deliberately over-reports: a directory counts as a locale when
+            # its name is a culture the runtime knows, whether or not it holds any help. That is
+            # the safe way to be wrong where the cost is a warning, and the unsafe way here --
+            # 'bin' is a real culture name (Bini) and 'ps' is Pashto, so staging on the name alone
+            # would copy a binary directory into the shipped module. Content is what decides: an
+            # about topic, MAML help, or localized data is what makes a directory a culture
+            # directory rather than a directory that happens to share a name with one.
+            $localePath = [IO.Path]::Combine($Path, $localeName)
+            $getChildItemSplat = @{
+                Path        = [IO.Path]::Combine($localePath, '*')
+                Include     = 'about_*.help.txt', '*-help.xml', '*.psd1'
+                File        = $true
+                ErrorAction = 'SilentlyContinue'
+            }
+            $localeContent = Get-ChildItem @getChildItemSplat | Select-Object -First 1
+            if (-not $localeContent) {
+                continue
+            }
+
+            Copy-Item -Path $localePath -Destination $DestinationPath -Recurse -Force
+        }
     }
 
     # Copy README as about_<modulename>.help.txt
@@ -118,21 +170,50 @@ function Build-PSBuildModule {
             $culturePath,
             "about_$($ModuleName).help.txt"
         )
-        # The guard belongs to New-Item alone. With the copy inside it, an existing
-        # culture directory meant no about help file was written at all -- and
-        # CopyDirectories runs above, so naming the culture directory there was enough
-        # to suppress it silently. That is psake/PowerShellBuild#207. The Force below was
-        # already here and unreachable; this restores the overwrite it was written for.
-        if (-not (Test-Path -LiteralPath $culturePath -PathType Container)) {
-            New-Item -Path $culturePath -ItemType Directory -Force > $null
-        }
 
-        $copyItemSplat = @{
-            LiteralPath = $ReadMePath
-            Destination = $aboutModulePath
-            Force       = $true
+        # A hand-written about topic in the source tree wins over the readme, in both modes.
+        # The two modes used to disagree by accident of statement ordering: non-compile mode's
+        # bulk copy runs after this block and overwrote the readme-derived file, while in compile
+        # mode the readme landed last and replaced whatever CopyDirectories had staged. Same two
+        # inputs, opposite results, decided by a setting that has nothing to do with help. See
+        # psake/PowerShellBuild#212.
+        #
+        # Source wins because no conversion happens here: this is a plain copy of the Markdown
+        # readme, which satisfies none of the TOPIC and four-space-indent structure Get-Help
+        # documents for an about topic. Letting the readme win would replace a conformant help
+        # file with raw Markdown. Warned about rather than done silently, because
+        # ConvertReadMeToAboutHelp is an explicit instruction that is not being carried out.
+        #
+        # Tested against the source tree, not the output: non-compile mode has not copied the
+        # source about topic yet at this point, so the output cannot answer the question in
+        # either mode. This is a narrower guard than the one psake/PowerShellBuild#207 removed --
+        # that one skipped the copy whenever the culture *directory* existed, whatever was in it.
+        $sourceAboutModulePath = [IO.Path]::Combine(
+            $Path,
+            $Culture,
+            "about_$($ModuleName).help.txt"
+        )
+        if (Test-Path -LiteralPath $sourceAboutModulePath -PathType Leaf) {
+            Write-Warning (
+                $LocalizedData.SourceAboutTopicOverridesReadMe -f $sourceAboutModulePath, $ReadMePath
+            )
+        } else {
+            # The guard belongs to New-Item alone. With the copy inside it, an existing
+            # culture directory meant no about help file was written at all -- and
+            # CopyDirectories runs above, so naming the culture directory there was enough
+            # to suppress it silently. That is psake/PowerShellBuild#207. The Force below was
+            # already here and unreachable; this restores the overwrite it was written for.
+            if (-not (Test-Path -LiteralPath $culturePath -PathType Container)) {
+                New-Item -Path $culturePath -ItemType Directory -Force > $null
+            }
+
+            $copyItemSplat = @{
+                LiteralPath = $ReadMePath
+                Destination = $aboutModulePath
+                Force       = $true
+            }
+            Copy-Item @copyItemSplat
         }
-        Copy-Item @copyItemSplat
     }
 
     # Copy source files to destination and optionally combine *.ps1 files

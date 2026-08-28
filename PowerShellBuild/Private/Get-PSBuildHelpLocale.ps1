@@ -1,3 +1,4 @@
+# spell-checker:ignore Bini Pashto
 function Get-PSBuildHelpLocale {
     <#
     .SYNOPSIS
@@ -23,8 +24,14 @@ function Get-PSBuildHelpLocale {
         codes is reported as a locale even if it holds no help at all. That is the safe way to
         be wrong. Callers already handle a locale that turns out to have nothing to build, and
         over-reporting costs a warning where under-reporting silently drops a consumer's help.
+
+        A caller that acts on the result by copying rather than by reporting has to narrow it
+        further, because there the same over-report is not safe: 'bin' is a real culture name
+        (Bini) and 'ps' is Pashto, so staging by name alone would copy a binary directory into a
+        built module. Build-PSBuildModule adds a content test for that reason.
     .PARAMETER Path
-        Path to the docs tree whose subdirectories are being classified.
+        Path to the tree whose subdirectories are being classified. A docs tree in the help
+        tasks, and a module source directory when staging a build.
     .PARAMETER ModulePath
         Path to the built module. Its subdirectories are the locales the MAML step has
         already written help for. Optional; without it only the culture name test applies.

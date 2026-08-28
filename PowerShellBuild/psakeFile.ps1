@@ -91,8 +91,17 @@ Task StageFiles -Depends $PSBStageFilesDependency {
     }
 
     if ($PSBPreference.Help.ConvertReadMeToAboutHelp) {
-        $readMePath = Get-ChildItem -Path $PSBPreference.General.ProjectRoot -Include 'readme.md', 'readme.markdown', 'readme.txt' -Depth 1 |
-            Select-Object -First 1
+        # The project root only, and only the trailing wildcard reaches it. -Depth 1 combined
+        # with -Include degrades to a full -Recurse on Windows PowerShell 5.1, so this used to
+        # walk the entire project root -- including the build output -- and Select-Object then
+        # took whichever readme the enumeration happened to reach first. Removing -Depth without
+        # adding the wildcard matches nothing, because without recursion -Include filters against
+        # the leaf of -Path. See psake/PowerShellBuild#211.
+        $getReadMeSplat = @{
+            Path    = [IO.Path]::Combine($PSBPreference.General.ProjectRoot, '*')
+            Include = 'readme.md', 'readme.markdown', 'readme.txt'
+        }
+        $readMePath = Get-ChildItem @getReadMeSplat | Select-Object -First 1
         if ($readMePath) {
             $buildParams.ReadMePath = $readMePath
         }
