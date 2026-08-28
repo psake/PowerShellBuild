@@ -63,6 +63,12 @@ One line per break; follow the link for details and migration steps.
 - [`$PSBPreference.Sign.SkipCertificateValidation` now has an effect](#psbpreferencesignskipcertificatevalidation-now-has-an-effect)
   — the escape hatch did nothing on 0.8.x; a build that failed on an expired
   certificate may now succeed by signing with it.
+- [Staging no longer reaches below the module root](#staging-no-longer-reaches-below-the-module-root)
+  — a stray copy of a culture directory's `.psd1` disappears from the output
+  root, and your readme now has to be at the project root to be found.
+- [A hand-written about topic now wins over `ConvertReadMeToAboutHelp`](#a-hand-written-about-topic-now-wins-over-convertreadmetoabouthelp)
+  — the readme no longer replaces a conformant about topic, and a warning
+  says when it was skipped.
 
 
 ## AI-assisted migration
@@ -1011,6 +1017,92 @@ Note the two source families differ, and the difference matters:
   message.
 
 Tracked in [#193](https://github.com/psake/PowerShellBuild/issues/193).
+
+### Staging no longer reaches below the module root
+
+**Affects every consumer whose module source has a culture directory, and
+every consumer whose readme is not at the project root.**
+
+Staging copied the module's loose files with `-Depth 1`, which recurses one
+level down. Two things followed from that.
+
+**Your output root loses a file it should never have had.** A module with a
+localized `en-US/Messages.psd1` matched the depth-1 glob, and the copy wrote
+it flat into the output root — a second copy of the file, at a path nothing
+reads. If `$PSBPreference.Build.CopyDirectories` also named the culture
+directory, the correct copy was there too and the published package carried
+both. The stray copy is gone in 1.0.0. Nothing read it, so nothing should
+break; if a script of yours reads
+`<ModuleOutDir>/Messages.psd1`, point it at
+`<ModuleOutDir>/<Culture>/Messages.psd1` instead.
+
+**On Windows PowerShell 5.1 the change is larger.** There, `-Depth`
+combined with `-Include` degrades to a full `-Recurse`, so files at *any*
+depth below your module source were flattened into the output root, and
+same-named files at different depths overwrote each other. The contents of
+a published package therefore depended on which host built it. If you build
+on 5.1 and your output root has `.psd1`, `.psm1` or `.ps1xml` files you did
+not expect, that is where they came from, and they will be absent from
+1.0.0 builds.
+
+The same pattern was in the readme discovery in both task files, so
+`$PSBPreference.Help.ConvertReadMeToAboutHelp` also changes:
+
+**Before (0.8.x):** the readme was searched for at the project root *and one
+level below it*, and on Windows PowerShell 5.1 through the entire project
+root, with `Select-Object -First 1` taking whichever the enumeration reached
+first — which could be a readme in a subdirectory, or one in a previous
+build's output.
+
+**After (1.0.0):** only `readme.md`, `readme.markdown` or `readme.txt`
+directly in `$PSBPreference.General.ProjectRoot` is used.
+
+**Detection:** if your about help stops being generated after upgrading,
+your readme is not at the project root. Move it there, or call
+`Build-PSBuildModule -ReadMePath` yourself with the path you want.
+
+Compile mode gains the other half of the same fix: it now stages a source
+culture directory on its own, rather than only when `CopyDirectories`
+happened to name it, so a compiled module ships the about topic and
+localized data it always should have. See
+[#210](https://github.com/psake/PowerShellBuild/issues/210).
+
+Tracked in [#211](https://github.com/psake/PowerShellBuild/issues/211).
+
+### A hand-written about topic now wins over `ConvertReadMeToAboutHelp`
+
+**Only affects builds that set
+`$PSBPreference.Help.ConvertReadMeToAboutHelp = $true` (or pass
+`-ReadMePath`) while also shipping a hand-written
+`<Culture>/about_<Module>.help.txt` in their module source.**
+
+The two build modes used to disagree about which one won, by accident of
+statement ordering rather than by design: in non-compile mode the bulk copy
+runs after the readme block and overwrote the readme-derived file, so the
+source topic won; in compile mode the readme ran last, so it won. The answer
+depended on `$PSBPreference.Build.CompileModule`, a setting with nothing to
+do with help.
+
+**After (1.0.0):** the source about topic wins in both modes, and the build
+warns that the readme was not converted:
+
+    WARNING: The source tree already provides an about help topic at
+    [./MyModule/en-US/about_MyModule.help.txt], so the readme at
+    [./README.md] was not converted into about help.
+
+The readme loses because nothing here converts anything —
+`ConvertReadMeToAboutHelp` is a plain copy of the Markdown, and Markdown
+satisfies none of the `TOPIC` and four-space-indent structure `Get-Help`
+documents for an about topic. Letting it win would replace conformant help
+with content `Get-Help` cannot present.
+
+**If you want the readme to be your about topic**, delete the hand-written
+`<Culture>/about_<Module>.help.txt` from your module source. **If you want
+the hand-written topic**, stop setting `ConvertReadMeToAboutHelp` and the
+warning goes away. The rule is per culture: a hand-written `en-US` topic
+does not stop the readme becoming the `fr-FR` one.
+
+Tracked in [#212](https://github.com/psake/PowerShellBuild/issues/212).
 
 ## Adding an entry (for PR contributors)
 

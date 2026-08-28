@@ -108,6 +108,44 @@ Everything below is the detail, one entry per issue.
 
 ### Fixed
 
+- [**#210**](https://github.com/psake/PowerShellBuild/issues/210)
+  Compiling a module no longer drops its culture directory. `-Compile` staged the
+  manifest, the root module and `$PSBPreference.Build.CopyDirectories`, and nothing
+  else — so a hand-written `en-US/about_<Module>.help.txt` was left in the source
+  tree and the built module shipped without its about topic, while the build reported
+  success. `CopyDirectories` naming the culture directory was the only way to ship one,
+  and that setting reads as an escape hatch for extra content rather than as the
+  mechanism help travels by. Compile mode now stages a source culture directory on its
+  own, so `Get-Help about_<Module>` works in a compiled build. Staging is decided by
+  content, not by name alone: a directory is staged only when it holds an
+  `about_*.help.txt`, a `*-help.xml` or a `*.psd1`, because `bin` is a real culture name
+  (Bini) and `ps` is Pashto and neither should be copied into a built module.
+
+- [**#211**](https://github.com/psake/PowerShellBuild/issues/211)
+  The built module no longer carries a stray copy of a culture directory's `.psd1` at its
+  root. The staging glob used `-Depth 1`, which recursed one level and matched
+  `en-US/Messages.psd1`, and the copy wrote it flat into the output root where nothing
+  reads it. On Windows PowerShell 5.1 it was worse: `-Depth` combined with `-Include`
+  degrades to a full `-Recurse` there, so files at any depth were flattened into the root
+  and same-named files at different depths could collide, which made the contents of a
+  published package depend on which host built it. The glob now matches the module root
+  only, in both modes. The same pattern in the readme discovery in `psakeFile.ps1` and
+  `IB.tasks.ps1` is fixed with it, where on 5.1 it walked the whole project root and
+  `Select-Object -First 1` then took an arbitrary readme.
+
+- [**#212**](https://github.com/psake/PowerShellBuild/issues/212)
+  Compile and non-compile mode now agree on what wins when a module has both a readme and
+  a hand-written about topic. The two used to disagree by accident of statement ordering —
+  the non-compile bulk copy runs after the readme block and overwrote the readme-derived
+  file, while in compile mode the readme landed last and replaced whatever
+  `CopyDirectories` had staged — so the winner depended on
+  `$PSBPreference.Build.CompileModule`, a setting with nothing to do with help. A source
+  about topic now wins in both modes, and a warning reports that the readme was not used.
+  Source wins because nothing is converted here: `ConvertReadMeToAboutHelp` copies the
+  Markdown as-is, and Markdown satisfies none of the structure `Get-Help` documents for an
+  about topic, so letting the readme win would replace conformant help with content
+  `Get-Help` cannot present.
+
 - [**#206**](https://github.com/psake/PowerShellBuild/issues/206)
   `Build-PSBuildModule -Compile` no longer compiles your working directory when no
   compile directories are given. `CompileDirectories` defaulted to `@()`, and
