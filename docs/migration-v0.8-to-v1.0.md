@@ -79,9 +79,13 @@ You are migrating a PowerShellBuild consumer's build configuration from
 Inputs:
 - The migration guide, at this exact URL:
   https://raw.githubusercontent.com/psake/PowerShellBuild/main/docs/migration-v0.8-to-v1.0.md
-- My build file (default: ./build.ps1 for psake, or ./.build.ps1 for
-  Invoke-Build; ask if it lives elsewhere or has a different name).
-- Any psake or Invoke-Build files my build file references.
+- My build files. The one that matters most is the task file that sets
+  $PSBPreference: ./psakeFile.ps1 for psake, or ./.build.ps1 for
+  Invoke-Build -- often named after the module instead, such as
+  ./.mymodule.build.ps1. There is usually also a ./build.ps1 wrapper
+  that invokes it. Find the real names rather than assuming the
+  defaults; ask if you cannot.
+- Any other psake or Invoke-Build files those reference.
 - Any dependency manifest or bootstrap my build file uses to install
   the toolchain -- requirements.psd1 for PSDepend, or an equivalent.
   This is where the psake, Pester, and PlatyPS floors are actionable.
@@ -90,27 +94,39 @@ Read the guide before anything else:
 - Fetch the RAW file at the URL above. Do not work from a fetch tool
   that summarizes pages -- many do, silently, and a summary of this
   guide drops whole entries while still reading as complete.
-- Verify you have the whole document: it ends with a section titled
-  "Related". If yours does not, you have a partial or summarized copy.
-  Get the raw text another way, or ask me to paste it. Do not proceed
-  on a summary.
+- Verify you have the whole document two ways: it ends with a section
+  titled "Related", and every bullet in its "Quick Start" list near the
+  top has a matching ### heading in the "Migration entries" section.
+  Pair them up rather than counting them -- a summary can drop a bullet
+  and its heading together and still look self-consistent. If either
+  check fails, you have a partial or summarized copy. Get the raw text
+  another way, or ask me to paste it. Do not proceed on a summary.
 
 Task:
 1. Read the guide's "Migration entries" section in full.
-2. For each entry, decide whether it applies to my files.
-3. Apply applicable entries' migration steps. Preserve every
-   customization not directly affected by the migration.
-4. Before editing anything, check which PowerShellBuild version is
+2. Before editing anything, check which PowerShellBuild version is
    installed here, and run my test suite once to get a baseline. After
-   step 5 the suite may not run at all.
+   step 5 the suite may not run at all. If it is already failing, say so
+   and keep going -- record the failure as the baseline.
+3. For each entry, decide whether it applies to my files.
+4. Apply applicable entries' migration steps. Preserve every
+   customization not directly affected by the migration.
 5. Update the PowerShellBuild version itself. This is the upgrade, and
    no individual entry covers it: change the pin in my dependency
-   manifest, and for psake consumers the -Version on
-   `task <name> -FromModule PowerShellBuild -Version '<version>'`.
+   manifest, and for psake consumers the version on my
+   `Task <name> -FromModule PowerShellBuild ...` lines. Keep whichever
+   version parameter I already use and change only its value.
+   -MinimumVersion sets a floor; -Version and -RequiredVersion demand an
+   exact match. They are not interchangeable, so do not swap one for
+   another -- that changes how psake resolves the module.
+   If my pin is a floating value such as 'latest', leave it floating and
+   tell me, rather than converting it to a hard pin on a release that
+   may not exist yet.
    Ask me which version to pin if you are unsure what is current.
-   Make this change even if that version is not published or installed
-   yet -- a half-migrated pin is worse than one I have to wait on. Add
-   a review marker saying so rather than leaving the old version.
+   Otherwise make this change even if that version is not published or
+   installed yet -- a half-migrated pin is worse than one I have to wait
+   on. Add a review marker saying so rather than leaving the old
+   version.
 6. Where you cannot safely make a change, leave the original code in
    place and add a `# MIGRATION-REVIEW: <reason>` comment on the
    relevant line. Use this when you are unsure how to apply an entry,
@@ -125,16 +141,24 @@ Task:
      to expect on my first 1.0.0 build. MOST entries are this kind --
      for a typical consumer only a handful produce a diff. Do not omit
      them because they produced none, and do not treat a long checklist
-     as padding.
+     as padding. Work from the guide's Quick Start list and account for
+     every bullet on it, including the ones that do not apply to me.
    - anything you noticed that is not a migration item but changes what
      I should expect from an entry -- a task that will not run, a
      setting that has never taken effect.
 
+If you cannot ask me a question because you are running
+non-interactively, take the most conservative reading, proceed, and list
+every question you would have asked in your output.
+
 PowerShellBuild conventions worth knowing:
 - The module is imported with `Import-Module PowerShellBuild`.
-- Configuration goes through `$PSBPreference`, a hashtable populated in
-  build.ps1 before tasks are invoked. It is a plain hashtable, so an
-  unrecognized setting name is silently ignored rather than rejected.
+- Configuration goes through `$PSBPreference`. psake consumers set it in
+  the `properties { }` block of their psake file; Invoke-Build consumers
+  set it in their .build.ps1 after dot-sourcing the alias. It is rarely
+  set in build.ps1, which is usually only a bootstrap wrapper. It is a
+  plain hashtable, so an unrecognized setting name is silently ignored
+  rather than rejected.
 - Invoke-Build users dot-source the alias after import:
   `. PowerShellBuild.IB.Tasks`.
 - psake users invoke via `-FromModule PowerShellBuild`.
@@ -162,8 +186,9 @@ PowerShellBuild conventions worth knowing:
   build will do differently. An agent that reports only its edits has
   told you less than half the story.
 
-This prompt has been exercised against sample psake and Invoke-Build
-consumers before release. It is not guaranteed to be complete for your
+This prompt has been exercised before release against four real public
+consumer builds — three psake, one Invoke-Build — spanning PowerShellBuild
+pins from 0.6.1 to 0.8.2. It is not guaranteed to be complete for your
 build file, and the review step is not optional.
 
 ## Migration entries
