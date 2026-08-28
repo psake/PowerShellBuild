@@ -1,4 +1,4 @@
-# spell-checker:ignore excludeme psm1 psd1
+﻿# spell-checker:ignore excludeme psm1 psd1
 
 # Dedicated coverage for Build-PSBuildModule (psake/PowerShellBuild#98).
 #
@@ -72,6 +72,30 @@ foreach ($import in $public + $private) {
 Export-ModuleMember -Function $public.BaseName
 '@
 
+        # Names Export-ModuleMember only inside a block comment. A line-anchored regex fires
+        # on it -- the anchor lands on a line it cannot tell is not code -- where parsing the
+        # file does not. This fixture is what separates the two approaches.
+        $script:documentedLoader = @'
+# PSBuildTestFixture root module loader
+<#
+    This module deliberately does not call the command named on the next line, which is
+    what the standard scaffold would have done here:
+    Export-ModuleMember -Function $public.BaseName
+
+    The built manifest FunctionsToExport governs the export set instead.
+#>
+foreach ($sourceDirectoryName in @('Public', 'Private')) {
+    $sourceDirectoryPath = Join-Path -Path $PSScriptRoot -ChildPath $sourceDirectoryName
+    if (-not (Test-Path -Path $sourceDirectoryPath)) {
+        continue
+    }
+
+    foreach ($import in (Get-ChildItem -Path (Join-Path -Path $sourceDirectoryPath -ChildPath '*.ps1'))) {
+        . $import.FullName
+    }
+}
+'@
+
         function New-PSBuildModuleScenario {
             <#
             .SYNOPSIS
@@ -110,7 +134,7 @@ Export-ModuleMember -Function $public.BaseName
                 [string]
                 $Name,
 
-                [ValidateSet('Guarded', 'Naive')]
+                [ValidateSet('Guarded', 'Naive', 'Documented')]
                 [string]
                 $Loader = 'Guarded'
             )
@@ -118,7 +142,11 @@ Export-ModuleMember -Function $public.BaseName
             $scenarioRoot = Join-Path -Path $Path -ChildPath $Name
             $sourcePath = Copy-PSBuildTestFixture -Destination $scenarioRoot
 
-            $loaderText = if ($Loader -eq 'Naive') { $script:naiveLoader } else { $script:guardedLoader }
+            $loaderText = switch ($Loader) {
+                'Naive' { $script:naiveLoader }
+                'Documented' { $script:documentedLoader }
+                default { $script:guardedLoader }
+            }
             Set-Content -Path (Join-Path -Path $sourcePath -ChildPath 'PSBuildTestFixture.psm1') -Value $loaderText
 
             # A directory the source tree carries that is not a compile directory, so
@@ -528,6 +556,68 @@ Export-ModuleMember -Function $public.BaseName
 
         It 'Emits no warning' {
             $script:buildWarning | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Compiling a root module that only mentions Export-ModuleMember' {
+
+        # The warning states a fact -- "calls Export-ModuleMember" -- and tells the consumer to
+        # guard or remove the call. Reported against a comment, it sends them looking for a
+        # call that does not exist. Detection therefore parses the root module instead of
+        # matching its text.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'documented' -Loader 'Documented'
+            $buildParameter = @{
+                Path            = $script:scenario.SourcePath
+                DestinationPath = $script:scenario.DestinationPath
+                ModuleName      = $script:scenario.ModuleName
+                Compile         = $true
+                CompileDirectories = @('Public', 'Private')
+            }
+            $script:buildWarning = @()
+            Build-PSBuildModule @buildParameter -WarningVariable 'buildWarning' -WarningAction 'SilentlyContinue'
+            $script:buildWarning = @($buildWarning)
+        }
+
+        It 'Emits no warning for a mention inside a block comment' {
+            $script:buildWarning | Should -BeNullOrEmpty
+        }
+
+        It 'Builds a module that exports its public functions' {
+            $exportedFunctionName = Get-BuiltModuleExportedFunctionName -ManifestPath $script:scenario.ManifestPath
+
+            $exportedFunctionName | Should -Be @('Get-Widget', 'Set-Widget')
+        }
+    }
+
+    Context 'Compiling a source file whose name contains wildcard characters' {
+
+        # FullName is a literal path, and -Path reads [ ] * ? as wildcards, so a file named
+        # Get-Widget[legacy].ps1 resolves to nothing and is dropped from the compiled module
+        # while the build still succeeds -- the same silent-drop outcome as the drive-relative
+        # path this loop already guards against, reached a different way.
+        #
+        # A bracketed directory would exercise it too, but not testably: New-ModuleManifest
+        # has no -LiteralPath, so the fixture cannot be created in one.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'wildcard-name'
+            $bracketedFilePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'Public/Get-Widget[legacy].ps1'
+            Set-Content -LiteralPath $bracketedFilePath -Value 'function Get-WidgetLegacy { 1 }'
+
+            $buildParameter = @{
+                Path            = $script:scenario.SourcePath
+                DestinationPath = $script:scenario.DestinationPath
+                ModuleName      = $script:scenario.ModuleName
+                Compile         = $true
+                CompileDirectories = @('Public', 'Private')
+            }
+            Build-PSBuildModule @buildParameter
+        }
+
+        It 'Writes the function body into the compiled root module' {
+            $rootModuleContent = Get-Content -LiteralPath $script:scenario.RootModulePath -Raw
+
+            $rootModuleContent | Should -Match 'function Get-WidgetLegacy'
         }
     }
 

@@ -1,4 +1,4 @@
-# spell-checker:ignore modulename
+﻿# spell-checker:ignore modulename
 function Build-PSBuildModule {
     <#
     .SYNOPSIS
@@ -142,11 +142,23 @@ function Build-PSBuildModule {
         # rewritten: what the consumer's root module should do instead depends on the module.
         # See psake/PowerShellBuild#201.
         #
-        # Matched only where the command begins a line, so that a comment mentioning
-        # Export-ModuleMember -- including one explaining why the loader deliberately does not
-        # call it -- is not reported as a call. [^\S\r\n]* is horizontal whitespace only, so
-        # the match cannot start on a previous line.
-        if ($psm1Contents -match '(?m)^[^\S\r\n]*Export-ModuleMember\b') {
+        # Found by parsing rather than by matching text, so that the command named in a
+        # comment or quoted in a here-string -- including a comment explaining why the loader
+        # deliberately does not call it -- is not reported as a call. A line-anchored regex
+        # gets the single-line # comment right and still fires inside a <# #> block or a
+        # here-string, because it cannot see that the line it anchored on is not code.
+        $rootModuleAst = [System.Management.Automation.Language.Parser]::ParseInput(
+            $psm1Contents, [ref] $null, [ref] $null
+        )
+        $exportModuleMemberCall = $rootModuleAst.FindAll(
+            {
+                param($node)
+                $node -is [System.Management.Automation.Language.CommandAst] -and
+                $node.GetCommandName() -eq 'Export-ModuleMember'
+            },
+            $true
+        )
+        if ($exportModuleMemberCall) {
             $sourceRootModule = [IO.Path]::Combine($Path, "$ModuleName.psm1")
             Write-Warning (
                 $LocalizedData.ExportModuleMemberInSourceRootModule -f $sourceRootModule
@@ -194,7 +206,12 @@ function Build-PSBuildModule {
                 Write-Output $CompileScriptHeader
             }
 
-            Get-Content -Path $sourceFilePath
+            # -LiteralPath, not -Path: the value is a FullName, and -Path reads [ ] * ? as
+            # wildcards. A source file named Get-Widget[1].ps1, or any checkout under a
+            # directory like repo[main], would then match nothing and be dropped from the
+            # compiled module in silence -- the same failure this full-path read exists to
+            # prevent, reached a different way.
+            Get-Content -LiteralPath $sourceFilePath
 
             if ($CompileScriptFooter) {
                 Write-Output $CompileScriptFooter
