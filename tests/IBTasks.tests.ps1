@@ -22,43 +22,72 @@ BeforeAll {
 }
 
 Describe 'Invoke-Build Tasks' {
+
+    # The oldest of this file's drift guards: a task defined in one task file and forgotten in
+    # the other reaches that runner's consumers only -- the same defect as #178 and #193 with
+    # the files swapped -- and neither the settings comparison nor the signing comparison below
+    # can see a task that exists in one file and not the other. The harm is symmetric, so the
+    # comparison is too.
+    #
+    # Both task runners are asked for their task names in a background job, because loading
+    # either task file sets $PSBPreference read-only and calls Set-BuildEnvironment -Force,
+    # neither of which belongs in the Pester session. Only serialized objects cross a job
+    # boundary, so each job projects the names to strings before returning them -- see
+    # psake/PowerShellBuild#215 for what came back when they did not.
+
     BeforeAll {
-        $manifest           = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
-        $outputDir          = [IO.Path]::Combine($ENV:BHProjectPath, 'Output')
-        $outputModDir       = [IO.Path]::Combine($outputDir, $env:BHProjectName)
-        $outputModVerDir    = [IO.Path]::Combine($outputModDir, $manifest.ModuleVersion)
-        $ibTasksFilePath    = [IO.Path]::Combine($outputModVerDir, 'IB.tasks.ps1')
-        $psakeFilePath      = [IO.Path]::Combine($outputModVerDir, 'psakeFile.ps1')
+        $manifest                = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
+        $outputPath              = [IO.Path]::Combine($env:BHProjectPath, 'Output')
+        $outputModulePath        = [IO.Path]::Combine($outputPath, $env:BHProjectName)
+        $outputModuleVersionPath = [IO.Path]::Combine($outputModulePath, $manifest.ModuleVersion)
+        $ibTasksFilePath         = [IO.Path]::Combine($outputModuleVersionPath, 'IB.tasks.ps1')
+        $psakeFilePath           = [IO.Path]::Combine($outputModuleVersionPath, 'psakeFile.ps1')
+
+        # Assigned here rather than in the 'Parseable by invoke-build' block below: each It runs
+        # in its own scope, so a variable one It assigns is not there for the next one to read.
+        $script:invokeBuildTaskName = Start-Job -ScriptBlock {
+            # Invoke-Build -WhatIf still writes the task list under a CI host even when the
+            # output is piped to Out-Null, so every stream is redirected away.
+            Invoke-Build -File $using:ibTasksFilePath -WhatIf -Result invokeBuildResult -ErrorAction Stop *>$null
+
+            # .All is an ordered dictionary keyed by task name, so $invokeBuildResult.All.Name
+            # is a lookup for a key called 'Name' -- which no task file defines -- rather than
+            # an enumeration of the task names. The keys are the task names.
+            $invokeBuildResult.All.Keys | ForEach-Object { [string]$_ }
+        } | Wait-Job | Receive-Job
+
+        $script:psakeTaskName = Start-Job -ScriptBlock {
+            # Get-PSakeScriptTasks returns task objects. Invoke-PSake -docs formats a table to
+            # the output stream instead, so what crossed the job boundary was format records
+            # with no Name property, and every name was $null.
+            Get-PSakeScriptTasks -buildFile $using:psakeFilePath | ForEach-Object { [string]$_.Name }
+        } | Wait-Job | Receive-Job
     }
 
-    $IBTasksResult = $null
     It 'IB.tasks.ps1 exists' {
-        Test-Path $IBTasksFilePath | Should -Be $true
+        Test-Path $ibTasksFilePath | Should -Be $true
     }
 
     It 'Parseable by invoke-build' {
-        # Run IB in job to not pollute the environment
-        # Invoke-Build whatif still outputs in Appveyor in Pester even when directed to out-null. This doesn't happen locally. Redirecting all output to null
-        $IBTasksResult = Start-Job -ScriptBlock {
-            Invoke-Build -File $using:IBTasksFilePath -Whatif -Result IBTasksResult -ErrorAction Stop *>$null
-            $IBTasksResult
-        } | Wait-Job | Receive-Job
-
-        $IBTasksResult | Should -Not -BeNullOrEmpty
+        $script:invokeBuildTaskName | Should -Not -BeNullOrEmpty -Because 'Invoke-Build must be able to load IB.tasks.ps1 and report its tasks'
     }
-    It 'Contains all the tasks that were in the Psake file' {
-        # Run psake in job to not pollute the environment
-        $psakeTaskNames = Start-Job -ScriptBlock {
-            Invoke-PSake -docs -buildfile $using:psakeFilePath | Where-Object name -notmatch '^(default|\?)$' | ForEach-Object name
-        } | Wait-Job | Receive-Job
 
-        $IBTaskNames = $IBTasksResult.all.name
-        foreach ($taskItem in $psakeTaskNames) {
-            if ($taskitem -notin $IBTaskNames) {
-                throw "Task $taskitem was not successfully converted by Convert-PSAke"
-            }
-        }
-        $Psaketasknames | Should -Not -BeNullOrEmpty
+    It 'defines the same tasks in both task files' {
+        # Each runner adds an entry point of its own that is not a task either file defines:
+        # psake answers to 'default' and '?', Invoke-Build to '.'. Neither has, or should have,
+        # a counterpart in the other file, so neither side compares them. Nothing else is
+        # excluded -- every remaining name must appear in both files.
+        $comparablePsakeTaskName = $script:psakeTaskName.Where({ $_ -notmatch '^(default|\?)$' })
+        $comparableInvokeBuildTaskName = $script:invokeBuildTaskName.Where({ $_ -ne '.' })
+
+        $comparablePsakeTaskName | Should -Not -BeNullOrEmpty -Because 'psake must still report the tasks psakeFile.ps1 defines'
+        $comparableInvokeBuildTaskName | Should -Not -BeNullOrEmpty -Because 'Invoke-Build must still report the tasks IB.tasks.ps1 defines'
+
+        $missingFromInvokeBuild = $comparablePsakeTaskName.Where({ $_ -notin $comparableInvokeBuildTaskName })
+        $missingFromPsake = $comparableInvokeBuildTaskName.Where({ $_ -notin $comparablePsakeTaskName })
+
+        $missingFromInvokeBuild -join ', ' | Should -BeNullOrEmpty -Because 'IB.tasks.ps1 must define every task psakeFile.ps1 defines'
+        $missingFromPsake -join ', ' | Should -BeNullOrEmpty -Because 'psakeFile.ps1 must define every task IB.tasks.ps1 defines'
     }
 }
 
