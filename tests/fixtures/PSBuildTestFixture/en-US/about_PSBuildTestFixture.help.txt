@@ -1,0 +1,21 @@
+TOPIC
+    about_PSBuildTestFixture
+
+SHORT DESCRIPTION
+    Describes the hand-written about topic the PSBuildTestFixture module ships.
+
+LONG DESCRIPTION
+    This is a hand-written about topic, written in the structure Get-Help documents:
+    a TOPIC line, a SHORT DESCRIPTION, and four-space-indented body text.
+
+    It exists so the test suite can tell a conformant about topic apart from a Markdown
+    readme copied over the top of one. A build that converts the readme into about help
+    must leave this file alone and say so, in compile and non-compile mode alike. See
+    psake/PowerShellBuild#210 and psake/PowerShellBuild#212.
+
+KEYWORDS
+    PSBuildTestFixture
+
+SEE ALSO
+    Get-Widget
+    Set-Widget
