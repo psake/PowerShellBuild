@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+PowerShellBuild 1.0.0 is the first stable release. It closes a cycle of
+breaking changes that brings every core dependency to a current major
+version and fixes several gates that reported problems without enforcing
+them.
+
+**Read [docs/migration-v0.8-to-v1.0.md](docs/migration-v0.8-to-v1.0.md)
+before upgrading.** It carries one entry per break with the migration steps
+for each, and a prompt you can hand to a coding agent to do the edits for
+you.
+
+The breaks that can require action, shortest first:
+
+| Change | Who it affects |
+| --- | --- |
+| psake floor raised to `5.0.4` | psake consumers on 4.x — the module will not import |
+| Pester floor raised to `6.0.0` | consumers pinned to Pester 5.x — the module will not import |
+| PlatyPS moved to `Microsoft.PowerShell.PlatyPS` 1.x and is no longer installed for you | anyone who builds help |
+| `$PSBPreference.Docs.AlphabeticParamsOrder` removed | anyone who set it |
+| Manifest now requires PowerShell 5.1 | anyone building on PowerShell 3.0 or 4.0 |
+| Script analysis thresholds are enforced for the first time | anyone running the `Analyze` task — a build that passed may now correctly fail |
+| `ParseError` findings now count as errors | anyone with a file that does not parse |
+
+Three fixes are worth checking your build file for even though they cannot
+break it, because each one means a setting you configured was doing nothing:
+`$PSBPreference.Test.ScriptAnalysisEnabled` was never a real setting name,
+code coverage percentages were truncated to zero so coverage gating could not
+be used at all, and under Invoke-Build the coverage report was written in a
+format the threshold gate could not read.
+
+Everything below is the detail, one entry per issue.
+
 ### Changed
 
 - [**#172**](https://github.com/psake/PowerShellBuild/issues/172)
