@@ -34,6 +34,15 @@ Describe 'Build' {
                 $global:PSBuildCompile = $true
                 ./build.ps1 -Task Build
             } | Wait-Job
+
+            # Read the export set from the loaded module, not from the file. A module's
+            # effective exports are the intersection of the manifest's FunctionsToExport and
+            # whatever the root module exports, so a compiled module can carry every function
+            # in its text and still export none of them (psake/PowerShellBuild#201). Imported
+            # once here and removed again so no built fixture module is left in session state.
+            $builtModule = Import-Module -Name "$script:testModuleOutputPath/TestModule.psd1" -Force -PassThru
+            $script:exportedFunctionName = @($builtModule.ExportedFunctions.Keys | Sort-Object)
+            Remove-Module -ModuleInfo $builtModule -Force -ErrorAction SilentlyContinue
         }
 
         AfterAll {
@@ -73,6 +82,19 @@ Describe 'Build' {
             "$script:testModuleOutputPath/TestModule.psm1" | Should -Not -FileContentMatch '=== EXCLUDE ME ==='
         }
 
+        It 'Appends the source PSM1 after the compiled functions' {
+            "$script:testModuleOutputPath/TestModule.psm1" |
+                Should -FileContentMatch '# TestModule root module loader'
+        }
+
+        It 'Exports its public function' {
+            $script:exportedFunctionName | Should -Be @('Get-HelloWorld')
+        }
+
+        It 'Does not export its private function' {
+            $script:exportedFunctionName | Should -Not -Contain 'GetHelloWorld'
+        }
+
         It 'Has MAML help XML' {
             "$script:testModuleOutputPath/en-US/TestModule-help.xml" | Should -Exist
         }
@@ -94,6 +116,12 @@ Describe 'Build' {
             Write-Debug "TestModule output path: $script:testModuleOutputPath"
             $items = Get-ChildItem -Path $script:testModuleOutputPath -Recurse -File
             Write-Debug ($items | Format-Table FullName | Out-String)
+
+            # Same reasoning as the compiled context: staging the files is not the same as
+            # producing a module that exports anything, and only an import can tell them apart.
+            $builtModule = Import-Module -Name "$script:testModuleOutputPath/TestModule.psd1" -Force -PassThru
+            $script:exportedFunctionName = @($builtModule.ExportedFunctions.Keys | Sort-Object)
+            Remove-Module -ModuleInfo $builtModule -Force -ErrorAction SilentlyContinue
         }
 
         AfterAll {
@@ -115,6 +143,14 @@ Describe 'Build' {
 
         It 'Does not contain excluded stuff' {
             (Get-ChildItem -Path $script:testModuleOutputPath -File -Filter '*excludeme*' -Recurse).Count | Should -Be 0
+        }
+
+        It 'Exports its public function' {
+            $script:exportedFunctionName | Should -Be @('Get-HelloWorld')
+        }
+
+        It 'Does not export its private function' {
+            $script:exportedFunctionName | Should -Not -Contain 'GetHelloWorld'
         }
 
         It 'Has MAML help XML' {

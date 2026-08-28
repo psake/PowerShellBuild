@@ -255,6 +255,7 @@ own floor is **Pester 6.0.0** as of psake/PowerShellBuild#172, matching what CI 
 | ---------------------------------------- | -------------------------------------------------------------------- |
 | `build.tests.ps1`                        | Module compilation, file staging, exclusion, header/footer injection |
 | `Build-PSBuildHelp.tests.ps1`            | Markdown and MAML help generation (skipped without PlatyPS)          |
+| `Build-PSBuildModule.tests.ps1`          | The Build-PSBuildModule function directly, compiled and not          |
 | `Clear-PSBuildOutputFolder.tests.ps1`    | Output directory removal                                             |
 | `Fixtures.tests.ps1`                     | The shared test fixture helpers themselves                           |
 | `Get-PSBuildCertificate.tests.ps1`       | Signing certificate resolution                                       |

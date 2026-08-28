@@ -16,14 +16,28 @@ function Remove-ExcludedItem {
     }
 
     process {
-        :item
         foreach ($item in $InputObject) {
+            # A labeled break used to skip an excluded item here. On Windows PowerShell 5.1 that
+            # break escapes this function instead of ending the loop it names, and an escaping
+            # break aborts whatever loop the caller happened to be running, silently and with no
+            # error. Pester reports it as "a 'break' or 'continue' statement with a label that
+            # does not match any enclosing loop escaped from your code". A flag keeps all flow
+            # control inside this function.
+            #
+            # The labeled break was also aimed at the wrong loop: it ended the loop over
+            # $InputObject rather than skipping the one excluded item, so a caller that passed a
+            # collection through -InputObject lost every item after the first excluded one.
+            $isExcluded = $false
             foreach ($regex in $Exclude) {
-                if ($_ -match $regex) {
-                    break item
+                if ($item -match $regex) {
+                    $isExcluded = $true
+                    break
                 }
             }
-            $keepers.Add($_)
+
+            if (-not $isExcluded) {
+                $keepers.Add($item)
+            }
         }
     }
 

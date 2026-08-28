@@ -108,6 +108,48 @@ Everything below is the detail, one entry per issue.
 
 ### Fixed
 
+- [**#201**](https://github.com/psake/PowerShellBuild/issues/201)
+  `$PSBPreference.Build.CompileModule = $true` now warns when the source
+  `.psm1` calls `Export-ModuleMember`. Compiling appends the source root
+  module after the concatenated function files, and compile mode copies no
+  `Public/` directory to the output, so the dot-sourcing loader that almost
+  every module template generates discovers nothing and the appended call
+  becomes `Export-ModuleMember -Function @()`. A module's effective exports
+  are the intersection of that call and `FunctionsToExport`, so the built
+  module exported nothing while the manifest correctly named every public
+  function, and the build reported success. The only previous symptom was
+  `No commands have been exported. Skipping markdown generation.` from a
+  later task, which names a documentation problem rather than an empty
+  module. The build still produces the same files; what changes is that it
+  now tells you. Guard the call so it does nothing when the function
+  directories are absent, or remove it and let `FunctionsToExport` govern
+  the export set. A mention of `Export-ModuleMember` in a comment does not
+  trigger the warning.
+
+- [**#98**](https://github.com/psake/PowerShellBuild/issues/98)
+  `$PSBPreference.Build.Exclude` no longer aborts the build it is filtering.
+  The exclusion used a labeled `break` aimed at the loop over its whole input,
+  so a caller passing a collection lost every item after the first excluded
+  one; on Windows PowerShell 5.1 the `break` escaped the function entirely and
+  aborted whatever loop the caller was running, silently and with no error.
+  Found while adding the coverage for `Build-PSBuildModule` that #98 asked
+  for, which reaches the filter directly rather than one item at a time
+  through the pipeline.
+
+- [**#98**](https://github.com/psake/PowerShellBuild/issues/98)
+  `$PSBPreference.Build.CompileModule = $true` no longer produces a module
+  with no functions in it when the build runs from a different drive than the
+  module source. The compile loop read each function file through a path
+  resolved relative to the current location, and a current location cannot
+  always express another path relatively: on Windows PowerShell 5.1 a source
+  on another drive resolves to `.\C:\...`, and a source outside the current
+  PSDrive's root to a `..\` path that cannot climb past that root. Neither
+  reads back, so every function was silently dropped and the compiled `.psm1`
+  came out holding only its headers and footers -- and the build reported
+  success. Files are now read through their full path. Also found while
+  adding the #98 coverage; this repository's own Windows PowerShell 5.1 CI
+  job reproduces it, with the checkout on `D:` and the test drive on `C:`.
+
 - [**#193**](https://github.com/psake/PowerShellBuild/issues/193)
   `$PSBPreference.Sign.SkipCertificateValidation` now does something. It was
   read only by `psakeFile.ps1`, and even there `Get-PSBuildCertificate` consulted
