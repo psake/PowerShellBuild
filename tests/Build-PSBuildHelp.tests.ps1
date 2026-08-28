@@ -139,6 +139,105 @@ Describe 'Help building functions' -Skip:(-not $script:platyPSAvailable) {
         }
     }
 
+    Context 'Build-PSBuildMarkdown and the modules the caller had loaded' {
+
+        # psake/PowerShellBuild#221. The function imported the module it was documenting and
+        # then, in its finally block, called Remove-Module by name -- which removes every
+        # loaded module with that name, including a copy the caller loaded and this function
+        # never imported. Generating documentation therefore emptied the session it ran in.
+        # PowerShellOrg/PSDepend gave up the docs tasks entirely rather than live with it.
+        #
+        # These assert on the session rather than on the generated files, because the files
+        # were always correct; the session was the casualty.
+
+        It 'leaves a module the caller loaded from the documented path loaded and callable' {
+            # The blunt case: the caller and the docs build point at the same module, so
+            # Import-Module -Force displaces the caller's instance on the way in. Restoring it
+            # is the half of the fix that scoping the removal alone does not cover.
+            $scenario = New-PSBuildDocsScenario -Path $TestDrive -Name 'evictionsamepath'
+            $manifestPath = Join-Path -Path $scenario.ModulePath -ChildPath (
+                '{0}.psd1' -f $scenario.ModuleName
+            )
+
+            $probeParameter = @{
+                ModulePath            = $script:builtModulePath
+                CommandName           = 'Build-PSBuildMarkdown'
+                Parameter             = New-PSBuildMarkdownParameter -Scenario $scenario
+                ProbeModuleName       = $scenario.ModuleName
+                ProbeModuleManifest   = $manifestPath
+                ProbeCommandName      = 'Get-Widget'
+                ProbeCommandParameter = @{ Name = 'Sprocket' }
+            }
+            $probe = Invoke-PSBuildModuleEvictionProbe @probeParameter
+
+            $probe.Threw | Should -BeFalse
+            $probe.LoadedBefore | Should -Be 1
+            $probe.ProbeResultBefore.Name | Should -Be 'Sprocket'
+
+            $probe.LoadedAfter | Should -Be 1
+            $probe.ProbeResultAfter.Name | Should -Be 'Sprocket'
+        }
+
+        It 'leaves the caller''s module alone when the documented module exports nothing' {
+            # The zero-export path warns and returns without generating a single file, and
+            # `return` inside `try` still runs the `finally`. So the one case that produces no
+            # documentation at all used to be just as destructive as the case that does.
+            # The caller's copy is loaded from a different path here, which is what the
+            # name-based removal reached and a scoped removal does not.
+            $scenario = New-PSBuildDocsScenario -Path $TestDrive -Name 'evictionnoexport'
+            $documentedManifestPath = Join-Path -Path $scenario.ModulePath -ChildPath (
+                '{0}.psd1' -f $scenario.ModuleName
+            )
+            (Get-Content -Path $documentedManifestPath -Raw) -replace
+                "(?s)FunctionsToExport = @\(.*?\)", 'FunctionsToExport = @()' |
+                Set-Content -Path $documentedManifestPath
+
+            $callerModulePath = Copy-PSBuildTestFixture -Destination (
+                Join-Path -Path $TestDrive -ChildPath 'evictionnoexportcaller'
+            )
+            $callerManifestPath = Join-Path -Path $callerModulePath -ChildPath (
+                '{0}.psd1' -f $scenario.ModuleName
+            )
+
+            $probeParameter = @{
+                ModulePath            = $script:builtModulePath
+                CommandName           = 'Build-PSBuildMarkdown'
+                Parameter             = New-PSBuildMarkdownParameter -Scenario $scenario
+                ProbeModuleName       = $scenario.ModuleName
+                ProbeModuleManifest   = $callerManifestPath
+                ProbeCommandName      = 'Get-Widget'
+                ProbeCommandParameter = @{ Name = 'Sprocket' }
+            }
+            $probe = Invoke-PSBuildModuleEvictionProbe @probeParameter
+
+            $probe.Threw | Should -BeFalse
+            $probe.Warning -join ' ' | Should -Match 'no commands'
+            $scenario.LocalePath | Should -Not -Exist
+
+            $probe.LoadedBefore | Should -Be 1
+            $probe.LoadedAfter | Should -Be 1
+            $probe.ProbeResultAfter.Name | Should -Be 'Sprocket'
+        }
+
+        It 'leaves nothing loaded when the caller had nothing loaded' {
+            # The other side of restoring: putting back only what was there, so a session that
+            # started clean does not end up holding the module the docs were generated from.
+            $scenario = New-PSBuildDocsScenario -Path $TestDrive -Name 'evictionclean'
+
+            $probeParameter = @{
+                ModulePath      = $script:builtModulePath
+                CommandName     = 'Build-PSBuildMarkdown'
+                Parameter       = New-PSBuildMarkdownParameter -Scenario $scenario
+                ProbeModuleName = $scenario.ModuleName
+            }
+            $probe = Invoke-PSBuildModuleEvictionProbe @probeParameter
+
+            $probe.Threw | Should -BeFalse
+            $probe.LoadedBefore | Should -Be 0
+            $probe.LoadedAfter | Should -Be 0
+        }
+    }
+
     Context 'Build-PSBuildMAMLHelp' {
 
         BeforeAll {

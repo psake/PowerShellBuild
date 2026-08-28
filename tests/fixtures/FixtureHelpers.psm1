@@ -394,9 +394,190 @@ function Invoke-TestPSBuildPesterInJob {
     Invoke-PSBuildCommandInJob @jobParameter
 }
 
+function Invoke-PSBuildModuleEvictionProbe {
+    <#
+    .SYNOPSIS
+        Run one PowerShellBuild command in a background job and report what it did to the
+        caller's loaded modules.
+    .DESCRIPTION
+        Loads a module the way a consumer would, invokes a PowerShellBuild command, and reports
+        what was loaded and callable on both sides of the call. That before-and-after pair is
+        the whole point: psake/PowerShellBuild#221 and #222 both left the command's own output
+        correct while emptying the session around it, so only a probe that looks at the session
+        can see the defect.
+
+        The probe runs in a background job for the same reason Invoke-PSBuildCommandInJob does,
+        and then some -- an eviction is by definition a change to the session it runs in, so
+        measuring it in the test session would corrupt the test session.
+
+        Supply no ProbeModuleManifest to measure the opposite case: with nothing loaded
+        beforehand, LoadedAfter says whether the command left something behind.
+    .PARAMETER ModulePath
+        Path to the built PowerShellBuild module to import inside the job.
+    .PARAMETER CommandName
+        Name of the PowerShellBuild command to invoke.
+    .PARAMETER Parameter
+        Parameters to splat onto the command.
+    .PARAMETER ProbeModuleName
+        Name of the module to count before and after the call.
+    .PARAMETER ProbeModuleManifest
+        Manifest of the module to import globally before the call, standing in for a module the
+        consumer had loaded. Omit it to start from a session with nothing loaded.
+    .PARAMETER ProbeCommandName
+        Command exported by the probe module to invoke before and after the call. A module can
+        be reported as loaded while its commands are no longer resolvable, so the count alone
+        is not proof the session survived.
+    .PARAMETER ProbeCommandParameter
+        Parameters to splat onto the probe command.
+    .PARAMETER TimeoutSecond
+        How long to wait before giving up. Defaults to 300.
+    .EXAMPLE
+        PS> $probe = Invoke-PSBuildModuleEvictionProbe -ModulePath $builtModulePath -CommandName 'Build-PSBuildMarkdown' -Parameter $parameter -ProbeModuleName 'PSBuildTestFixture' -ProbeModuleManifest $manifestPath -ProbeCommandName 'Get-Widget' -ProbeCommandParameter @{ Name = 'Sprocket' }
+
+        Reports whether generating markdown left the caller's PSBuildTestFixture loaded and
+        Get-Widget callable.
+    .OUTPUTS
+        System.Management.Automation.PSCustomObject
+    #>
+    # The job scriptblock declares its own param() block and receives values through
+    # -ArgumentList, which is the documented alternative to $using:. The analyzer does not
+    # model that pairing and reports every parameter as an undeclared variable.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseUsingScopeModifierInNewRunspaces', '')]
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ModulePath,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $CommandName,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNull()]
+        [hashtable]
+        $Parameter,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $ProbeModuleName,
+
+        [string]
+        $ProbeModuleManifest,
+
+        [string]
+        $ProbeCommandName,
+
+        [ValidateNotNull()]
+        [hashtable]
+        $ProbeCommandParameter = @{},
+
+        [ValidateRange(1, 3600)]
+        [int]
+        $TimeoutSecond = 300
+    )
+
+    $job = Start-Job -ScriptBlock {
+        param(
+            $modulePath,
+            $commandName,
+            $parameter,
+            $probeModuleName,
+            $probeModuleManifest,
+            $probeCommandName,
+            $probeCommandParameter
+        )
+
+        Import-Module -Name $modulePath -Force -ErrorAction Stop
+
+        # Imported globally because that is how a consumer's session holds a module, and the
+        # global session state is the one the defect empties.
+        if ($probeModuleManifest) {
+            Import-Module -Name $probeModuleManifest -Force -Global -ErrorAction Stop
+        }
+
+        # A failed probe reports as $null rather than an error, so a test asserts on the value
+        # it expected back instead of on an exception whose text says nothing about the module.
+        $probeScript = {
+            param($name, $probeParameter)
+
+            if (-not $name) {
+                return $null
+            }
+            try {
+                & $name @probeParameter
+            } catch {
+                $null
+            }
+        }
+
+        $loadedBefore = @(Get-Module -Name $probeModuleName).Count
+        $probeResultBefore = & $probeScript $probeCommandName $probeCommandParameter
+
+        $invokeParameter = @{}
+        foreach ($key in $parameter.Keys) {
+            $invokeParameter[$key] = $parameter[$key]
+        }
+        if (-not $invokeParameter.ContainsKey('ErrorAction')) {
+            $invokeParameter['ErrorAction'] = 'Stop'
+        }
+        $commandWarning = @()
+        if (-not $invokeParameter.ContainsKey('WarningVariable')) {
+            $invokeParameter['WarningVariable'] = 'commandWarning'
+        }
+
+        $threw = $false
+        $errorMessage = $null
+        try {
+            $null = & $commandName @invokeParameter
+        } catch {
+            $threw = $true
+            $errorMessage = $_.Exception.Message
+        }
+
+        $loadedAfter = @(Get-Module -Name $probeModuleName).Count
+        $probeResultAfter = & $probeScript $probeCommandName $probeCommandParameter
+
+        [PSCustomObject]@{
+            Threw             = $threw
+            ErrorMessage      = $errorMessage
+            Warning           = @($commandWarning.ForEach({ $_.ToString() }))
+            LoadedBefore      = $loadedBefore
+            LoadedAfter       = $loadedAfter
+            ProbeResultBefore = $probeResultBefore
+            ProbeResultAfter  = $probeResultAfter
+        }
+    } -ArgumentList $ModulePath, $CommandName, $Parameter, $ProbeModuleName, $ProbeModuleManifest, $ProbeCommandName, $ProbeCommandParameter
+
+    $completedJob = Wait-Job -Job $job -Timeout $TimeoutSecond
+    if (-not $completedJob) {
+        Stop-Job -Job $job
+        Remove-Job -Job $job -Force
+        return [PSCustomObject]@{
+            Threw             = $true
+            ErrorMessage      = "$CommandName did not complete within $TimeoutSecond seconds."
+            Warning           = @()
+            LoadedBefore      = -1
+            LoadedAfter       = -1
+            ProbeResultBefore = $null
+            ProbeResultAfter  = $null
+        }
+    }
+
+    $jobResult = Receive-Job -Job $job
+    Remove-Job -Job $job -Force
+    $jobResult
+}
+
+
 Export-ModuleMember -Function @(
     'Copy-PSBuildTestFixture'
     'Invoke-PSBuildCommandInJob'
+    'Invoke-PSBuildModuleEvictionProbe'
     'Invoke-TestPSBuildPesterInJob'
     'New-PSBuildDocsScenario'
     'New-PSBuildMarkdownParameter'

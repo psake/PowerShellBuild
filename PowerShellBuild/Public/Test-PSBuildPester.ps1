@@ -78,14 +78,27 @@ function Test-PSBuildPester {
         throw ($LocalizedData.PesterVersionNotSupported -f $loadedPester.Version)
     }
 
+    # Nothing is imported unless -ImportModule is passed, so these stay empty on the default
+    # path and the finally block below has nothing to undo (psake/PowerShellBuild#222).
+    $previouslyLoadedModule = @()
+    $importedModule = $null
+
     try {
         if ($ImportModule) {
             if (-not (Test-Path $ModuleManifest)) {
                 Write-Error ($LocalizedData.UnableToFindModuleManifest -f $ModuleManifest)
             } else {
-                # Remove any previously imported project modules and import from the output dir
-                Get-Module $ModuleName | Remove-Module -Force -ErrorAction SilentlyContinue
-                Import-Module $ModuleManifest -Force
+                # Remove any previously imported project modules and import from the output
+                # dir, so the tests run against the module that was just built rather than a
+                # copy the session happened to be holding. What the caller had loaded is
+                # recorded first and restored in the finally block; ModuleName guards the
+                # lookup because Get-Module rejects an empty -Name with a parameter-binding
+                # error that -ErrorAction SilentlyContinue cannot suppress.
+                if ($ModuleName) {
+                    $previouslyLoadedModule = @(Get-Module -Name $ModuleName)
+                    $previouslyLoadedModule | Remove-Module -Force -ErrorAction SilentlyContinue
+                }
+                $importedModule = Import-Module -Name $ModuleManifest -Force -PassThru
             }
         }
 
@@ -153,10 +166,21 @@ function Test-PSBuildPester {
         }
     } finally {
         Pop-Location
-        # ModuleName is optional; Remove-Module with an empty -Name raises a parameter-binding
-        # error that -ErrorAction SilentlyContinue cannot suppress.
-        if ($ModuleName) {
-            Remove-Module -Name $ModuleName -ErrorAction SilentlyContinue
+
+        # Remove only the instance this function imported. The removal used to run by name and
+        # unconditionally, so on the default path -- where ImportModule is $false and nothing
+        # is imported at all -- it unloaded whatever the caller happened to have loaded under
+        # that name. Keying on the imported instance also retires the empty -Name guard that
+        # used to stand here, because there is no name-based removal left to protect.
+        if ($importedModule) {
+            Remove-Module -ModuleInfo $importedModule -Force -ErrorAction SilentlyContinue
+        }
+
+        # Restored into the global session state, because that is where a caller's copy lives.
+        # An import issued from inside this module without -Global would only reach
+        # PowerShellBuild's own session state, and the caller would still see nothing.
+        foreach ($restoredModule in $previouslyLoadedModule) {
+            Import-Module -ModuleInfo $restoredModule -Global -ErrorAction SilentlyContinue
         }
     }
 }
