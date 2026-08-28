@@ -51,7 +51,22 @@ function Build-PSBuildMarkdown {
         [bool]$UseFullTypeName
     )
 
-    $moduleInfo = Import-Module "$ModulePath/$ModuleName.psd1" -Global -Force -PassThru
+    # Record every copy of the module the caller already had loaded, so the finally block can
+    # put the session back the way it was found. Two separate things reach a caller's module
+    # otherwise: -Force evicts a copy loaded from this same path before the finally block is
+    # ever reached, and the removal that used to run there was by name, which takes every
+    # loaded copy regardless of who imported it or from where (psake/PowerShellBuild#221).
+    #
+    # -Force nevertheless stays. Without it, importing an already-loaded module is a no-op that
+    # returns the cached PSModuleInfo, so ExportedCommands would describe the previous build's
+    # command surface and the generated markdown would silently document a stale module.
+    #
+    # -Global is deliberately absent. Microsoft.PowerShell.PlatyPS resolves the module through
+    # the PSModuleInfo passed as -ModuleInfo below rather than by name, so it never performs a
+    # session-state lookup that -Global would serve. The generated markdown is byte-for-byte
+    # identical without it, and the import stops reaching into the caller's session state.
+    $previouslyLoadedModule = @(Get-Module -Name $ModuleName)
+    $moduleInfo = Import-Module "$ModulePath/$ModuleName.psd1" -Force -PassThru
 
     try {
         if ($moduleInfo.ExportedCommands.Count -eq 0) {
@@ -149,6 +164,16 @@ function Build-PSBuildMarkdown {
     } catch {
         Write-Error ($LocalizedData.FailedToGenerateMarkdownHelp -f $_)
     } finally {
-        Remove-Module $ModuleName
+        # Remove only the instance this function imported. The zero-export path above returns
+        # from inside the try block, which still runs this, so a module with no exported
+        # commands generates nothing and leaves the caller's session untouched all the same.
+        Remove-Module -ModuleInfo $moduleInfo -Force -ErrorAction SilentlyContinue
+
+        # Restored into the global session state, because that is where a caller's copy lives.
+        # An import issued from inside this module without -Global would only reach
+        # PowerShellBuild's own session state, and the caller would still see nothing.
+        foreach ($restoredModule in $previouslyLoadedModule) {
+            Import-Module -ModuleInfo $restoredModule -Global -ErrorAction SilentlyContinue
+        }
     }
 }

@@ -302,6 +302,103 @@ Describe 'Coverage target' {
             $result.ErrorMessage | Should -BeNullOrEmpty
         }
 
+        It 'leaves a module the caller had loaded alone when ImportModule is not passed' {
+            # Regression: psake/PowerShellBuild#222. The import was conditional on
+            # -ImportModule; the Remove-Module in the finally block was not. ImportModule
+            # defaults to $false, so on the default Pester task the function imported nothing
+            # and then removed whatever the caller happened to have loaded under that name.
+            $callerModulePath = Copy-PSBuildTestFixture -Destination (
+                Join-Path -Path $TestDrive -ChildPath 'evictionnoimport'
+            )
+            $callerManifestPath = Join-Path -Path $callerModulePath -ChildPath 'PSBuildTestFixture.psd1'
+
+            $probeParameter = @{
+                ModulePath            = $script:builtModulePath
+                CommandName           = 'Test-PSBuildPester'
+                Parameter             = @{
+                    Path            = $script:healthyPath
+                    ModuleName      = 'PSBuildTestFixture'
+                    OutputVerbosity = 'None'
+                }
+                ProbeModuleName       = 'PSBuildTestFixture'
+                ProbeModuleManifest   = $callerManifestPath
+                ProbeCommandName      = 'Get-Widget'
+                ProbeCommandParameter = @{ Name = 'Sprocket' }
+            }
+            $probe = Invoke-PSBuildModuleEvictionProbe @probeParameter
+
+            $probe.Threw | Should -BeFalse
+            $probe.LoadedBefore | Should -Be 1
+            $probe.ProbeResultBefore.Name | Should -Be 'Sprocket'
+
+            $probe.LoadedAfter | Should -Be 1
+            $probe.ProbeResultAfter.Name | Should -Be 'Sprocket'
+        }
+
+        It 'restores the caller''s module and removes its own after ImportModule' {
+            # The caller's copy and the copy under test are deliberately different paths, so
+            # the count distinguishes three outcomes: 0 means the caller was evicted, 2 means
+            # the function left its own import behind, 1 means it cleaned up exactly what it
+            # created and put the caller's session back.
+            $callerModulePath = Copy-PSBuildTestFixture -Destination (
+                Join-Path -Path $TestDrive -ChildPath 'evictioncaller'
+            )
+            $callerManifestPath = Join-Path -Path $callerModulePath -ChildPath 'PSBuildTestFixture.psd1'
+            $testedModulePath = Copy-PSBuildTestFixture -Destination (
+                Join-Path -Path $TestDrive -ChildPath 'evictiontested'
+            )
+            $testedManifestPath = Join-Path -Path $testedModulePath -ChildPath 'PSBuildTestFixture.psd1'
+
+            $probeParameter = @{
+                ModulePath            = $script:builtModulePath
+                CommandName           = 'Test-PSBuildPester'
+                Parameter             = @{
+                    Path            = $script:healthyPath
+                    ModuleName      = 'PSBuildTestFixture'
+                    ModuleManifest  = $testedManifestPath
+                    ImportModule    = $true
+                    OutputVerbosity = 'None'
+                }
+                ProbeModuleName       = 'PSBuildTestFixture'
+                ProbeModuleManifest   = $callerManifestPath
+                ProbeCommandName      = 'Get-Widget'
+                ProbeCommandParameter = @{ Name = 'Sprocket' }
+            }
+            $probe = Invoke-PSBuildModuleEvictionProbe @probeParameter
+
+            $probe.Threw | Should -BeFalse
+            $probe.LoadedBefore | Should -Be 1
+            $probe.LoadedAfter | Should -Be 1
+            $probe.ProbeResultAfter.Name | Should -Be 'Sprocket'
+        }
+
+        It 'leaves nothing loaded when the caller had nothing loaded' {
+            # Restoring must put back only what was there. A session that started without the
+            # module must not end up holding the copy the test run imported.
+            $testedModulePath = Copy-PSBuildTestFixture -Destination (
+                Join-Path -Path $TestDrive -ChildPath 'evictionclean'
+            )
+            $testedManifestPath = Join-Path -Path $testedModulePath -ChildPath 'PSBuildTestFixture.psd1'
+
+            $probeParameter = @{
+                ModulePath      = $script:builtModulePath
+                CommandName     = 'Test-PSBuildPester'
+                Parameter       = @{
+                    Path            = $script:healthyPath
+                    ModuleName      = 'PSBuildTestFixture'
+                    ModuleManifest  = $testedManifestPath
+                    ImportModule    = $true
+                    OutputVerbosity = 'None'
+                }
+                ProbeModuleName = 'PSBuildTestFixture'
+            }
+            $probe = Invoke-PSBuildModuleEvictionProbe @probeParameter
+
+            $probe.Threw | Should -BeFalse
+            $probe.LoadedBefore | Should -Be 0
+            $probe.LoadedAfter | Should -Be 0
+        }
+
         It 'honors the Pester version that is already loaded' -Skip:($script:innerPesterVersions.Count -lt 2) {
             # Regression: an unconditional Import-Module Pester -MinimumVersion 5.0.0 loaded the
             # newest installed Pester on top of an already-loaded older one, which crashes with a
