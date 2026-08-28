@@ -77,6 +77,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [**#193**](https://github.com/psake/PowerShellBuild/issues/193)
+  `$PSBPreference.Sign.SkipCertificateValidation` now does something. It was
+  read only by `psakeFile.ps1`, and even there `Get-PSBuildCertificate` consulted
+  it only for the `EnvVar` and `PfxFile` sources — the `Store` and `Thumbprint`
+  sources checked expiry and private key presence inside the filter that selects
+  the certificate, where the switch could not reach them. So the documented
+  escape hatch did nothing on two of the four sources for psake consumers, and
+  nothing at all for Invoke-Build consumers, because `IB.tasks.ps1` never passed
+  the setting to `Get-PSBuildCertificate` in either of its signing tasks. A
+  build with an expired store certificate failed with `NoCertificateFound`,
+  which points at a missing certificate rather than at the expiry that actually
+  caused it. `IB.tasks.ps1` now passes the setting, and for `Store` and
+  `Thumbprint` the relaxation is a fallback rather than a blanket bypass: an
+  unexpired certificate is still preferred whenever one exists, an expired one
+  is selected only when no unexpired one was found, and a warning is emitted
+  when that happens. `Thumbprint` still matches the requested thumbprint, and a
+  private key is still required in every case, because a certificate without one
+  cannot sign.
+
 - [**#191**](https://github.com/psake/PowerShellBuild/issues/191)
   The README's psake and Invoke-Build examples assigned
   `$PSBPreference.Test.ScriptAnalysisEnabled`, which is not a setting. The real

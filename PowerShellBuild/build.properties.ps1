@@ -186,11 +186,22 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # Useful for Azure Key Vault, HSM, or other custom certificate providers.
         Certificate               = $null
 
-        # When true and using the Store or Thumbprint sources, skip the
-        # certificate validity check that ensures the certificate is not expired
-        # and has a private key. This is not recommended for production use but
-        # can be useful in CI environments where certificates are frequently
-        # renewed and updated.
+        # When true, relax the certificate validity checks. This is not
+        # recommended for production use but can be useful in CI environments
+        # where certificates are frequently renewed and rotated.
+        #
+        # The EnvVar and PfxFile sources load exactly one certificate, so the
+        # expiration and Code Signing EKU checks are skipped outright for them.
+        #
+        # The Store and Thumbprint sources select one certificate out of many,
+        # so the relaxation is a fallback rather than a blanket bypass: an
+        # unexpired certificate is preferred whenever one exists, and an expired
+        # one is returned only when no unexpired certificate was found. A
+        # warning is emitted when that happens, and the Thumbprint source still
+        # matches the requested thumbprint.
+        #
+        # A private key is required in every case, because a certificate without
+        # one cannot sign.
         SkipCertificateValidation = $false
 
         # RFC 3161 timestamp server URI embedded in Authenticode signatures.
