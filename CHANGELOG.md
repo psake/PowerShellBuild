@@ -36,47 +36,6 @@ code coverage percentages were truncated to zero so coverage gating could not
 be used at all, and under Invoke-Build the coverage report was written in a
 format the threshold gate could not read.
 
-### Known issue: Windows builds can hang on a large commit message
-
-On Windows, a build can hang **with no output and no error** when the HEAD
-commit message is large — roughly 5.7 KB in measurement, though the exact
-threshold is a pipe-buffer size rather than a fixed number. Linux and macOS
-have a larger buffer and do not reach it at these sizes.
-
-This is not new in 1.0.0 and it is not PowerShellBuild's own defect. It is a
-deadlock in `BuildHelpers\Invoke-Git`, which redirects git's output streams
-and then waits for the process to exit *before* reading them; when git writes
-more than the pipe holds, neither side can proceed. `Get-BuildVariable` calls
-it to populate `$env:BHCommitMessage`, so the payload is the whole commit
-message body. It is listed here because `Initialize-PSBuild` calls
-`Set-BuildEnvironment`, so any consumer building on Windows can hit it, and a
-silent hang is a hard failure to diagnose without knowing the cause.
-
-**Workaround:** keep commit messages under a few kilobytes. If you squash-merge
-pull requests, use a short squash body — the full description stays on the
-pull request either way. Note that continuous integration will not warn you:
-on a `pull_request` event the checked-out merge commit has a short message, so
-the build is green, and the real message only becomes HEAD on the push to your
-default branch.
-
-**If a build is already hung**, shortening the message releases it —
-`git commit --amend` locally, or fast-forward a checkout that is sitting on the
-offending commit. There is nothing to clean up; the build never started.
-
-**Size is not the only trigger.** `Invoke-Git` also deadlocks inside a
-PowerShell background job *whatever* the output size — an 85-byte commit
-message and a five-byte `git rev-parse` both hang. So calling
-`Initialize-PSBuild` or `Set-BuildEnvironment` from `Start-Job` hangs
-unconditionally, short messages included, and no message-length discipline
-helps. Run them in the foreground, or in a child process you can time out.
-
-Tracked upstream as
-[RamblingCookieMonster/BuildHelpers#86](https://github.com/RamblingCookieMonster/BuildHelpers/issues/86)
-and here as
-[#167](https://github.com/psake/PowerShellBuild/issues/167). The fix belongs in
-BuildHelpers rather than in a workaround here, so that every consumer of
-`Invoke-Git` gets it rather than only this module.
-
 Everything below is the detail, one entry per issue.
 
 ### Changed

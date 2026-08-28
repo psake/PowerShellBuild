@@ -270,6 +270,50 @@ $PSBPreference.Test.CodeCoverage.Enabled   = $false
 
 ![Example](./media/ib_example.png)
 
+## Known issues
+
+### Windows builds can hang on a large commit message
+
+On Windows a build can hang with **no output and no error** when the HEAD
+commit message is large — roughly 5.7 KB in measurement, though the real
+limit is a pipe-buffer size rather than a fixed number. Linux and macOS
+have a larger buffer and do not reach it at these sizes.
+
+This is not a defect in PowerShellBuild and is not specific to any
+version. It is a deadlock in `BuildHelpers\Invoke-Git`, which redirects
+git's output streams and then waits for the process to exit *before*
+reading them; when git writes more than the pipe holds, neither side can
+proceed. `Get-BuildVariable` calls it to populate `$env:BHCommitMessage`,
+so the payload is the whole commit message body. It reaches you because
+`Initialize-PSBuild` calls `Set-BuildEnvironment`.
+
+**Keep commit messages under a few kilobytes.** If you squash-merge pull
+requests, use a short squash body — the full description stays on the
+pull request either way.
+
+**If a build is already hung**, shortening the message releases it:
+`git commit --amend` locally, or fast-forward a checkout sitting on the
+offending commit. Nothing needs cleaning up, because the build never
+started.
+
+**Continuous integration will not warn you.** On a `pull_request` event
+the checked-out merge commit has a short message, so the build is green;
+the real message only becomes HEAD on the push to your default branch.
+
+**Size is not the only trigger.** `Invoke-Git` also deadlocks inside a
+PowerShell background job *whatever* the output size — an 85-byte commit
+message and a five-byte `git rev-parse` both hang. Calling
+`Initialize-PSBuild` or `Set-BuildEnvironment` from `Start-Job` therefore
+hangs unconditionally, and no message-length discipline helps. Run them in
+the foreground, or in a child process you can time out.
+
+Tracked upstream as
+[RamblingCookieMonster/BuildHelpers#86](https://github.com/RamblingCookieMonster/BuildHelpers/issues/86)
+and here as
+[#167](https://github.com/psake/PowerShellBuild/issues/167). The fix
+belongs in BuildHelpers rather than in a workaround here, so that every
+consumer of `Invoke-Git` gets it rather than only this module.
+
 [github-actions-badge]: https://github.com/psake/PowerShellBuild/actions/workflows/test.yml/badge.svg
 [github-actions-badge-publish]: https://github.com/psake/PowerShellBuild/actions/workflows/publish.yaml/badge.svg?event=release
 [github-actions-build]: https://github.com/psake/PowerShellBuild/actions
