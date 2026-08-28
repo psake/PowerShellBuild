@@ -126,6 +126,16 @@ Everything below is the detail, one entry per issue.
   the export set. A mention of `Export-ModuleMember` in a comment does not
   trigger the warning.
 
+- [**#98**](https://github.com/psake/PowerShellBuild/issues/98)
+  `$PSBPreference.Build.Exclude` no longer aborts the build it is filtering.
+  The exclusion used a labeled `break` aimed at the loop over its whole input,
+  so a caller passing a collection lost every item after the first excluded
+  one; on Windows PowerShell 5.1 the `break` escaped the function entirely and
+  aborted whatever loop the caller was running, silently and with no error.
+  Found while adding the coverage for `Build-PSBuildModule` that #98 asked
+  for, which reaches the filter directly rather than one item at a time
+  through the pipeline.
+
 - [**#193**](https://github.com/psake/PowerShellBuild/issues/193)
   `$PSBPreference.Sign.SkipCertificateValidation` now does something. It was
   read only by `psakeFile.ps1`, and even there `Get-PSBuildCertificate` consulted

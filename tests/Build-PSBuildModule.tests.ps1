@@ -383,6 +383,30 @@ Export-ModuleMember -Function $public.BaseName
         }
     }
 
+    Context 'Filtering the compiled scripts' {
+
+        # Reaches the private Remove-ExcludedItem directly. The compile path pipes items into it
+        # one at a time, which hides what a collection exposes: the exclusion used a labeled
+        # break aimed at the loop over the whole input, so every item after the first excluded
+        # one was dropped. On Windows PowerShell 5.1 that break escaped the function outright
+        # and aborted the caller's loop.
+        It 'Keeps the items that follow an excluded one' {
+            InModuleScope -ModuleName 'PowerShellBuild' -ScriptBlock {
+                # The files do not have to exist: the exclusion is a regular expression match
+                # against the path, and only the names are read back.
+                $item = @(
+                    [IO.FileInfo]::new('source/Public/Get-Widget.ps1')
+                    [IO.FileInfo]::new('source/Private/excludeme.ps1')
+                    [IO.FileInfo]::new('source/Private/Test-WidgetName.ps1')
+                )
+
+                $keptItem = Remove-ExcludedItem -InputObject $item -Exclude @('excludeme')
+
+                @($keptItem.Name) | Should -Be @('Get-Widget.ps1', 'Test-WidgetName.ps1')
+            }
+        }
+    }
+
     Context 'Building with compilation from a scaffold loader' {
 
         # psake/PowerShellBuild#201. The naive loader is the shape almost every module template
