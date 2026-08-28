@@ -141,7 +141,7 @@ pattern — keep new public functions consistent with this):
 Private helpers in `PowerShellBuild/Private/`:
 
 - `Remove-ExcludedItem` — filters file system items by regular expression patterns during builds
-- `Get-PSBuildHelpLocale` — resolves the locale used for help generation
+- `Get-PSBuildHelpLocale` — classifies which docs subdirectories are help locales
 
 ### Invoke-Build alias
 
@@ -258,7 +258,7 @@ own floor is **Pester 6.0.0** as of psake/PowerShellBuild#172, matching what CI 
 | `Clear-PSBuildOutputFolder.tests.ps1`    | Output directory removal                                             |
 | `Fixtures.tests.ps1`                     | The shared test fixture helpers themselves                           |
 | `Get-PSBuildCertificate.tests.ps1`       | Signing certificate resolution                                       |
-| `Get-PSBuildHelpLocale.tests.ps1`        | Help locale resolution                                               |
+| `Get-PSBuildHelpLocale.tests.ps1`        | Which docs subdirectories count as help locales                      |
 | `Help.tests.ps1`                         | Help documentation completeness                                      |
 | `IBTasks.tests.ps1`                      | Invoke-Build task definitions and the settings they reference        |
 | `Initialize-PSBuild.tests.ps1`           | Build environment initialization                                     |
@@ -280,7 +280,8 @@ Supporting files: `tests/MetaFixers.psm1` (helpers for `Meta.tests.ps1`) and `te
 - The workflow itself defines no jobs of its own — it delegates to the psake organization's
   shared workflow, `psake/.github/.github/workflows/ModuleCI.yml@main`. Change the shared
   workflow, not `test.yml`, to change what CI runs
-- The shared workflow lints (cspell plus PSScriptAnalyzer fix suggestions), then runs
+- The shared workflow lints (cspell plus PSScriptAnalyzer fix suggestions) and, in
+  parallel, runs
   `./build.ps1 -Task Test -Bootstrap` across a `ubuntu-latest`, `windows-latest`, `macOS-latest`
   matrix on PowerShell 7 and again on Windows PowerShell 5.1, and publishes the test results
 

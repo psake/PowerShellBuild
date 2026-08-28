@@ -92,9 +92,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   `Thumbprint` the relaxation is a fallback rather than a blanket bypass: an
   unexpired certificate is still preferred whenever one exists, an expired one
   is selected only when no unexpired one was found, and a warning is emitted
-  when that happens. `Thumbprint` still matches the requested thumbprint, and a
-  private key is still required in every case, because a certificate without one
-  cannot sign.
+  when that happens. `Thumbprint` still matches the requested thumbprint, and
+  both store-backed sources still require a private key, because that is part of
+  how they select a certificate rather than a check layered on afterwards. Note
+  that `EnvVar` and `PfxFile` are different: the setting skips every check for
+  them, the private key check included, so a certificate exported without its
+  key is accepted here and fails later in `Set-AuthenticodeSignature` instead.
 
 - [**#191**](https://github.com/psake/PowerShellBuild/issues/191)
   The README's psake and Invoke-Build examples assigned

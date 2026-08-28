@@ -1,4 +1,4 @@
-function Get-PSBuildCertificate {
+﻿function Get-PSBuildCertificate {
     <#
     .SYNOPSIS
         Resolves a code-signing X509Certificate2 from one of several common sources.
@@ -56,9 +56,10 @@ function Get-PSBuildCertificate {
         checks outright. For the Store and Thumbprint sources, which select one certificate out
         of many, an unexpired certificate is still preferred whenever one exists; an expired
         certificate is returned only when no unexpired one was found, and a warning is emitted
-        when that happens. A private key is required in every case, because a certificate
-        without one cannot sign. Use with caution; invalid certificates will fail during actual
-        signing operations with less descriptive errors.
+        when that happens. Those two sources always require a private key, because it is part of
+        how the certificate is selected rather than a check layered on afterwards; EnvVar and
+        PfxFile do not, since this skips their checks entirely. Use with caution; invalid
+        certificates will fail during actual signing operations with less descriptive errors.
     .OUTPUTS
         System.Security.Cryptography.X509Certificates.X509Certificate2
         Returns the resolved certificate, or $null if none was found (Store/Thumbprint sources).

@@ -1,4 +1,4 @@
-# spell-checker:ignore PSGALLERY BHPS MAML
+﻿# spell-checker:ignore PSGALLERY BHPS MAML
 BuildHelpers\Set-BuildEnvironment -Force
 
 $outDir = [IO.Path]::Combine($env:BHProjectPath, 'Output')
@@ -54,7 +54,8 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
 
         # Specifies an output file path to send to Invoke-Pester's -OutputFile parameter.
         # This is typically used to write out test results so that they can be sent to a CI system
-        # This path is relative to the directory containing Pester tests
+        # The default below is absolute. A relative path resolves against the directory
+        # containing Pester tests, because Test-PSBuildPester pushes into it before running.
         OutputFile             = [IO.Path]::Combine($env:BHProjectPath, 'testResults.xml')
 
         # Specifies the test output format to use when the TestOutputFile property is given
@@ -190,18 +191,20 @@ $moduleVersion = (Import-PowerShellDataFile -Path $env:BHPSModuleManifest).Modul
         # recommended for production use but can be useful in CI environments
         # where certificates are frequently renewed and rotated.
         #
-        # The EnvVar and PfxFile sources load exactly one certificate, so the
-        # expiration and Code Signing EKU checks are skipped outright for them.
+        # The EnvVar and PfxFile sources load exactly one certificate, so every
+        # check is skipped outright for them -- the private key check included.
+        # A certificate without a private key cannot sign, so setting this for
+        # those two sources defers that failure to Set-AuthenticodeSignature,
+        # which reports it far less clearly.
         #
         # The Store and Thumbprint sources select one certificate out of many,
         # so the relaxation is a fallback rather than a blanket bypass: an
         # unexpired certificate is preferred whenever one exists, and an expired
         # one is returned only when no unexpired certificate was found. A
         # warning is emitted when that happens, and the Thumbprint source still
-        # matches the requested thumbprint.
-        #
-        # A private key is required in every case, because a certificate without
-        # one cannot sign.
+        # matches the requested thumbprint. These two sources always require a
+        # private key, because it is part of how the certificate is selected
+        # rather than a check layered on afterwards.
         SkipCertificateValidation = $false
 
         # RFC 3161 timestamp server URI embedded in Authenticode signatures.

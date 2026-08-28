@@ -138,7 +138,7 @@ match your environment.
 | $PSBPreference.Sign.PfxFilePath                             | `$null`                                     | File system path to a PFX/P12 certificate file. Required by the `PfxFile` certificate source.                                                                                |
 | $PSBPreference.Sign.PfxFilePassword                         | `$null`                                     | Password for the PFX/P12 file as a `SecureString`. Used by the `PfxFile` certificate source.                                                                                 |
 | $PSBPreference.Sign.Certificate                             | `$null`                                     | A pre-resolved `X509Certificate2` object to sign with. When set, `CertificateSource` is ignored, which suits Azure Key Vault, an HSM, or another custom provider.            |
-| $PSBPreference.Sign.SkipCertificateValidation               | `$false`                                    | Skip the private key, expiration, and Code Signing EKU checks made on certificates loaded by the `EnvVar` and `PfxFile` sources. Not recommended in production.              |
+| $PSBPreference.Sign.SkipCertificateValidation               | `$false`                                    | Relax certificate validity checking. Skips every check for `EnvVar` and `PfxFile`, private key included. See [Code signing](#code-signing).                                  |
 | $PSBPreference.Sign.TimestampServer                         | `http://timestamp.digicert.com`             | RFC 3161 timestamp server URI embedded in the signature so that it stays valid after the certificate expires.                                                                |
 | $PSBPreference.Sign.HashAlgorithm                           | `SHA256`                                    | Authenticode hash algorithm. Valid values are `SHA256`, `SHA384`, `SHA512`, and `SHA1`. `SHA1` is deprecated.                                                                |
 | $PSBPreference.Sign.FilesToSign                             | `@('*.psd1', '*.psm1', '*.ps1')`            | Glob patterns of file names to sign, searched recursively under the module output directory.                                                                                 |
@@ -184,10 +184,14 @@ Where the code-signing certificate comes from is controlled by
 `$PSBPreference.Sign.CertificateSource`:
 
 - `Store` selects the first valid, unexpired code-signing certificate that has a
-  private key from `$PSBPreference.Sign.CertStoreLocation`.
+  private key from `$PSBPreference.Sign.CertStoreLocation`. With
+  `$PSBPreference.Sign.SkipCertificateValidation` set, an expired certificate is
+  used as a fallback when no unexpired one is found, and a warning says so; a
+  private key is always required, because it is part of the selection.
 - `Thumbprint` selects a specific certificate from that same store by
   `$PSBPreference.Sign.Thumbprint`, which is what you want when more than one
-  code-signing certificate is installed.
+  code-signing certificate is installed. The same expired-certificate fallback
+  applies, and the requested thumbprint is still matched.
 - `EnvVar` decodes a Base64-encoded PFX from the environment variable named by
   `$PSBPreference.Sign.CertificateEnvVar`, optionally decrypting it with the
   password in the variable named by
@@ -196,6 +200,13 @@ Where the code-signing certificate comes from is controlled by
   held as a masked secret.
 - `PfxFile` loads a PFX/P12 file from `$PSBPreference.Sign.PfxFilePath` using
   `$PSBPreference.Sign.PfxFilePassword`.
+
+`EnvVar` and `PfxFile` load exactly one certificate rather than choosing from
+many, so `$PSBPreference.Sign.SkipCertificateValidation` skips their checks
+outright — expiry, Code Signing EKU, **and the private key**. A certificate
+exported without its private key is accepted here and fails later in
+`Set-AuthenticodeSignature`, with a much less helpful message. Prefer leaving
+validation on for these two sources.
 - `Auto`, the default, uses `EnvVar` when the certificate environment variable
   is populated and falls back to `Store` when it is not. One build script can
   therefore sign with the developer's own certificate locally and with the
