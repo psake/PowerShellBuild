@@ -266,6 +266,7 @@ own floor is **Pester 6.0.0** as of psake/PowerShellBuild#172, matching what CI 
 | `Manifest.tests.ps1`                     | Module manifest validity                                             |
 | `Meta.tests.ps1`                         | Text file formatting across the repository                           |
 | `New-PSBuildFileCatalog.tests.ps1`       | Catalog (`.cat`) file creation                                       |
+| `Publish-PSBuildModule.tests.ps1`        | Publishing to a repository, and failing on a failed publish          |
 | `Test-PSBuildPester.tests.ps1`           | Pester invocation and the Pester version floor                       |
 | `Test-PSBuildScriptAnalysis.tests.ps1`   | PSScriptAnalyzer invocation and severity handling                    |
 
