@@ -136,6 +136,20 @@ Everything below is the detail, one entry per issue.
   for, which reaches the filter directly rather than one item at a time
   through the pipeline.
 
+- [**#98**](https://github.com/psake/PowerShellBuild/issues/98)
+  `$PSBPreference.Build.CompileModule = $true` no longer produces a module
+  with no functions in it when the build runs from a different drive than the
+  module source. The compile loop read each function file through a path
+  resolved relative to the current location, and a current location cannot
+  always express another path relatively: on Windows PowerShell 5.1 a source
+  on another drive resolves to `.\C:\...`, and a source outside the current
+  PSDrive's root to a `..\` path that cannot climb past that root. Neither
+  reads back, so every function was silently dropped and the compiled `.psm1`
+  came out holding only its headers and footers -- and the build reported
+  success. Files are now read through their full path. Also found while
+  adding the #98 coverage; this repository's own Windows PowerShell 5.1 CI
+  job reproduces it, with the checkout on `D:` and the test drive on `C:`.
+
 - [**#193**](https://github.com/psake/PowerShellBuild/issues/193)
   `$PSBPreference.Sign.SkipCertificateValidation` now does something. It was
   read only by `psakeFile.ps1`, and even there `Get-PSBuildCertificate` consulted

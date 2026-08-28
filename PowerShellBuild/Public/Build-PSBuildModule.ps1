@@ -178,14 +178,23 @@ function Build-PSBuildModule {
             Encoding = 'utf8'
         }
         $allScripts | ForEach-Object {
-            $srcFile = Resolve-Path $_.FullName -Relative
-            Write-Verbose ($LocalizedData.AddingFileToPsm1 -f $srcFile)
+            # Read through the full path. This used to read through a path resolved relative to
+            # the current location, which is not something every current location can express.
+            # On Windows PowerShell 5.1 a source file on another drive resolves to a path like
+            # .\C:\src\Public\Get-Widget.ps1, and a source outside the current PSDrive's root to
+            # a ..\ path that cannot climb past that root. Neither can be read back, so
+            # Get-Content silently returned nothing for every file and the compiled .psm1 came
+            # out holding its headers and footers and none of the functions -- while the build
+            # reported success. It is reachable whenever the build runs from a different drive
+            # than the module source, which is how the Windows PowerShell 5.1 CI job is laid out.
+            $sourceFilePath = $_.FullName
+            Write-Verbose ($LocalizedData.AddingFileToPsm1 -f $sourceFilePath)
 
             if ($CompileScriptHeader) {
                 Write-Output $CompileScriptHeader
             }
 
-            Get-Content $srcFile
+            Get-Content -Path $sourceFilePath
 
             if ($CompileScriptFooter) {
                 Write-Output $CompileScriptFooter

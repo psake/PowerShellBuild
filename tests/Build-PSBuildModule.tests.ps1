@@ -383,6 +383,50 @@ Export-ModuleMember -Function $public.BaseName
         }
     }
 
+    Context 'Compiling from a current location that cannot express the source path' {
+
+        # The compile loop used to read each function file through a path resolved relative to
+        # the current location. A current location cannot always express another path
+        # relatively: on Windows PowerShell 5.1 a source on another drive resolves to .\C:\...,
+        # and a source outside the current PSDrive's root to a ..\ path that cannot climb past
+        # that root. Both read back as nothing, and the compiled module came out with its
+        # headers and footers and none of its functions while the build reported success.
+        #
+        # The PSDrive here reproduces that on Windows PowerShell 5.1, where it is a real defect;
+        # PowerShell 7 returns the absolute path in the same situation, so there the test simply
+        # confirms the behavior. CI's Windows PowerShell 5.1 job hits the drive-letter form of
+        # this for real, with the repository on D: and the test drive on C:.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'relative-path'
+
+            $isolatedRootPath = Join-Path -Path $TestDrive -ChildPath 'relative-path-location'
+            New-Item -Path $isolatedRootPath -ItemType Directory -Force > $null
+            New-PSDrive -Name 'PSBuildTestLocation' -PSProvider 'FileSystem' -Root $isolatedRootPath > $null
+
+            $buildParameter = @{
+                Path               = $script:scenario.SourcePath
+                DestinationPath    = $script:scenario.DestinationPath
+                ModuleName         = $script:scenario.ModuleName
+                Compile            = $true
+                CompileDirectories = @('Public', 'Private')
+            }
+
+            Push-Location -Path 'PSBuildTestLocation:\'
+            try {
+                Build-PSBuildModule @buildParameter
+            } finally {
+                Pop-Location
+                Remove-PSDrive -Name 'PSBuildTestLocation' -Force
+            }
+
+            $script:rootModuleContent = Get-Content -Path $script:scenario.RootModulePath -Raw
+        }
+
+        It 'Compiles <_> into the root module' -ForEach @('Get-Widget', 'Set-Widget', 'Test-WidgetName') {
+            $script:rootModuleContent | Should -BeLike "*function $_*"
+        }
+    }
+
     Context 'Filtering the compiled scripts' {
 
         # Reaches the private Remove-ExcludedItem directly. The compile path pipes items into it
