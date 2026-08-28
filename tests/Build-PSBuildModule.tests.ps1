@@ -621,6 +621,78 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
         }
     }
 
+    Context 'Compiling without naming the compile directories' {
+
+        # -CompileDirectories used to default to @(), and Get-ChildItem -Path @() binds
+        # nothing and falls back to the current location -- so a direct call that omitted
+        # the parameter recursed the caller's working directory into the built module and
+        # still reported success. The tests here caught it by building a module that
+        # contained this repository's own test files. See psake/PowerShellBuild#206.
+        #
+        # The assertion that matters is the negative one: the built module must contain
+        # the fixture's functions and nothing from wherever the test happened to run.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'default-compile-directories'
+            $buildParameter = @{
+                Path            = $script:scenario.SourcePath
+                DestinationPath = $script:scenario.DestinationPath
+                ModuleName      = $script:scenario.ModuleName
+                Compile         = $true
+            }
+            Build-PSBuildModule @buildParameter
+            $script:rootModuleContent = Get-Content -LiteralPath $script:scenario.RootModulePath -Raw
+        }
+
+        It 'Compiles the source module functions' {
+            $script:rootModuleContent | Should -Match 'function Get-Widget'
+            $script:rootModuleContent | Should -Match 'function Set-Widget'
+        }
+
+        It 'Compiles nothing from the current working directory' {
+            # Pester files are the tell: they exist under the working directory and never
+            # under the fixture, so their presence means the glob escaped the source tree.
+            $script:rootModuleContent | Should -Not -Match 'Describe\s+'
+            $script:rootModuleContent | Should -Not -Match 'BeforeAll\s*\{'
+        }
+
+        It 'Builds a module that exports its public functions' {
+            $exportedFunctionName = Get-BuiltModuleExportedFunctionName -ManifestPath $script:scenario.ManifestPath
+
+            $exportedFunctionName | Should -Be @('Get-Widget', 'Set-Widget')
+        }
+    }
+
+    Context 'Compiling with an explicitly empty compile directory list' {
+
+        # The parameter default covers an omitted argument, but both task files forward
+        # $PSBPreference.Build.CompileDirectories unguarded, so a consumer who sets it to
+        # @() binds an explicit empty array and the default never applies. That path
+        # reached the same working-directory sweep through supported configuration.
+        BeforeAll {
+            $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'empty-compile-directories'
+            $buildParameter = @{
+                Path               = $script:scenario.SourcePath
+                DestinationPath    = $script:scenario.DestinationPath
+                ModuleName         = $script:scenario.ModuleName
+                Compile            = $true
+                CompileDirectories = @()
+            }
+            $script:buildWarning = @()
+            Build-PSBuildModule @buildParameter -WarningVariable 'buildWarning' -WarningAction 'SilentlyContinue'
+            $script:buildWarning = @($buildWarning)
+            $script:rootModuleContent = Get-Content -LiteralPath $script:scenario.RootModulePath -Raw
+        }
+
+        It 'Compiles nothing from the current working directory' {
+            $script:rootModuleContent | Should -Not -Match 'Describe\s+'
+            $script:rootModuleContent | Should -Not -Match 'BeforeAll\s*\{'
+        }
+
+        It 'Warns that the compiled module will contain no functions' {
+            $script:buildWarning -join ' ' | Should -Match 'no functions'
+        }
+    }
+
     Context 'Converting the readme into about help' {
 
         BeforeAll {
@@ -680,12 +752,12 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
 
     Context 'Converting the readme when the culture directory already exists' {
 
-        # Pins current behavior, which looks wrong: the Copy-Item that writes the about help file
-        # sits inside the `if (-not (Test-Path $culturePath))` branch that creates the culture
-        # directory, so a build whose output already has that directory silently writes no about
-        # help file at all. It is reachable in compile mode whenever CopyDirectories names the
-        # culture directory. Left as-is here because it is a behavior change outside the scope of
-        # psake/PowerShellBuild#98 and #201; reported separately.
+        # An existing culture directory used to mean no about help file was written at all:
+        # the Copy-Item sat inside the branch that creates the directory, so the guard that
+        # was meant to protect New-Item suppressed the copy too. Reachable in compile mode
+        # whenever CopyDirectories names the culture directory -- which, in compile mode, is
+        # the only way to ship a locale directory at all. Fixed in
+        # psake/PowerShellBuild#207; this context asserted Should -Not -Exist beforehand.
         BeforeAll {
             $script:scenario = New-PSBuildModuleScenario -Path $TestDrive -Name 'about-help-existing'
             $readMePath = Join-Path -Path $script:scenario.SourcePath -ChildPath 'README.md'
@@ -705,10 +777,19 @@ foreach ($sourceDirectoryName in @('Public', 'Private')) {
             Build-PSBuildModule @buildParameter
         }
 
-        It 'Writes no about help file' {
+        It 'Writes the about help file anyway' {
             [IO.Path]::Combine(
                 $script:scenario.DestinationPath, 'en-US', 'about_PSBuildTestFixture.help.txt'
-            ) | Should -Not -Exist
+            ) | Should -Exist
+        }
+
+        It 'Writes the readme content into it' {
+            $aboutHelpPath = [IO.Path]::Combine(
+                $script:scenario.DestinationPath, 'en-US', 'about_PSBuildTestFixture.help.txt'
+            )
+
+            Get-Content -LiteralPath $aboutHelpPath -Raw |
+                Should -Match 'PSBuildTestFixture readme content'
         }
     }
 

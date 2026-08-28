@@ -58,6 +58,8 @@ One line per break; follow the link for details and migration steps.
   — psake users must upgrade to 5.0.4+; Invoke-Build users are unaffected.
 - [Pester 5.x is no longer supported; the floor is now 6.0.0](#pester-5x-is-no-longer-supported-the-floor-is-now-600)
   — Pester 6 keeps the `Should -Be` syntax, so most suites need no changes.
+- [`Build-PSBuildModule -CompileDirectories` has a real default](#build-psbuildmodule--compiledirectories-has-a-real-default)
+  — only affects direct callers of the function; the tasks always passed it.
 - [`$PSBPreference.Sign.SkipCertificateValidation` now has an effect](#psbpreferencesignskipcertificatevalidation-now-has-an-effect)
   — the escape hatch did nothing on 0.8.x; a build that failed on an expired
   certificate may now succeed by signing with it.
@@ -946,6 +948,35 @@ with a confusing `CommandNotFoundException`. And the exact pin in
 Decision and evidence in
 [#172](https://github.com/psake/PowerShellBuild/issues/172).
 
+### `Build-PSBuildModule -CompileDirectories` has a real default
+
+**Only affects code that calls `Build-PSBuildModule` directly.** Consumers
+going through the psake or Invoke-Build tasks are unaffected, because both
+pass the setting explicitly.
+
+The parameter used to default to `@()`. That was never usable: PowerShell
+treats an empty `-Path` as *not supplied* and falls back to the current
+location, so `-Compile` without `-CompileDirectories` concatenated every
+`.ps1` beneath the working directory into the built module — and reported
+success. The default is now the same value the tasks pass and the README
+has always documented:
+
+    @('Enum', 'Classes', 'Private', 'Public')
+
+**No action is required if your sources live in those directories**, which
+is the layout the setting has documented since 0.5.0.
+
+**If they do not**, and you called the function without the parameter while
+standing in your module's source root, the old fallback happened to sweep
+your sources up anyway. That stops. Name your directories explicitly:
+
+    Build-PSBuildModule -Path ./src -Compile -CompileDirectories @('functions')
+
+A build that compiles nothing now warns rather than producing a module with
+no functions, so the change announces itself rather than being discovered in
+a published package.
+
+Tracked in [#206](https://github.com/psake/PowerShellBuild/issues/206).
 ### `$PSBPreference.Sign.SkipCertificateValidation` now has an effect
 
 **Only affects builds with `$PSBPreference.Sign.Enabled = $true`.**

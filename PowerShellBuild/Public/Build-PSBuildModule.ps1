@@ -75,7 +75,12 @@ function Build-PSBuildModule {
 
         [string]$ReadMePath,
 
-        [string[]]$CompileDirectories = @(),
+        # Defaulted rather than left empty. Get-ChildItem -Path @() binds nothing and
+        # falls back to the current location, so -Compile with no directories recursed
+        # the caller's working directory into the built module and still reported
+        # success. This is the value build.properties.ps1 supplies, so a direct call now
+        # behaves like the task path. See psake/PowerShellBuild#206.
+        [string[]]$CompileDirectories = @('Enum', 'Classes', 'Private', 'Public'),
 
         [string[]]$CopyDirectories = @(),
 
@@ -113,15 +118,21 @@ function Build-PSBuildModule {
             $culturePath,
             "about_$($ModuleName).help.txt"
         )
-        if (-not (Test-Path $culturePath -PathType Container)) {
-            New-Item $culturePath -Type Directory -Force > $null
-            $copyItemSplat = @{
-                LiteralPath = $ReadMePath
-                Destination = $aboutModulePath
-                Force       = $true
-            }
-            Copy-Item @copyItemSplat
+        # The guard belongs to New-Item alone. With the copy inside it, an existing
+        # culture directory meant no about help file was written at all -- and
+        # CopyDirectories runs above, so naming the culture directory there was enough
+        # to suppress it silently. That is psake/PowerShellBuild#207. The Force below was
+        # already here and unreachable; this restores the overwrite it was written for.
+        if (-not (Test-Path -LiteralPath $culturePath -PathType Container)) {
+            New-Item -Path $culturePath -ItemType Directory -Force > $null
         }
+
+        $copyItemSplat = @{
+            LiteralPath = $ReadMePath
+            Destination = $aboutModulePath
+            Force       = $true
+        }
+        Copy-Item @copyItemSplat
     }
 
     # Copy source files to destination and optionally combine *.ps1 files
@@ -174,14 +185,34 @@ function Build-PSBuildModule {
         $resolvedCompileDirectories = $CompileDirectories | ForEach-Object {
             [IO.Path]::Combine($Path, $_)
         }
-        $getChildItemSplat = @{
-            Path        = $resolvedCompileDirectories
-            Filter      = '*.ps1'
-            File        = $true
-            Recurse     = $true
-            ErrorAction = 'SilentlyContinue'
+        # An empty compile list leaves -Path null, and Get-ChildItem treats null or empty as
+        # "not supplied" and falls back to the current location -- so this would recurse the
+        # working directory and concatenate every .ps1 under it into the root module, while
+        # the build reported success. PowerShell/PowerShell#17793 is Won't Fix, with the
+        # working group's advice being to validate in the caller, so the guard belongs here.
+        #
+        # The parameter default covers an omitted argument. This covers an explicit empty
+        # array, which is what both task files forward when a consumer sets
+        # $PSBPreference.Build.CompileDirectories = @(). See psake/PowerShellBuild#206.
+        $allScripts = @()
+        if ($resolvedCompileDirectories) {
+            $getChildItemSplat = @{
+                Path        = $resolvedCompileDirectories
+                Filter      = '*.ps1'
+                File        = $true
+                Recurse     = $true
+                ErrorAction = 'SilentlyContinue'
+            }
+            $allScripts = Get-ChildItem @getChildItemSplat
         }
-        $allScripts = Get-ChildItem @getChildItemSplat
+
+        # Compiling to an empty set produces a root module holding only its header, the
+        # appended source .psm1, and its footer -- a plausible artifact with every function
+        # missing. Warned about rather than treated as an error: wrapping an already-complete
+        # .psm1 in a header and footer is a coherent thing to ask for.
+        if (-not $allScripts) {
+            Write-Warning ($LocalizedData.NoScriptsToCompile -f ($CompileDirectories -join ', '))
+        }
 
         $allScripts = $allScripts | Remove-ExcludedItem -Exclude $Exclude
 

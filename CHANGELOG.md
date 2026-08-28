@@ -108,6 +108,28 @@ Everything below is the detail, one entry per issue.
 
 ### Fixed
 
+- [**#206**](https://github.com/psake/PowerShellBuild/issues/206)
+  `Build-PSBuildModule -Compile` no longer compiles your working directory when no
+  compile directories are given. `CompileDirectories` defaulted to `@()`, and
+  `Get-ChildItem -Path @()` treats an empty path as "not supplied" and falls back to the
+  current location — so every `.ps1` beneath wherever the build ran was concatenated into
+  the root module, which then failed to import while the build reported success. The
+  parameter now defaults to `@('Enum', 'Classes', 'Private', 'Public')`, matching what the
+  tasks already pass and what the README has always documented, and an explicitly empty
+  list is guarded rather than expanded — that path was reachable through supported
+  configuration by setting `$PSBPreference.Build.CompileDirectories = @()`. Compiling to
+  an empty set now warns instead of silently producing a module with no functions.
+
+- [**#207**](https://github.com/psake/PowerShellBuild/issues/207)
+  `$PSBPreference.Help.ConvertReadMeToAboutHelp` works when the output already has a
+  culture directory. The `Copy-Item` that writes `about_<Module>.help.txt` sat inside the
+  `Test-Path` branch that creates that directory, so an existing one meant no about help
+  file was written at all — silently. It was reachable in compile mode whenever
+  `$PSBPreference.Build.CopyDirectories` named the culture directory, which in compile
+  mode is the only way to ship a locale directory at all. The `-Force` on that copy was
+  already there and unreachable; the guard now covers only the directory creation, as it
+  does elsewhere in the module.
+
 - [**#203**](https://github.com/psake/PowerShellBuild/issues/203)
   A publish that fails now fails the build. `Publish-Module` reports a failed
   publish as a non-terminating error — an unregistered repository, a rejected
