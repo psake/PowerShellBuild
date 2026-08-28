@@ -63,6 +63,12 @@ One line per break; follow the link for details and migration steps.
 - [`$PSBPreference.Sign.SkipCertificateValidation` now has an effect](#psbpreferencesignskipcertificatevalidation-now-has-an-effect)
   — the escape hatch did nothing on 0.8.x; a build that failed on an expired
   certificate may now succeed by signing with it.
+- [The `GenerateMarkdown` task no longer unloads your module](#the-generatemarkdown-task-no-longer-unloads-your-module)
+  — building help emptied the session it ran in; if you dropped the docs
+  tasks to avoid that, you can put them back.
+- [The `Pester` task no longer unloads a module it never imported](#the-pester-task-no-longer-unloads-a-module-it-never-imported)
+  — the same defect on the default `Test` chain, where nothing was imported
+  to justify the removal at all.
 
 
 ## AI-assisted migration
@@ -1011,6 +1017,84 @@ Note the two source families differ, and the difference matters:
   message.
 
 Tracked in [#193](https://github.com/psake/PowerShellBuild/issues/193).
+
+### The `GenerateMarkdown` task no longer unloads your module
+
+On 0.8.x, `Build-PSBuildMarkdown` ended with
+`Remove-Module -Name <ModuleName>` in its `finally` block. `Remove-Module
+-Name` removes **every** loaded module with that name — including a copy
+you loaded yourself, from a different path, that the function never
+imported. Generating documentation emptied the session it ran in.
+
+This was on by default. `Build` depends on `BuildHelp`, which depends on
+`GenerateMarkdown`, so every consumer who did not override
+`$PSBBuildDependency` ran it on every build.
+
+On 1.0.0 the function records the copies you had loaded, removes only the
+instance it imported itself, and re-imports what it displaced — including
+on the zero-export path, where it warns
+`No commands have been exported. Skipping markdown generation.` and
+returns without generating anything.
+
+**Detection.** You were affected if a command that worked before your build
+stopped being recognized afterwards, in a session where nothing obviously
+removed it:
+
+    The term 'Get-Widget' is not recognized as a name of a cmdlet, function,
+    script file, or executable program.
+
+**If you worked around this by dropping the documentation tasks**, you can
+put them back. `PowerShellOrg/PSDepend` did exactly that:
+
+**Before (0.8.x):**
+
+```powershell
+# Skips BuildHelp (GenerateMarkdown) - Build-PSBuildMarkdown has a Remove-Module scope bug
+$PSBBuildDependency = @('StageFiles')
+```
+
+**After (1.0.0):**
+
+```powershell
+# The default is fine again; delete the override entirely
+```
+
+Two smaller notes. The restored module is a fresh import rather than
+literally your original instance, so a `PSModuleInfo` reference you were
+holding across the call goes stale — a much smaller problem than the
+command disappearing, and the only way to keep `-Force` refreshing the
+documented command surface. And the import no longer passes `-Global`:
+PlatyPS resolves the module through the `PSModuleInfo` object it is handed,
+never by name, so the import no longer reaches into your session state at
+all. The generated markdown is byte-for-byte unchanged.
+
+Tracked in [#221](https://github.com/psake/PowerShellBuild/issues/221).
+
+### The `Pester` task no longer unloads a module it never imported
+
+The same defect in a worse form. On 0.8.x, `Test-PSBuildPester` imported
+the module under test only when `-ImportModule` was passed, but removed it
+by name **unconditionally**. `$PSBPreference.Test.ImportModule` defaults to
+`$false`, and both task files forward it verbatim, so for every consumer who
+had not turned it on, the `Pester` task imported nothing and then removed
+whatever you happened to have loaded under that name. `Test` depends on
+`Pester`, so `./build.ps1` and `./build.ps1 -Task Test` both did it.
+
+On 1.0.0 the function removes only the instance it imported, and restores
+anything it displaced on the way in. When `-ImportModule` is not passed it
+now touches your loaded modules not at all.
+
+**Detection** is the same as the entry above: a command that was available
+before the build is not available after it. This one reaches more builds,
+because a consumer who turned documentation generation off still runs tests.
+
+No build-file change is needed. If you set
+`$PSBPreference.Test.ImportModule = $true` purely to make the removal
+symmetrical, that is no longer a reason to keep it — but leaving it on is
+harmless, and the module under test is still imported from the output
+directory, still displacing a stale copy for the duration of the run.
+
+Tracked in [#222](https://github.com/psake/PowerShellBuild/issues/222).
 
 ## Adding an entry (for PR contributors)
 

@@ -108,6 +108,27 @@ Everything below is the detail, one entry per issue.
 
 ### Fixed
 
+- [**#221**](https://github.com/psake/PowerShellBuild/issues/221),
+  [**#222**](https://github.com/psake/PowerShellBuild/issues/222)
+  A build no longer unloads modules from the session it runs in.
+  `Build-PSBuildMarkdown` and `Test-PSBuildPester` both ended with
+  `Remove-Module -Name <ModuleName>`, which removes *every* loaded module of that
+  name — including a copy you loaded yourself and neither function ever imported.
+  Both are on default paths: `Build` depends on `BuildHelp` depends on
+  `GenerateMarkdown`, and `Test` depends on `Pester`. `Test-PSBuildPester` was the
+  worse of the two, because its import is conditional on `-ImportModule` (which
+  defaults to `$false`) while its removal was not — so on the default `Test` chain
+  it removed a module it had never touched. The symptom was a command that worked a
+  moment ago no longer being recognized, with nothing in the build output to explain
+  it; `PowerShellOrg/PSDepend` gave up generated documentation entirely rather than
+  live with it. Both functions now record what was loaded before they import,
+  remove only the instance they created, and restore what they displaced —
+  including on the zero-export path, where `Build-PSBuildMarkdown` warns and
+  returns without generating anything. `Build-PSBuildMarkdown` also no longer
+  imports with `-Global`: PlatyPS resolves the module through the `PSModuleInfo`
+  object rather than by name, so the import no longer reaches into your session
+  state at all. The generated markdown is unchanged.
+
 - [**#206**](https://github.com/psake/PowerShellBuild/issues/206)
   `Build-PSBuildModule -Compile` no longer compiles your working directory when no
   compile directories are given. `CompileDirectories` defaulted to `@()`, and
