@@ -56,12 +56,19 @@ function Publish-PSBuildModule {
     Write-Verbose ($LocalizedData.PublishingVersionToRepository -f $Version, $Repository)
 
     $publishParams = @{
-        Path       = $Path
-        Repository = $Repository
-        Verbose    = $VerbosePreference
+        Path        = $Path
+        Repository  = $Repository
+        Verbose     = $VerbosePreference
+
+        # Publish-Module reports a failed publish -- an unregistered repository, a rejected
+        # API key -- as a non-terminating error. At the default preference the command then
+        # returns normally, so the Publish task reports success for a module that was never
+        # published. Stop by default makes the failure reach the task runner; ErrorAction is
+        # forwarded below so a caller who deliberately wants the softer behavior still gets it.
+        ErrorAction = 'Stop'
     }
 
-    'NuGetApiKey', 'Credential' | ForEach-Object {
+    'NuGetApiKey', 'Credential', 'ErrorAction' | ForEach-Object {
         if ($PSBoundParameters.ContainsKey($_)) {
             $publishParams.$_ = $PSBoundParameters.$_
         }
