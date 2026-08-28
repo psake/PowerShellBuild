@@ -28,6 +28,19 @@ One line per break; follow the link for details and migration steps.
 - [Unparsable files now fail the script analysis gate](#unparsable-files-now-fail-the-script-analysis-gate)
   — `ParseError` findings are counted with `Error`, so a file that does not
   parse fails every threshold except `None`.
+- [Check your build file for `$PSBPreference.Test.ScriptAnalysisEnabled`](#check-your-build-file-for-psbpreferencetestscriptanalysisenabled)
+  — that setting never existed; this project's own examples used the wrong
+  name, so a build file copied from them silently does nothing.
+- [Code coverage percentages are no longer truncated to zero](#code-coverage-percentages-are-no-longer-truncated-to-zero)
+  — coverage gating could not be used at all in 0.8.x; it can now. Cannot
+  newly fail your build.
+- [Invoke-Build consumers: code coverage reporting now works](#invoke-build-consumers-code-coverage-reporting-now-works)
+  — the coverage report was written in a format the gate could not parse;
+  a real threshold failure now replaces a file-not-found error.
+- [If you pin exact versions, the floors are not the whole answer](#if-you-pin-exact-versions-the-floors-are-not-the-whole-answer)
+  — `platyPS` is replaced rather than upgraded, and the new key needs quoting.
+- [Your own module's `PowerShellVersion` is not changed for you](#your-own-modules-powershellversion-is-not-changed-for-you)
+  — nothing forces it, but a floor below 5.1 is now an untested claim.
 - [Help generation now uses Microsoft.PowerShell.PlatyPS 1.x, and installs it yourself](#help-generation-now-uses-microsoftpowershellplatyps-1x-and-installs-it-yourself)
   — the PlatyPS dependency changed module, and is no longer installed for you.
 - [`$PSBPreference.Docs.AlphabeticParamsOrder` is removed](#psbpreferencedocsalphabeticparamsorder-is-removed)
@@ -45,8 +58,10 @@ One line per break; follow the link for details and migration steps.
   — psake users must upgrade to 5.0.4+; Invoke-Build users are unaffected.
 - [Pester 5.x is no longer supported; the floor is now 6.0.0](#pester-5x-is-no-longer-supported-the-floor-is-now-600)
   — Pester 6 keeps the `Should -Be` syntax, so most suites need no changes.
+- [`$PSBPreference.Sign.SkipCertificateValidation` now has an effect](#psbpreferencesignskipcertificatevalidation-now-has-an-effect)
+  — the escape hatch did nothing on 0.8.x; a build that failed on an expired
+  certificate may now succeed by signing with it.
 
-> More entries will follow as the remaining Phase 2 work lands.
 
 ## AI-assisted migration
 
@@ -60,30 +75,64 @@ You are migrating a PowerShellBuild consumer's build configuration from
 0.8.x to 1.0.0.
 
 Inputs:
-- This migration guide: docs/migration-v0.8-to-v1.0.md in the
-  psake/PowerShellBuild repository on GitHub. Fetch and read it if you
-  have web or repo access; otherwise ask me to paste it.
+- The migration guide, at this exact URL:
+  https://raw.githubusercontent.com/psake/PowerShellBuild/main/docs/migration-v0.8-to-v1.0.md
 - My build file (default: ./build.ps1 for psake, or ./.build.ps1 for
   Invoke-Build; ask if it lives elsewhere or has a different name).
 - Any psake or Invoke-Build files my build file references.
+- Any dependency manifest or bootstrap my build file uses to install
+  the toolchain -- requirements.psd1 for PSDepend, or an equivalent.
+  This is where the psake, Pester, and PlatyPS floors are actionable.
+
+Read the guide before anything else:
+- Fetch the RAW file at the URL above. Do not work from a fetch tool
+  that summarizes pages -- many do, silently, and a summary of this
+  guide drops whole entries while still reading as complete.
+- Verify you have the whole document: it ends with a section titled
+  "Related". If yours does not, you have a partial or summarized copy.
+  Get the raw text another way, or ask me to paste it. Do not proceed
+  on a summary.
 
 Task:
-1. Read the migration guide's "Migration entries" section.
-2. For each entry, check whether it applies to my file(s).
-3. Apply applicable entries' migration steps. Preserve all customizations
-   not directly affected by the migration.
-4. If you are uncertain how to apply an entry, leave the original code
-   in place and add a `# MIGRATION-REVIEW: <reason>` comment on the
-   relevant line.
-5. After editing, run my test suite if one is configured. If you don't
-   know how, ask.
-6. Output: a summary of the changes you applied and any review flags
-   you raised.
+1. Read the guide's "Migration entries" section in full.
+2. For each entry, decide whether it applies to my files.
+3. Apply applicable entries' migration steps. Preserve every
+   customization not directly affected by the migration.
+4. Before editing anything, check which PowerShellBuild version is
+   installed here, and run my test suite once to get a baseline. After
+   step 5 the suite may not run at all.
+5. Update the PowerShellBuild version itself. This is the upgrade, and
+   no individual entry covers it: change the pin in my dependency
+   manifest, and for psake consumers the -Version on
+   `task <name> -FromModule PowerShellBuild -Version '<version>'`.
+   Ask me which version to pin if you are unsure what is current.
+   Make this change even if that version is not published or installed
+   yet -- a half-migrated pin is worse than one I have to wait on. Add
+   a review marker saying so rather than leaving the old version.
+6. Where you cannot safely make a change, leave the original code in
+   place and add a `# MIGRATION-REVIEW: <reason>` comment on the
+   relevant line. Use this when you are unsure how to apply an entry,
+   and when a decision is mine rather than yours.
+7. Flag configuration that will interact badly with an entry even when
+   the entry itself needs no edit. A setting that silently does nothing
+   is worth telling me about if an entry changes what happens around it.
+8. Output:
+   - changes you applied, by file
+   - every `# MIGRATION-REVIEW:` marker you left, and why
+   - entries that apply but need no code change, as a checklist of what
+     to expect on my first 1.0.0 build. MOST entries are this kind --
+     for a typical consumer only a handful produce a diff. Do not omit
+     them because they produced none, and do not treat a long checklist
+     as padding.
+   - anything you noticed that is not a migration item but changes what
+     I should expect from an entry -- a task that will not run, a
+     setting that has never taken effect.
 
 PowerShellBuild conventions worth knowing:
 - The module is imported with `Import-Module PowerShellBuild`.
 - Configuration goes through `$PSBPreference`, a hashtable populated in
-  build.ps1 before tasks are invoked.
+  build.ps1 before tasks are invoked. It is a plain hashtable, so an
+  unrecognized setting name is silently ignored rather than rejected.
 - Invoke-Build users dot-source the alias after import:
   `. PowerShellBuild.IB.Tasks`.
 - psake users invoke via `-FromModule PowerShellBuild`.
@@ -91,14 +140,29 @@ PowerShellBuild conventions worth knowing:
 
 **Notes on the workflow:**
 
-- The agent reads the migration guide and your build file directly. You
-  do not need to paste either into the prompt.
+- The agent reads this guide and your build file directly. You do not
+  need to paste either into the prompt.
+- **Check that it actually read the whole guide.** Many agent web-fetch
+  tools do not return the page — they run a small model over it and hand
+  back a summary. This guide is long, and a summary of it silently drops
+  whole entries while still reading as complete. We measured three
+  entries lost that way in testing. The prompt tells the agent to fetch
+  the raw file and to verify the copy ends with the `Related` section; if
+  it reports anything else, make it try again or paste the guide yourself.
 - If you are using a web chatbot (Claude.ai, ChatGPT, etc.) without
-  file-system access, paste the relevant entries from this guide and
-  your build file into the conversation alongside the prompt.
+  file-system access, paste this guide and your build file into the
+  conversation alongside the prompt.
 - Always review the agent's output before committing. The
-  `# MIGRATION-REVIEW:` markers (if any) flag lines that need a human
-  decision.
+  `# MIGRATION-REVIEW:` markers flag lines that need a human decision —
+  including changes the agent was sure about but could not make.
+- Expect a checklist as well as a diff. Roughly half the entries here
+  require no code change at all; they describe what your first 1.0.0
+  build will do differently. An agent that reports only its edits has
+  told you less than half the story.
+
+This prompt has been exercised against sample psake and Invoke-Build
+consumers before release. It is not guaranteed to be complete for your
+build file, and the review step is not optional.
 
 ## Migration entries
 
@@ -173,7 +237,7 @@ fails with a path-resolution error, so
 `Test-PSBuildScriptAnalysis -Path ./Output/MyModule/0.1.0 -SeverityThreshold Error`
 now runs as documented instead of throwing.
 
-Tracked in issue #96.
+Tracked in [#96](https://github.com/psake/PowerShellBuild/issues/96).
 
 ### Unparsable files now fail the script analysis gate
 
@@ -215,6 +279,167 @@ This is additive — existing values behave as before.
 
 Tracked in issue
 [#144](https://github.com/psake/PowerShellBuild/issues/144).
+
+### Check your build file for `$PSBPreference.Test.ScriptAnalysisEnabled`
+
+That setting does not exist and never did. The real one is nested:
+`$PSBPreference.Test.ScriptAnalysis.Enabled`.
+
+It is listed here because the flat name appeared in this project's own
+README examples through the whole 0.8.x line, so a consumer who started
+from those examples has it in their build file today. `$PSBPreference` is
+a plain hashtable, so assigning an unrecognized path adds a key nothing
+reads — no error, no warning, no hint that the line does nothing.
+
+Combined with the script analysis fix above, this bites twice: the setting
+that was meant to turn analysis off never did, and analysis now enforces
+its threshold for the first time.
+
+**Search your build file:**
+
+    Select-String -Path ./build.ps1, ./psakeFile.ps1, ./.build.ps1 `
+        -Pattern 'ScriptAnalysisEnabled' -ErrorAction SilentlyContinue
+
+**If it is there, correct the name:**
+
+    # Before -- does nothing
+    $PSBPreference.Test.ScriptAnalysisEnabled = $false
+
+    # After
+    $PSBPreference.Test.ScriptAnalysis.Enabled = $false
+
+**Correcting the name changes behavior — decide before you do it.** With
+the wrong name, analysis has been *running* on every build all along; the
+line you thought turned it off never did. Fixing the name turns it off for
+real, and findings you have been seeing in build output will stop
+appearing. If that CI job you meant to run analysis in has quietly gone
+away, correcting the name silently removes your only analysis coverage.
+
+Look at what you would be switching off before you decide:
+
+    Invoke-ScriptAnalyzer -Path ./Output/MyModule/1.0.0 -Recurse |
+        Group-Object -Property Severity
+
+Then pick deliberately: correct the name to genuinely disable analysis, or
+delete the line and let the (now enforced) threshold do its job.
+
+Tracked in [#191](https://github.com/psake/PowerShellBuild/issues/191).
+
+### Code coverage percentages are no longer truncated to zero
+
+`Test-PSBuildPester` passed every coverage percentage through
+`[Math]::Truncate`, which collapses any fraction to zero. The report
+always printed `0.00%` unless coverage was exactly 100%, and every
+threshold above zero failed the build.
+
+So `$PSBPreference.Test.CodeCoverage.Threshold` could not be used at all
+on 0.8.x. If you set one and gave up because the build failed regardless
+of your real coverage, that is why.
+
+**The comparison is strictly more permissive, so this alone cannot turn a
+passing build red.** Read that narrowly, though: if you have a threshold
+configured today, your build has never once seen a real coverage number.
+1.0.0 is where you find out what your coverage actually is, and it may be
+far below the threshold you set years ago. The gate is not newly stricter;
+it is newly *working*, and that can feel identical from the outside.
+
+If you turned coverage gating off to work around this, you can turn it
+back on:
+
+    $PSBPreference.Test.CodeCoverage.Enabled   = $true
+    $PSBPreference.Test.CodeCoverage.Threshold = 0.75
+
+Tracked in [#138](https://github.com/psake/PowerShellBuild/issues/138).
+
+### Invoke-Build consumers: code coverage reporting now works
+
+**Invoke-Build only.** The psake tasks were unaffected.
+
+`IB.tasks.ps1` read `$PSBPreference.Test.CodeCoverage.OutputFormat`, but
+the setting is named `OutputFileFormat`. The expression evaluated to
+`$null` and bound to a `[string]` parameter as an empty string rather than
+falling back to its `JaCoCo` default, so Pester wrote a report the
+threshold gate could not find or parse. The gate then failed with
+`Code coverage file [...] not found` — a message about a missing file,
+when the real problem was a format that was never set.
+
+Coverage now runs end to end under Invoke-Build for the first time. Taken
+together with the truncation fix above, a consumer who had
+`$PSBPreference.Test.CodeCoverage.Enabled = $true` under Invoke-Build had
+it broken in two independent ways and never saw a real coverage number.
+
+**What to expect on upgrade:** if your coverage is genuinely below your
+threshold, you will now get a real threshold failure naming the
+percentage, where before you got a file-not-found error. Both are red
+builds; the new one tells you the truth.
+
+Note that `OutputFormat` was never a valid setting name, so nothing needs
+renaming in your build file — if you set `OutputFormat`, it was silently
+ignored and you should set `OutputFileFormat` instead:
+
+    $PSBPreference.Test.CodeCoverage.OutputFileFormat = 'JaCoCo'
+
+Tracked in [#178](https://github.com/psake/PowerShellBuild/issues/178).
+
+### If you pin exact versions, the floors are not the whole answer
+
+This guide states dependency changes as **floors** — psake `5.0.4` or
+newer, Pester `6.0.0` or newer, `Microsoft.PowerShell.PlatyPS` `1.0.3`.
+`RequiredModules` in the PowerShellBuild manifest enforces exactly that.
+
+Most consumers do not pin floors, though. A PSDepend `requirements.psd1`
+takes exact versions:
+
+    @{
+        Pester          = '5.6.1'
+        platyPS         = '0.14.2'
+        psake           = '4.9.0'
+        PowerShellBuild = '0.8.2'
+    }
+
+Pinning the floor exactly is a safe reading of every entry here, and it
+is what we would do:
+
+    @{
+        Pester                         = '6.0.0'
+        'Microsoft.PowerShell.PlatyPS' = '1.0.3'
+        psake                          = '5.0.4'
+        PowerShellBuild                = '1.0.0'
+    }
+
+Two details that are easy to miss:
+
+- **`platyPS` is replaced, not upgraded.** The module name changed, so
+  the old key must go rather than have its version raised. Leaving both
+  in place is worse than leaving neither: the two modules ship different
+  `YamlDotNet` assemblies, and whichever loads second fails with
+  `Assembly with same name is already loaded`.
+- **The key needs quoting.** `Microsoft.PowerShell.PlatyPS` contains dots,
+  so it must be `'Microsoft.PowerShell.PlatyPS' = '1.0.3'` in a PowerShell
+  data file.
+
+Installing Pester 6 over a Windows PowerShell 5.1 machine that carries
+the Microsoft-signed Pester 3 can require `-SkipPublisherCheck`; see the
+Pester entry below. PSDepend passes that through its `Parameters` key, and
+if your bootstrap uses `Install-Module` directly, add the switch there.
+
+### Your own module's `PowerShellVersion` is not changed for you
+
+No entry here touches your module manifest, and 1.0.0 does not require
+you to change it. But it is worth a look while you are upgrading.
+
+If your manifest declares something below `5.1`:
+
+    PowerShellVersion = '3.0'
+
+that claim is now untested by your own build. PowerShellBuild 1.0.0
+requires PowerShell 5.1 to run, and Pester 6 requires it to test, so
+nothing in your pipeline can exercise the module on 3.0 or 4.0 any more.
+The module may still work there; you simply have no evidence.
+
+Either raise the floor to match what you actually test, or keep it and
+know it is an untested claim. The same reasoning is why PowerShellBuild
+raised its own — see the first entry in this guide.
 
 ### Help generation now uses Microsoft.PowerShell.PlatyPS 1.x, and installs it yourself
 
@@ -386,6 +611,16 @@ so `Build-PSBuildMAMLHelp` filters it out.
 first 1.0.0 build. If you commit `docs/`, commit it too.
 
 ### A committed `docs/` tree converts itself on the first build
+
+**This entry assumes `GenerateMarkdown` actually runs.** Everything below
+is inert if it does not — and it skips silently when
+`Microsoft.PowerShell.PlatyPS` is not installed, when your module exports
+no commands, or when the task is not in your build chain. A skipped task
+converts nothing: your tree stays on the 0.14.x schema indefinitely and
+MAML is generated from an empty set. If your build log carries
+`No commands have been exported. Skipping markdown generation.` or a
+missing-PlatyPS warning, fix that first; none of the rest of this entry
+applies until it runs.
 
 If you commit your `docs/` tree, you do **not** need a manual conversion
 step in the ordinary case. The `GenerateMarkdown` task runs
@@ -710,6 +945,41 @@ with a confusing `CommandNotFoundException`. And the exact pin in
 
 Decision and evidence in
 [#172](https://github.com/psake/PowerShellBuild/issues/172).
+
+### `$PSBPreference.Sign.SkipCertificateValidation` now has an effect
+
+**Only affects builds with `$PSBPreference.Sign.Enabled = $true`.**
+
+The setting is documented as an escape hatch for CI where a certificate is
+mid-rotation. On 0.8.x it did nothing on two of the four certificate
+sources for psake consumers, and nothing at all for Invoke-Build
+consumers, because `IB.tasks.ps1` never passed it through.
+
+Both are fixed, so a build that previously failed with
+`No valid code signing certificate was found` may now succeed **by signing
+with an expired certificate** — which is what you asked for, but worth
+knowing you are now getting.
+
+The relaxation is a fallback, not a bypass: an unexpired certificate is
+preferred whenever one exists, an expired one is used only when no valid
+one was found, and a warning names the certificate and its expiry when
+that happens. `Thumbprint` still matches the thumbprint you asked for.
+
+**If you do not want expired certificates used, leave the setting at its
+default:**
+
+    $PSBPreference.Sign.SkipCertificateValidation = $false
+
+Note the two source families differ, and the difference matters:
+
+- `Store` and `Thumbprint` always require a private key, because that is
+  part of how the certificate is selected.
+- `EnvVar` and `PfxFile` skip **every** check, the private key included.
+  A certificate exported without its private key is accepted here and
+  fails later in `Set-AuthenticodeSignature` with a much less helpful
+  message.
+
+Tracked in [#193](https://github.com/psake/PowerShellBuild/issues/193).
 
 ## Adding an entry (for PR contributors)
 
