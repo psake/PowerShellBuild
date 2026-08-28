@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # This repository's own workflows reference only actions/checkout; everything else
+  # comes from the shared workflow in psake/.github, which has its own Dependabot
+  # configuration. The shared workflow is referenced by branch (@main) rather than
+  # by tag, so there is no version here for Dependabot to bump -- it tracks what
+  # this repository pins directly.
+  #
+  # PSDepend requirements in requirements.psd1 are not covered: Dependabot has no
+  # PowerShell Gallery ecosystem.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
