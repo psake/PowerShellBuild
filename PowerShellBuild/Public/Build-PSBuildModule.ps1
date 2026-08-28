@@ -132,6 +132,27 @@ function Build-PSBuildModule {
         # Grab the contents of the copied over PSM1
         # This will be appended to the end of the finished PSM1
         $psm1Contents = Get-Content -Path $rootModule -Raw
+
+        # Because that content is appended last, an Export-ModuleMember call inside it runs
+        # after the concatenated functions, and the module's effective export set is the
+        # intersection of that call and FunctionsToExport in the manifest. Compiling copies no
+        # function directories to the output, so the scaffold loader that almost every module
+        # template generates discovers nothing and exports nothing, while the manifest still
+        # names every public function and the build still succeeds. Warned about rather than
+        # rewritten: what the consumer's root module should do instead depends on the module.
+        # See psake/PowerShellBuild#201.
+        #
+        # Matched only where the command begins a line, so that a comment mentioning
+        # Export-ModuleMember -- including one explaining why the loader deliberately does not
+        # call it -- is not reported as a call. [^\S\r\n]* is horizontal whitespace only, so
+        # the match cannot start on a previous line.
+        if ($psm1Contents -match '(?m)^[^\S\r\n]*Export-ModuleMember\b') {
+            $sourceRootModule = [IO.Path]::Combine($Path, "$ModuleName.psm1")
+            Write-Warning (
+                $LocalizedData.ExportModuleMemberInSourceRootModule -f $sourceRootModule
+            )
+        }
+
         '' | Out-File -FilePath $rootModule -Encoding 'utf8'
 
         if ($CompileHeader) {

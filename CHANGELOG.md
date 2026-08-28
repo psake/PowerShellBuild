@@ -108,6 +108,24 @@ Everything below is the detail, one entry per issue.
 
 ### Fixed
 
+- [**#201**](https://github.com/psake/PowerShellBuild/issues/201)
+  `$PSBPreference.Build.CompileModule = $true` now warns when the source
+  `.psm1` calls `Export-ModuleMember`. Compiling appends the source root
+  module after the concatenated function files, and compile mode copies no
+  `Public/` directory to the output, so the dot-sourcing loader that almost
+  every module template generates discovers nothing and the appended call
+  becomes `Export-ModuleMember -Function @()`. A module's effective exports
+  are the intersection of that call and `FunctionsToExport`, so the built
+  module exported nothing while the manifest correctly named every public
+  function, and the build reported success. The only previous symptom was
+  `No commands have been exported. Skipping markdown generation.` from a
+  later task, which names a documentation problem rather than an empty
+  module. The build still produces the same files; what changes is that it
+  now tells you. Guard the call so it does nothing when the function
+  directories are absent, or remove it and let `FunctionsToExport` govern
+  the export set. A mention of `Export-ModuleMember` in a comment does not
+  trigger the warning.
+
 - [**#193**](https://github.com/psake/PowerShellBuild/issues/193)
   `$PSBPreference.Sign.SkipCertificateValidation` now does something. It was
   read only by `psakeFile.ps1`, and even there `Get-PSBuildCertificate` consulted
