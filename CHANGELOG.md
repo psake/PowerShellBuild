@@ -385,7 +385,7 @@ Everything below is the detail, one entry per issue.
   - `$PSBPreference.Test.CodeCoverage.OutputFileFormat` - Code coverage output
     format
 
-## [0.5.0] (beta1) - 2020-11-15
+## [0.5.0-beta1] - 2020-11-15
 
 ### Added
 
