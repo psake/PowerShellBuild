@@ -188,6 +188,83 @@ Describe 'Code Signing Functions' {
     }
 
     Context 'EnvVar mode' {
+
+      BeforeAll {
+        # Two payloads from one generated certificate: one PFX with no password at all, one
+        # protected by a password. Everything else in this file stands in for the load; these two
+        # tests run the real X509Certificate2 constructor, which is the only place a regression in
+        # how the password reaches it could show up.
+        $script:envVarSigningKey = [System.Security.Cryptography.RSA]::Create(2048)
+        $envVarCertificateRequest = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+          'CN=PowerShellBuild EnvVar Test Certificate',
+          $script:envVarSigningKey,
+          [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+          [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
+        )
+        $script:envVarCertificate = $envVarCertificateRequest.CreateSelfSigned(
+          [DateTimeOffset]::UtcNow.AddDays(-1),
+          [DateTimeOffset]::UtcNow.AddDays(30)
+        )
+        $pfxContentType = [System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx
+        $script:passwordlessPfx = $script:envVarCertificate.Export($pfxContentType)
+        $script:protectedPfx = $script:envVarCertificate.Export($pfxContentType, 'test-certificate-password')
+      }
+
+      AfterAll {
+        if ($script:envVarCertificate) {
+          $script:envVarCertificate.Dispose()
+        }
+        if ($script:envVarSigningKey) {
+          $script:envVarSigningKey.Dispose()
+        }
+      }
+
+      AfterEach {
+        Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
+        Remove-Item env:\CERTIFICATEPASSWORD -ErrorAction SilentlyContinue
+      }
+
+      # SkipValidation is what keeps these two tests cross-platform. The validation they would
+      # otherwise run ends at the Code Signing extended key usage, and EnhancedKeyUsageList comes
+      # from PowerShell's own type data: this very certificate reports the usage on Windows
+      # PowerShell 5.1 and an empty list on PowerShell 7. What is under test here is the load,
+      # not the validation, which the fake certificates cover.
+      It 'Loads a certificate from a PFX that carries no password' {
+        # The password variable is unset, which is what the overwhelming majority of consumers
+        # have. GetEnvironmentVariable returns $null for it, a [string] parameter turns that into
+        # an empty string, and the loader treats the two identically -- measured on both editions
+        # against a password-less PFX, a protected one, and one exported with an empty password.
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String($script:passwordlessPfx)
+
+        $certificate = Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation
+
+        try {
+          $certificate.Subject | Should -Be 'CN=PowerShellBuild EnvVar Test Certificate'
+        } finally {
+          if ($certificate) { $certificate.Dispose() }
+        }
+      }
+
+      It 'Loads a password-protected PFX with the password from the environment' {
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String($script:protectedPfx)
+        $env:CERTIFICATEPASSWORD = 'test-certificate-password'
+
+        $certificate = Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation
+
+        try {
+          $certificate.Subject | Should -Be 'CN=PowerShellBuild EnvVar Test Certificate'
+        } finally {
+          if ($certificate) { $certificate.Dispose() }
+        }
+      }
+
+      It 'Throws when the password from the environment is the wrong one' {
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String($script:protectedPfx)
+        $env:CERTIFICATEPASSWORD = 'not-the-certificate-password'
+
+        { Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation } | Should -Throw
+      }
+
       It 'Throws when the environment variable holds nothing' {
         # The BeforeEach above clears SIGNCERTIFICATE, which is the situation a consumer lands in
         # when the CI secret was never wired up.

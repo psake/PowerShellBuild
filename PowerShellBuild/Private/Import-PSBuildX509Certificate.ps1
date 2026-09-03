@@ -20,8 +20,11 @@ function Import-PSBuildX509Certificate {
     .PARAMETER RawData
         The decoded PFX bytes to construct the certificate from.
     .PARAMETER Password
-        Password protecting the PFX bytes. Omit it when the payload carries no password; an
-        empty string and no password at all are not the same thing to the loader.
+        Password protecting the PFX bytes. An empty string means no password: the loader treats
+        a null and an empty password identically, measured on Windows PowerShell 5.1 and
+        PowerShell 7 against a password-less PFX, a password-protected one, and one exported with
+        an explicitly empty password. Nothing here needs to tell the two apart, which is just as
+        well, because a PowerShell [string] parameter cannot carry a null to begin with.
     .PARAMETER FilePath
         Path to the PFX or P12 file to construct the certificate from.
     .PARAMETER FilePassword

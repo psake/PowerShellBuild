@@ -215,15 +215,7 @@
                 throw "Environment variable '$CertificateEnvVar' does not contain a valid Base64-encoded PFX value."
             }
             $password = [System.Environment]::GetEnvironmentVariable($CertificatePasswordEnvVar)
-
-            # GetEnvironmentVariable returns $null when the variable is not set, and to the PFX
-            # loader no password at all is not the same thing as an empty one, so the parameter
-            # is supplied only when the variable held something.
-            $certificateParameter = @{ RawData = $buffer }
-            if ($null -ne $password) {
-                $certificateParameter['Password'] = $password
-            }
-            $cert = Import-PSBuildX509Certificate @certificateParameter
+            $cert = Import-PSBuildX509Certificate -RawData $buffer -Password $password
             Write-Verbose ($LocalizedData.CertificateResolvedFromEnvVar -f $CertificateEnvVar)
         }
         'PfxFile' {
