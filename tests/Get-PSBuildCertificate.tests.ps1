@@ -13,6 +13,40 @@ Describe 'Code Signing Functions' {
 
   Context 'Get-PSBuildCertificate' {
 
+    BeforeAll {
+      # Get-PSBuildCertificate reads five properties off a certificate: Subject, Thumbprint,
+      # HasPrivateKey, NotAfter, and EnhancedKeyUsageList. Objects carrying those properties
+      # drive the real selection and validation branches on every platform and every edition,
+      # which a generated certificate cannot do: EnhancedKeyUsageList is contributed by
+      # PowerShell's own type data, and one and the same generated code-signing certificate
+      # reports the Code Signing usage on Windows PowerShell 5.1 and an empty list on
+      # PowerShell 7.
+      #
+      # Mocks that stand these in must be declared with -ModuleName, because a mock is scoped to
+      # the session state it is declared in and Get-PSBuildCertificate calls Get-ChildItem from
+      # inside the module. Six mocks in this file were declared without it, so they never reached
+      # the module and the tests below were asserting that the machine running them happened to
+      # have no code-signing certificate installed. See psake/PowerShellBuild#216.
+      $script:validCertificate = [PSCustomObject]@{
+        Subject       = 'CN=Valid Test Certificate'
+        Thumbprint    = 'AAAA111122223333444455556666777788889999'
+        HasPrivateKey = $true
+        NotAfter      = (Get-Date).AddDays(30)
+      }
+      $script:expiredCertificate = [PSCustomObject]@{
+        Subject       = 'CN=Expired Test Certificate'
+        Thumbprint    = 'BBBB111122223333444455556666777788889999'
+        HasPrivateKey = $true
+        NotAfter      = (Get-Date).AddDays(-1)
+      }
+      $script:noPrivateKeyCertificate = [PSCustomObject]@{
+        Subject       = 'CN=No Private Key Test Certificate'
+        Thumbprint    = 'CCCC111122223333444455556666777788889999'
+        HasPrivateKey = $false
+        NotAfter      = (Get-Date).AddDays(30)
+      }
+    }
+
     BeforeEach {
       # Clear environment variables before each test
       Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
@@ -21,7 +55,7 @@ Describe 'Code Signing Functions' {
 
     Context 'Auto mode' {
       It 'Defaults to Auto mode when no CertificateSource is specified' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
-        Mock Get-ChildItem {}
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith { }
         $VerboseOutput = Get-PSBuildCertificate -Verbose -ErrorAction SilentlyContinue 4>&1
         $VerboseOutput[0] | Should -Match "CertificateSource is 'Auto'"
       }
@@ -39,7 +73,7 @@ Describe 'Code Signing Functions' {
 
       It 'Resolves to Store mode when SIGNCERTIFICATE environment variable is not set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
         Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
-        Mock Get-ChildItem {}
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith { }
         $VerboseOutput = Get-PSBuildCertificate -ErrorAction SilentlyContinue -Verbose *>&1
         $VerboseOutput[0] | Should -Match ".*Resolved to 'Store'.*"
       }
@@ -58,27 +92,54 @@ Describe 'Code Signing Functions' {
       }
 
       It 'Returns $null when no valid certificate is found' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
-        Mock Get-ChildItem { }
-        $cert = Get-PSBuildCertificate -CertificateSource Store
-        $cert | Should -BeNullOrEmpty
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith { }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource Store
+
+        $certificate | Should -BeNullOrEmpty
+        # The store this test describes is the mocked one, not whatever the machine happens to
+        # hold. Asserting the module actually called the mock is what tells the two apart.
+        Should -Invoke -ModuleName PowerShellBuild -CommandName Get-ChildItem -Times 1 -Exactly
       }
 
       It 'Filters out expired certificates' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
-        Mock Get-ChildItem {
-          # Return nothing (expired cert is filtered by Where-Object)
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+          $script:expiredCertificate
         }
 
-        $cert = Get-PSBuildCertificate -CertificateSource Store
-        $cert | Should -BeNullOrEmpty
+        $certificate = Get-PSBuildCertificate -CertificateSource Store
+
+        $certificate | Should -BeNullOrEmpty
       }
 
       It 'Filters out certificates without a private key' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
-        Mock Get-ChildItem {
-          # Return nothing (cert without private key is filtered by Where-Object)
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+          $script:noPrivateKeyCertificate
         }
 
-        $cert = Get-PSBuildCertificate -CertificateSource Store
-        $cert | Should -BeNullOrEmpty
+        $certificate = Get-PSBuildCertificate -CertificateSource Store
+
+        $certificate | Should -BeNullOrEmpty
+      }
+
+      It 'Returns a valid certificate that the store does hold' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
+        # The counterpart of the three tests above: they only show that unusable certificates are
+        # rejected, which an unconditional $null would satisfy just as well.
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+          $script:validCertificate
+        }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource Store
+
+        $certificate.Subject | Should -Be 'CN=Valid Test Certificate'
+      }
+
+      It 'Throws where there is no certificate store to search' -Skip:($null -eq $IsWindows -or $IsWindows) {
+        # The mirror image of the guard on every other test in this context. The Store source is
+        # Windows-only by design, and on Linux and macOS it is expected to say so rather than
+        # fail obscurely inside the certificate provider.
+        { Get-PSBuildCertificate -CertificateSource Store } |
+          Should -Throw '*only supported on Windows*'
       }
 
       It 'Uses custom CertStoreLocation when specified' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
@@ -97,13 +158,120 @@ Describe 'Code Signing Functions' {
       }
 
       It 'Returns $null when the specified thumbprint is not found' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
-        Mock Get-ChildItem { }
-        $cert = Get-PSBuildCertificate -CertificateSource Thumbprint -Thumbprint 'NOTFOUND123'
-        $cert | Should -BeNullOrEmpty
+        # The store holds a perfectly usable certificate; it is simply not the one that was
+        # asked for. Signing with it would sign with an identity the build never named.
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+          $script:validCertificate
+        }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource Thumbprint -Thumbprint 'NOTFOUND123'
+
+        $certificate | Should -BeNullOrEmpty
+      }
+
+      It 'Throws when the thumbprint is empty' {
+        { Get-PSBuildCertificate -CertificateSource Thumbprint -Thumbprint '   ' } |
+          Should -Throw "*requires a non-empty Thumbprint value*"
+      }
+
+      It 'Returns the certificate whose thumbprint was asked for' -Skip:($null -ne $IsWindows -and -not $IsWindows) {
+        Mock -ModuleName PowerShellBuild -CommandName Get-ChildItem -MockWith {
+          $script:noPrivateKeyCertificate
+          $script:validCertificate
+        }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource Thumbprint `
+          -Thumbprint $script:validCertificate.Thumbprint
+
+        $certificate.Thumbprint | Should -Be $script:validCertificate.Thumbprint
       }
     }
 
     Context 'EnvVar mode' {
+
+      BeforeAll {
+        # Two payloads from one generated certificate: one PFX with no password at all, one
+        # protected by a password. Everything else in this file stands in for the load; these two
+        # tests run the real X509Certificate2 constructor, which is the only place a regression in
+        # how the password reaches it could show up.
+        $script:envVarSigningKey = [System.Security.Cryptography.RSA]::Create(2048)
+        $envVarCertificateRequest = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+          'CN=PowerShellBuild EnvVar Test Certificate',
+          $script:envVarSigningKey,
+          [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+          [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
+        )
+        $script:envVarCertificate = $envVarCertificateRequest.CreateSelfSigned(
+          [DateTimeOffset]::UtcNow.AddDays(-1),
+          [DateTimeOffset]::UtcNow.AddDays(30)
+        )
+        $pfxContentType = [System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx
+        $script:passwordlessPfx = $script:envVarCertificate.Export($pfxContentType)
+        $script:protectedPfx = $script:envVarCertificate.Export($pfxContentType, 'test-certificate-password')
+      }
+
+      AfterAll {
+        if ($script:envVarCertificate) {
+          $script:envVarCertificate.Dispose()
+        }
+        if ($script:envVarSigningKey) {
+          $script:envVarSigningKey.Dispose()
+        }
+      }
+
+      AfterEach {
+        Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
+        Remove-Item env:\CERTIFICATEPASSWORD -ErrorAction SilentlyContinue
+      }
+
+      # SkipValidation is what keeps these two tests cross-platform. The validation they would
+      # otherwise run ends at the Code Signing extended key usage, and EnhancedKeyUsageList comes
+      # from PowerShell's own type data: this very certificate reports the usage on Windows
+      # PowerShell 5.1 and an empty list on PowerShell 7. What is under test here is the load,
+      # not the validation, which the fake certificates cover.
+      It 'Loads a certificate from a PFX that carries no password' {
+        # The password variable is unset, which is what the overwhelming majority of consumers
+        # have. GetEnvironmentVariable returns $null for it, a [string] parameter turns that into
+        # an empty string, and the loader treats the two identically -- measured on both editions
+        # against a password-less PFX, a protected one, and one exported with an empty password.
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String($script:passwordlessPfx)
+
+        $certificate = Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation
+
+        try {
+          $certificate.Subject | Should -Be 'CN=PowerShellBuild EnvVar Test Certificate'
+        } finally {
+          if ($certificate) { $certificate.Dispose() }
+        }
+      }
+
+      It 'Loads a password-protected PFX with the password from the environment' {
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String($script:protectedPfx)
+        $env:CERTIFICATEPASSWORD = 'test-certificate-password'
+
+        $certificate = Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation
+
+        try {
+          $certificate.Subject | Should -Be 'CN=PowerShellBuild EnvVar Test Certificate'
+        } finally {
+          if ($certificate) { $certificate.Dispose() }
+        }
+      }
+
+      It 'Throws when the password from the environment is the wrong one' {
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String($script:protectedPfx)
+        $env:CERTIFICATEPASSWORD = 'not-the-certificate-password'
+
+        { Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation } | Should -Throw
+      }
+
+      It 'Throws when the environment variable holds nothing' {
+        # The BeforeEach above clears SIGNCERTIFICATE, which is the situation a consumer lands in
+        # when the CI secret was never wired up.
+        { Get-PSBuildCertificate -CertificateSource EnvVar } |
+          Should -Throw '*is not set or is empty*'
+      }
+
       It 'Attempts to decode a Base64-encoded PFX from environment variable' {
         # Create a minimal mock certificate data (will fail to parse, but that's expected)
         $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String([byte[]]@(1, 2, 3, 4, 5))
@@ -195,6 +363,160 @@ Describe 'Code Signing Functions' {
       }
     }
 
+    # The EnvVar and PfxFile sources load exactly one certificate, so validity is a gate applied
+    # to that certificate rather than part of selecting it. Every other test of those two sources
+    # in this file feeds the loader deliberately malformed input -- five arbitrary bytes, or an
+    # empty file named .pfx -- so the load throws and the gate below it never runs. Standing in
+    # for the load is what lets a certificate reach the gate at all, on any platform. See
+    # psake/PowerShellBuild#216.
+    Context 'Validation of a certificate loaded from EnvVar or PfxFile' {
+
+      BeforeAll {
+        $script:codeSigningUsage = [PSCustomObject]@{
+          ObjectId     = '1.3.6.1.5.5.7.3.3'
+          FriendlyName = 'Code Signing'
+        }
+        $script:serverAuthenticationUsage = [PSCustomObject]@{
+          ObjectId     = '1.3.6.1.5.5.7.3.1'
+          FriendlyName = 'Server Authentication'
+        }
+
+        $script:loadedValidCertificate = [PSCustomObject]@{
+          Subject              = 'CN=Loaded Valid Test Certificate'
+          Thumbprint           = 'DDDD111122223333444455556666777788889999'
+          HasPrivateKey        = $true
+          NotAfter             = (Get-Date).AddDays(30)
+          EnhancedKeyUsageList = @($script:codeSigningUsage)
+        }
+        $script:loadedNoPrivateKeyCertificate = [PSCustomObject]@{
+          Subject              = 'CN=Loaded No Private Key Test Certificate'
+          Thumbprint           = 'EEEE111122223333444455556666777788889999'
+          HasPrivateKey        = $false
+          NotAfter             = (Get-Date).AddDays(30)
+          EnhancedKeyUsageList = @($script:codeSigningUsage)
+        }
+        $script:loadedExpiredCertificate = [PSCustomObject]@{
+          Subject              = 'CN=Loaded Expired Test Certificate'
+          Thumbprint           = 'FFFF111122223333444455556666777788889999'
+          HasPrivateKey        = $true
+          NotAfter             = (Get-Date).AddDays(-1)
+          EnhancedKeyUsageList = @($script:codeSigningUsage)
+        }
+        $script:loadedWrongUsageCertificate = [PSCustomObject]@{
+          Subject              = 'CN=Loaded Server Authentication Test Certificate'
+          Thumbprint           = '1111222233334444555566667777888899990000'
+          HasPrivateKey        = $true
+          NotAfter             = (Get-Date).AddDays(30)
+          EnhancedKeyUsageList = @($script:serverAuthenticationUsage)
+        }
+        $script:loadedUnusableCertificate = [PSCustomObject]@{
+          Subject              = 'CN=Loaded Unusable Test Certificate'
+          Thumbprint           = '2222333344445555666677778888999900001111'
+          HasPrivateKey        = $false
+          NotAfter             = (Get-Date).AddDays(-1)
+          EnhancedKeyUsageList = @($script:serverAuthenticationUsage)
+        }
+
+        $script:pfxFilePath = Join-Path -Path $TestDrive -ChildPath 'codesign.pfx'
+      }
+
+      BeforeEach {
+        # Any decodable payload will do. The load is stood in for, so nothing turns these bytes
+        # into a certificate, but Get-PSBuildCertificate rejects an empty or malformed variable
+        # before the load is reached.
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String([byte[]]@(1, 2, 3, 4, 5))
+      }
+
+      AfterEach {
+        Remove-Item env:\SIGNCERTIFICATE -ErrorAction SilentlyContinue
+        Remove-Item env:\CERTIFICATEPASSWORD -ErrorAction SilentlyContinue
+      }
+
+      It 'Throws when the loaded certificate has no private key' {
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedNoPrivateKeyCertificate
+        }
+
+        { Get-PSBuildCertificate -CertificateSource EnvVar } |
+          Should -Throw '*does not have an accessible private key*'
+      }
+
+      It 'Throws when the loaded certificate has expired' {
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedExpiredCertificate
+        }
+
+        { Get-PSBuildCertificate -CertificateSource EnvVar } |
+          Should -Throw '*has expired*'
+      }
+
+      It 'Throws when the loaded certificate has no Code Signing enhanced key usage' {
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedWrongUsageCertificate
+        }
+
+        { Get-PSBuildCertificate -CertificateSource EnvVar } |
+          Should -Throw '*Code Signing Enhanced Key Usage*'
+      }
+
+      It 'Returns a certificate that passes every check' {
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedValidCertificate
+        }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource EnvVar
+
+        $certificate.Subject | Should -Be 'CN=Loaded Valid Test Certificate'
+      }
+
+      It 'Returns an unusable certificate when SkipValidation is set' {
+        # SkipValidation drops the checks outright for these two sources, unlike Store and
+        # Thumbprint where an unexpired certificate is still preferred.
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedUnusableCertificate
+        }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource EnvVar -SkipValidation
+
+        $certificate.Subject | Should -Be 'CN=Loaded Unusable Test Certificate'
+      }
+
+      It 'Applies the same validation to a certificate loaded from a PFX file' {
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedExpiredCertificate
+        }
+
+        { Get-PSBuildCertificate -CertificateSource PfxFile -PfxFilePath $script:pfxFilePath } |
+          Should -Throw '*has expired*'
+      }
+
+      It 'Returns a certificate loaded from a PFX file that passes every check' {
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedValidCertificate
+        }
+
+        $certificate = Get-PSBuildCertificate -CertificateSource PfxFile -PfxFilePath $script:pfxFilePath
+
+        $certificate.Subject | Should -Be 'CN=Loaded Valid Test Certificate'
+      }
+
+      It 'Hands the decoded payload and the password from the environment to the loader' {
+        $env:SIGNCERTIFICATE = [System.Convert]::ToBase64String([byte[]]@(10, 20, 30))
+        $env:CERTIFICATEPASSWORD = 'certificate-password'
+        Mock -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate -MockWith {
+          $script:loadedValidCertificate
+        }
+
+        $null = Get-PSBuildCertificate -CertificateSource EnvVar
+
+        Should -Invoke -ModuleName PowerShellBuild -CommandName Import-PSBuildX509Certificate `
+          -Times 1 -Exactly -ParameterFilter {
+          $null -eq (Compare-Object -ReferenceObject $RawData -DifferenceObject ([byte[]]@(10, 20, 30))) -and
+          $Password -eq 'certificate-password'
+        }
+      }
+    }
+
     # The Store and Thumbprint sources select one certificate out of many, so validity is part
     # of the selection rather than a gate applied to a single loaded certificate. SkipValidation
     # therefore relaxes the selection only as a fallback: a valid certificate is preferred
@@ -212,27 +534,6 @@ Describe 'Code Signing Functions' {
     # treat the platform as non-Windows only when $IsWindows is explicitly $false. See
     # psake/PowerShellBuild#197.
     Context 'SkipValidation for store-backed sources' {
-
-      BeforeAll {
-        $script:validCertificate = [PSCustomObject]@{
-          Subject       = 'CN=Valid Test Certificate'
-          Thumbprint    = 'AAAA111122223333444455556666777788889999'
-          HasPrivateKey = $true
-          NotAfter      = (Get-Date).AddDays(30)
-        }
-        $script:expiredCertificate = [PSCustomObject]@{
-          Subject       = 'CN=Expired Test Certificate'
-          Thumbprint    = 'BBBB111122223333444455556666777788889999'
-          HasPrivateKey = $true
-          NotAfter      = (Get-Date).AddDays(-1)
-        }
-        $script:noPrivateKeyCertificate = [PSCustomObject]@{
-          Subject       = 'CN=No Private Key Test Certificate'
-          Thumbprint    = 'CCCC111122223333444455556666777788889999'
-          HasPrivateKey = $false
-          NotAfter      = (Get-Date).AddDays(30)
-        }
-      }
 
       Context 'Store source' {
         It 'Prefers a valid certificate over an expired one even when SkipValidation is set' -Skip:($null -ne $IsWindows -and -not $IsWindows) {

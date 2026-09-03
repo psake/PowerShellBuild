@@ -215,11 +215,11 @@
                 throw "Environment variable '$CertificateEnvVar' does not contain a valid Base64-encoded PFX value."
             }
             $password = [System.Environment]::GetEnvironmentVariable($CertificatePasswordEnvVar)
-            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($buffer, $password)
+            $cert = Import-PSBuildX509Certificate -RawData $buffer -Password $password
             Write-Verbose ($LocalizedData.CertificateResolvedFromEnvVar -f $CertificateEnvVar)
         }
         'PfxFile' {
-            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($PfxFilePath, $PfxFilePassword)
+            $cert = Import-PSBuildX509Certificate -FilePath $PfxFilePath -FilePassword $PfxFilePassword
             Write-Verbose ($LocalizedData.CertificateResolvedFromPfxFile -f $PfxFilePath)
         }
     }
