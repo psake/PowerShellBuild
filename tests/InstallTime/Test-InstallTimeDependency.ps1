@@ -10,19 +10,22 @@
     PowerShell 7 or Windows PowerShell 5.1 process so that the PSModulePath below is the only
     module path the process has ever seen.
 
-    The isolated PSModulePath contains exactly two directories:
+    The isolated PSModulePath contains:
 
       1. IsolatedModulePath - empty when the process starts; the Save-Module target.
       2. ToolsModulePath    - PowerShellGet and PackageManagement only.
+      3. On PowerShell 7 only, the engine's own module directory. See Set-IsolatedModulePath for
+         why it is there on one edition and not the other.
 
     Nothing installed on the machine can satisfy a dependency from that path, which is the whole
     point: on a developer machine and on a CI runner that has just run `./build.ps1 -Bootstrap`,
     every dependency is already installed, and without this isolation the test would pass no
-    matter what the manifest declared.
+    matter what the manifest declared. The visibility assertions below hold that line rather than
+    trusting the list above.
 
     Both modules in the tools path are imported by explicit manifest path rather than by name.
     Importing PowerShellGet by name on Windows PowerShell 5.1 asks the module auto-loader to
-    resolve helper modules from a PSModulePath that no longer contains the engine's own module
+    resolve helper modules from a PSModulePath that does not contain the engine's own module
     directory, and that fails.
 
 .PARAMETER IsolatedModulePath
@@ -121,7 +124,24 @@ function Confirm-Condition {
 function Set-IsolatedModulePath {
     <#
     .SYNOPSIS
-    Points PSModulePath at the isolated save target and the tools directory, and nothing else.
+    Points PSModulePath at the isolated save target, the tools directory, and on PowerShell 7 the
+    engine's own module directory - and nothing else.
+
+    .DESCRIPTION
+    On PowerShell 7 the engine's module directory has to stay reachable. It ships with the engine,
+    holds no dependency of the module under test, and dropping it takes CimCmdlets with it: Pester
+    6.0.0 falls back to looking for a `uname` application when Get-CimInstance cannot be resolved,
+    and on a GitHub Windows runner it finds `uname.exe` from Git for Windows and then throws
+    "SafeCommands entry for uname does not hold a reference to the proper command." That is an
+    artifact of the isolation, not a defect in this module, and no consumer would ever hit it.
+
+    Windows PowerShell 5.1 does not need it - Get-WmiObject resolves without it, so Pester never
+    reaches that fallback - and must not have it: adding the engine directory there makes the
+    engine restore the machine's other default module paths as well, which puts the Pester copy
+    installed under Program Files back in view and destroys the isolation.
+
+    Whichever way it goes, the isolation is guaranteed by the explicit visibility assertions
+    below, not by this list.
 
     .PARAMETER IsolatedModulePath
     The empty directory that is the Save-Module target.
@@ -143,8 +163,13 @@ function Set-IsolatedModulePath {
         $ToolsModulePath
     )
 
+    $modulePaths = @($IsolatedModulePath, $ToolsModulePath)
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        $modulePaths += (Join-Path $PSHOME 'Modules')
+    }
+
     if ($PSCmdlet.ShouldProcess('PSModulePath', 'Restrict to the isolated module paths')) {
-        $env:PSModulePath = ($IsolatedModulePath, $ToolsModulePath) -join [System.IO.Path]::PathSeparator
+        $env:PSModulePath = $modulePaths -join [System.IO.Path]::PathSeparator
     }
 }
 

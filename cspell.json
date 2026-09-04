@@ -15,6 +15,7 @@
         "fullclr",
         "LASTEXITCODE",
         "psake",
+        "PSHOME",
         "MAML"
     ],
     "ignoreWords": [
