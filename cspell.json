@@ -11,6 +11,9 @@
     ],
     "words": [
         "Authenticode",
+        "coreclr",
+        "fullclr",
+        "LASTEXITCODE",
         "psake",
         "MAML"
     ],
