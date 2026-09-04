@@ -502,7 +502,7 @@ try {
         Write-Host "--- 7c. Save-Module must now fail on $ProbeEdition ---"
         Invoke-IsolatedProbe -ExecutablePath $probeExecutablePath -ProbeScriptPath $probeScriptPath `
             -IsolatedModulePath $paths.NegativeIsolated -ToolsModulePath $paths.Tools -RepositoryName $RepositoryName `
-            -ModuleName $ModuleName -RequiredVersion $negativeControlModuleVersion
+            -ModuleName $ModuleName -RequiredVersion $negativeControlModuleVersion -ExpectSaveToFail
         $negativeExitCode = $LASTEXITCODE
         if ($negativeExitCode -ne 0) {
             throw "The negative control failed on $ProbeEdition with exit code $negativeExitCode; this test cannot be trusted to fail when the manifest is broken."
