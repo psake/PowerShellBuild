@@ -1,0 +1,44 @@
+name: Install Test
+permissions:
+  contents: read
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  # CI builds this module on every push but has never installed it, and a build cannot observe an
+  # install-time break - a RequiredModules entry naming a version that does not exist, or a
+  # dependency that was dropped from the manifest but is still needed. This workflow publishes the
+  # built module into a temporary file-share repository alongside mirrored copies of its required
+  # modules and then, in a process whose PSModulePath holds only an empty directory, saves and
+  # imports it. See psake/PowerShellBuild#229.
+  #
+  # It runs alongside the shared ModuleCI.yml call in test.yml rather than inside it, because the
+  # shared workflow is used by the whole psake organization and this check is specific to this
+  # repository for now.
+  #
+  # Both jobs run on windows-latest so that the same runner can host a real Windows PowerShell 5.1
+  # engine as well as PowerShell 7. What the test does and does not prove is documented at the top
+  # of tests/InstallTime/Invoke-LocalRepositoryInstallTest.ps1 - read that before treating a green
+  # run here as broader coverage than it is.
+  local-repository-install:
+    name: Local repository install (${{ matrix.editionName }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - editionName: PowerShell 7
+            probeEdition: PowerShell7
+          - editionName: Windows PowerShell 5.1
+            probeEdition: WindowsPowerShell
+    steps:
+      - uses: actions/checkout@v7
+
+      # The build and the publish are the same work for either edition, so this step always runs
+      # on PowerShell 7; only the isolated probe process runs on the edition under test.
+      - name: Install from a local repository
+        shell: pwsh
+        run: ./tests/InstallTime/Invoke-LocalRepositoryInstallTest.ps1 -ProbeEdition ${{ matrix.probeEdition }}

@@ -11,7 +11,11 @@
     ],
     "words": [
         "Authenticode",
+        "coreclr",
+        "fullclr",
+        "LASTEXITCODE",
         "psake",
+        "PSHOME",
         "MAML"
     ],
     "ignoreWords": [

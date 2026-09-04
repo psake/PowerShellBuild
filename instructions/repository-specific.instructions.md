@@ -42,6 +42,7 @@ PowerShellBuild/
 │   ├── psakeFile.ps1           # Tasks consumers import
 │   └── IB.tasks.ps1            # Invoke-Build entry (aliased as PowerShellBuild.IB.Tasks)
 ├── tests/                      # Pester 6+ tests
+│   ├── InstallTime/            # Local-repository install test (CI only; not Pester)
 │   └── TestModule/             # Sample module exercised by the test suite
 ├── build.ps1                   # Main build entry point for THIS repo
 ├── build.settings.ps1          # Build settings for THIS repo's own psake build
@@ -287,6 +288,22 @@ Supporting files: `tests/MetaFixers.psm1` (helpers for `Meta.tests.ps1`) and `te
   parallel, runs
   `./build.ps1 -Task Test -Bootstrap` across a `ubuntu-latest`, `windows-latest`, `macOS-latest`
   matrix on PowerShell 7 and again on Windows PowerShell 5.1, and publishes the test results
+
+### Install test workflow (`.github/workflows/install-test.yml`)
+
+- Triggers: push to `main`, pull requests, manual dispatch
+- Runs on: `windows-latest`, once with a PowerShell 7 probe and once with a Windows
+  PowerShell 5.1 probe
+- Repository-local rather than part of the shared workflow, because the coverage is specific to
+  this repository for now (psake/PowerShellBuild#229)
+- Runs `tests/InstallTime/Invoke-LocalRepositoryInstallTest.ps1`, which publishes the built
+  module into a temporary file-share repository alongside mirrored copies of its
+  `RequiredModules`, then saves and imports it in a process whose `PSModulePath` holds only an
+  empty directory. A build cannot observe an install-time break; this can
+- Includes a negative control that republishes the module with an unsatisfiable dependency and
+  requires the save to fail, so a green run is evidence rather than an assumption
+- The comment-based help at the top of that script records what the test deliberately does not
+  cover — read it before treating a green run as broader coverage than it is
 
 ### Publish workflow (`.github/workflows/publish.yaml`)
 
